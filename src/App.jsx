@@ -4,7 +4,6 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFirestore, collection, addDoc, query, where, getDocs, doc, getDoc, setDoc, orderBy, deleteDoc, updateDoc } from 'firebase/firestore';
-import Tesseract from 'tesseract.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCvishxOrmwvC2MhtiOhh1oLEEbLPamkrI",
@@ -128,10 +127,8 @@ function AuthScreen() {
 }
 
 function NutritionLogger({ user }) {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [processing, setProcessing] = useState(false);
-  const [extractedData, setExtractedData] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newEntry, setNewEntry] = useState({ protein: '', carbs: '', fats: '', mealName: '' });
   const [todayEntries, setTodayEntries] = useState([]);
   const [macroGoals, setMacroGoals] = useState({ protein: 0, carbs: 0, fats: 0 });
   const [todayTotals, setTodayTotals] = useState({ protein: 0, carbs: 0, fats: 0 });
@@ -168,74 +165,26 @@ function NutritionLogger({ user }) {
     setTodayTotals(totals);
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
-  const extractMacros = async () => {
-    if (!selectedFile) return;
-
-    setProcessing(true);
-    try {
-      const result = await Tesseract.recognize(selectedFile, 'eng', {
-        logger: m => console.log(m)
-      });
-
-      const text = result.data.text;
-      const protein = extractNumber(text, ['protein', 'pro']);
-      const carbs = extractNumber(text, ['carb', 'carbohydrate']);
-      const fats = extractNumber(text, ['fat', 'fats']);
-
-      setExtractedData({
-        protein: protein || 0,
-        carbs: carbs || 0,
-        fats: fats || 0,
-        rawText: text
-      });
-    } catch (error) {
-      console.error('OCR Error:', error);
-      alert('Failed to extract text. Please try again or enter manually.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const extractNumber = (text, keywords) => {
-    const lines = text.toLowerCase().split('\n');
-    for (const keyword of keywords) {
-      for (const line of lines) {
-        if (line.includes(keyword)) {
-          const numbers = line.match(/\d+(\.\d+)?/g);
-          if (numbers && numbers.length > 0) {
-            return parseFloat(numbers[0]);
-          }
-        }
-      }
-    }
-    return 0;
-  };
-
   const handleSaveEntry = async () => {
-    if (!extractedData) return;
+    if (!newEntry.protein && !newEntry.carbs && !newEntry.fats) {
+      alert('Please enter at least one macro value');
+      return;
+    }
 
     try {
       await addDoc(collection(db, 'nutrition-logs'), {
         userId: user.uid,
         userName: user.email,
-        protein: extractedData.protein,
-        carbs: extractedData.carbs,
-        fats: extractedData.fats,
+        protein: parseFloat(newEntry.protein) || 0,
+        carbs: parseFloat(newEntry.carbs) || 0,
+        fats: parseFloat(newEntry.fats) || 0,
+        mealName: newEntry.mealName || 'Meal',
         date: new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString()
       });
 
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setExtractedData(null);
+      setNewEntry({ protein: '', carbs: '', fats: '', mealName: '' });
+      setShowAddForm(false);
       loadTodayEntries();
     } catch (error) {
       console.error('Error saving entry:', error);
@@ -303,88 +252,68 @@ function NutritionLogger({ user }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Log Food Entry</h3>
-        
-        {!extractedData ? (
+      {!showAddForm ? (
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="w-full py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition flex items-center justify-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Log Food Entry
+        </button>
+      ) : (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">New Food Entry</h3>
+          
           <div className="space-y-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-              {previewUrl ? (
-                <div className="space-y-4">
-                  <img src={previewUrl} alt="Preview" className="max-h-64 mx-auto rounded-lg" />
-                  <div className="flex gap-2 justify-center">
-                    <button
-                      onClick={() => {
-                        setSelectedFile(null);
-                        setPreviewUrl(null);
-                      }}
-                      className="px-4 py-2 text-red-600 hover:text-red-700 text-sm"
-                    >
-                      Remove
-                    </button>
-                    <button
-                      onClick={extractMacros}
-                      disabled={processing}
-                      className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50"
-                    >
-                      {processing ? 'Processing...' : 'Extract Macros'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <label className="cursor-pointer">
-                  <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-                  <div className="text-gray-600">Upload nutrition screenshot</div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                </label>
-              )}
+            <div>
+              <label className="text-sm text-gray-600 block mb-1">Meal Name (optional)</label>
+              <input
+                type="text"
+                value={newEntry.mealName}
+                onChange={(e) => setNewEntry({...newEntry, mealName: e.target.value})}
+                placeholder="e.g., Breakfast, Lunch, Snack"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="text-sm font-medium text-gray-700 mb-3">Extracted Macros (Edit if needed)</div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Protein (g)</label>
-                  <input
-                    type="number"
-                    value={extractedData.protein}
-                    onChange={(e) => setExtractedData({...extractedData, protein: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Carbs (g)</label>
-                  <input
-                    type="number"
-                    value={extractedData.carbs}
-                    onChange={(e) => setExtractedData({...extractedData, carbs: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Fats (g)</label>
-                  <input
-                    type="number"
-                    value={extractedData.fats}
-                    onChange={(e) => setExtractedData({...extractedData, fats: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">Protein (g)</label>
+                <input
+                  type="number"
+                  value={newEntry.protein}
+                  onChange={(e) => setNewEntry({...newEntry, protein: e.target.value})}
+                  placeholder="0"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">Carbs (g)</label>
+                <input
+                  type="number"
+                  value={newEntry.carbs}
+                  onChange={(e) => setNewEntry({...newEntry, carbs: e.target.value})}
+                  placeholder="0"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">Fats (g)</label>
+                <input
+                  type="number"
+                  value={newEntry.fats}
+                  onChange={(e) => setNewEntry({...newEntry, fats: e.target.value})}
+                  placeholder="0"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
               </div>
             </div>
+
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  setExtractedData(null);
-                  setSelectedFile(null);
-                  setPreviewUrl(null);
+                  setShowAddForm(false);
+                  setNewEntry({ protein: '', carbs: '', fats: '', mealName: '' });
                 }}
                 className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
               >
@@ -398,8 +327,8 @@ function NutritionLogger({ user }) {
               </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
         <h3 className="text-xl font-bold text-gray-900 mb-4">Today's Entries ({todayEntries.length})</h3>
@@ -409,18 +338,26 @@ function NutritionLogger({ user }) {
           <div className="space-y-3">
             {todayEntries.map(entry => (
               <div key={entry.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                <div className="flex gap-6 text-sm">
-                  <div>
-                    <span className="text-gray-600">Protein:</span>
-                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.protein)}g</span>
+                <div>
+                  {entry.mealName && (
+                    <div className="text-sm font-medium text-gray-900 mb-1">{entry.mealName}</div>
+                  )}
+                  <div className="flex gap-6 text-sm">
+                    <div>
+                      <span className="text-gray-600">Protein:</span>
+                      <span className="font-medium text-gray-900 ml-1">{Math.round(entry.protein)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Carbs:</span>
+                      <span className="font-medium text-gray-900 ml-1">{Math.round(entry.carbs)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Fats:</span>
+                      <span className="font-medium text-gray-900 ml-1">{Math.round(entry.fats)}g</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-gray-600">Carbs:</span>
-                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.carbs)}g</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Fats:</span>
-                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.fats)}g</span>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {new Date(entry.createdAt).toLocaleTimeString()}
                   </div>
                 </div>
                 <button
@@ -531,6 +468,9 @@ function AdminNutrition() {
           <div className="space-y-3">
             {dateEntries.map(entry => (
               <div key={entry.id} className="p-4 bg-gray-50 rounded-lg">
+                {entry.mealName && (
+                  <div className="text-sm font-medium text-gray-900 mb-2">{entry.mealName}</div>
+                )}
                 <div className="flex gap-6 text-sm">
                   <div>
                     <span className="text-gray-600">Protein:</span>
