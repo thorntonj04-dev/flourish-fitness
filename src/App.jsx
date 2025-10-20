@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { User, Dumbbell, Users, BookOpen, Target, Calendar, Image as ImageIcon, DollarSign, LogOut, Plus, X, Check, ChevronRight, Star, Clock, Edit, Trash2, Send, Award, Heart, TrendingUp, Minus, CheckCircle, Upload, Camera } from 'lucide-react';
+import { User, Dumbbell, Users, BookOpen, Target, Calendar, Image, DollarSign, LogOut, Plus, X, Check, ChevronRight, Star, Clock, Edit, Trash2, Send, Award, Heart, TrendingUp, Minus, CheckCircle, Upload, Camera, Apple } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
-import { getFirestore, collection, addDoc, query, where, getDocs, doc, getDoc, setDoc, orderBy, deleteDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getFirestore, collection, addDoc, query, where, getDocs, doc, getDoc, setDoc, orderBy, deleteDoc, updateDoc } from 'firebase/firestore';
+import Tesseract from 'tesseract.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCvishxOrmwvC2MhtiOhh1oLEEbLPamkrI",
@@ -20,30 +21,7 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const db = getFirestore(app);
 
-const EXERCISE_DATABASE = [
-  { id: 1, name: 'Barbell Bench Press', category: 'Chest', muscleGroup: 'Pectorals', difficulty: 'Intermediate' },
-  { id: 2, name: 'Incline Barbell Bench Press', category: 'Chest', muscleGroup: 'Upper Pectorals', difficulty: 'Intermediate' },
-  { id: 3, name: 'Decline Barbell Bench Press', category: 'Chest', muscleGroup: 'Lower Pectorals', difficulty: 'Intermediate' },
-  { id: 4, name: 'Dumbbell Bench Press', category: 'Chest', muscleGroup: 'Pectorals', difficulty: 'Beginner' },
-  { id: 5, name: 'Incline Dumbbell Press', category: 'Chest', muscleGroup: 'Upper Pectorals', difficulty: 'Beginner' },
-  { id: 6, name: 'Push-ups', category: 'Chest', muscleGroup: 'Pectorals', difficulty: 'Beginner' },
-  { id: 7, name: 'Dumbbell Flyes', category: 'Chest', muscleGroup: 'Pectorals', difficulty: 'Intermediate' },
-  { id: 8, name: 'Cable Crossover', category: 'Chest', muscleGroup: 'Pectorals', difficulty: 'Intermediate' },
-  { id: 9, name: 'Deadlift', category: 'Back', muscleGroup: 'Lower Back', difficulty: 'Advanced' },
-  { id: 10, name: 'Barbell Rows', category: 'Back', muscleGroup: 'Lats', difficulty: 'Intermediate' },
-  { id: 11, name: 'Pull-ups', category: 'Back', muscleGroup: 'Lats', difficulty: 'Advanced' },
-  { id: 12, name: 'Lat Pulldown', category: 'Back', muscleGroup: 'Lats', difficulty: 'Beginner' },
-  { id: 13, name: 'Barbell Squat', category: 'Legs', muscleGroup: 'Quads', difficulty: 'Intermediate' },
-  { id: 14, name: 'Leg Press', category: 'Legs', muscleGroup: 'Quads', difficulty: 'Beginner' },
-  { id: 15, name: 'Lunges', category: 'Legs', muscleGroup: 'Quads', difficulty: 'Beginner' },
-  { id: 16, name: 'Overhead Press', category: 'Shoulders', muscleGroup: 'Deltoids', difficulty: 'Intermediate' },
-  { id: 17, name: 'Lateral Raises', category: 'Shoulders', muscleGroup: 'Side Delts', difficulty: 'Beginner' },
-  { id: 18, name: 'Barbell Curls', category: 'Arms', muscleGroup: 'Biceps', difficulty: 'Beginner' },
-  { id: 19, name: 'Tricep Dips', category: 'Arms', muscleGroup: 'Triceps', difficulty: 'Intermediate' },
-  { id: 20, name: 'Plank', category: 'Core', muscleGroup: 'Abs', difficulty: 'Beginner' },
-];
-
-function AuthScreen({ onAuth }) {
+function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,7 +43,8 @@ function AuthScreen({ onAuth }) {
           email,
           name,
           role: 'client',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          macroGoals: { protein: 150, carbs: 200, fats: 50 }
         });
       }
     } catch (err) {
@@ -148,7 +127,595 @@ function AuthScreen({ onAuth }) {
   );
 }
 
-function PhotoUpload({ user, userRole }) {
+function NutritionLogger({ user }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [extractedData, setExtractedData] = useState(null);
+  const [todayEntries, setTodayEntries] = useState([]);
+  const [macroGoals, setMacroGoals] = useState({ protein: 0, carbs: 0, fats: 0 });
+  const [todayTotals, setTodayTotals] = useState({ protein: 0, carbs: 0, fats: 0 });
+
+  useEffect(() => {
+    loadUserData();
+    loadTodayEntries();
+  }, [user]);
+
+  const loadUserData = async () => {
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    if (userDoc.exists() && userDoc.data().macroGoals) {
+      setMacroGoals(userDoc.data().macroGoals);
+    }
+  };
+
+  const loadTodayEntries = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const q = query(
+      collection(db, 'nutrition-logs'),
+      where('userId', '==', user.uid),
+      where('date', '==', today),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setTodayEntries(entries);
+    
+    const totals = entries.reduce((acc, entry) => ({
+      protein: acc.protein + (entry.protein || 0),
+      carbs: acc.carbs + (entry.carbs || 0),
+      fats: acc.fats + (entry.fats || 0)
+    }), { protein: 0, carbs: 0, fats: 0 });
+    setTodayTotals(totals);
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const extractMacros = async () => {
+    if (!selectedFile) return;
+
+    setProcessing(true);
+    try {
+      const result = await Tesseract.recognize(selectedFile, 'eng', {
+        logger: m => console.log(m)
+      });
+
+      const text = result.data.text;
+      const protein = extractNumber(text, ['protein', 'pro']);
+      const carbs = extractNumber(text, ['carb', 'carbohydrate']);
+      const fats = extractNumber(text, ['fat', 'fats']);
+
+      setExtractedData({
+        protein: protein || 0,
+        carbs: carbs || 0,
+        fats: fats || 0,
+        rawText: text
+      });
+    } catch (error) {
+      console.error('OCR Error:', error);
+      alert('Failed to extract text. Please try again or enter manually.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const extractNumber = (text, keywords) => {
+    const lines = text.toLowerCase().split('\n');
+    for (const keyword of keywords) {
+      for (const line of lines) {
+        if (line.includes(keyword)) {
+          const numbers = line.match(/\d+(\.\d+)?/g);
+          if (numbers && numbers.length > 0) {
+            return parseFloat(numbers[0]);
+          }
+        }
+      }
+    }
+    return 0;
+  };
+
+  const handleSaveEntry = async () => {
+    if (!extractedData) return;
+
+    try {
+      await addDoc(collection(db, 'nutrition-logs'), {
+        userId: user.uid,
+        userName: user.email,
+        protein: extractedData.protein,
+        carbs: extractedData.carbs,
+        fats: extractedData.fats,
+        date: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString()
+      });
+
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      setExtractedData(null);
+      loadTodayEntries();
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      alert('Failed to save entry.');
+    }
+  };
+
+  const handleDeleteEntry = async (entryId) => {
+    if (!confirm('Delete this entry?')) return;
+    try {
+      await deleteDoc(doc(db, 'nutrition-logs', entryId));
+      loadTodayEntries();
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+    }
+  };
+
+  const getProgress = (current, goal) => {
+    return goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">Nutrition Tracking</h2>
+        <p className="text-emerald-100">Track your daily macros and reach your goals</p>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Today's Progress</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <div className="text-sm text-gray-600 mb-2">Protein</div>
+            <div className="text-2xl font-bold text-gray-900">{Math.round(todayTotals.protein)}g</div>
+            <div className="text-xs text-gray-500">Goal: {macroGoals.protein}g</div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div 
+                className="bg-emerald-500 h-2 rounded-full transition-all"
+                style={{ width: `${getProgress(todayTotals.protein, macroGoals.protein)}%` }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-600 mb-2">Carbs</div>
+            <div className="text-2xl font-bold text-gray-900">{Math.round(todayTotals.carbs)}g</div>
+            <div className="text-xs text-gray-500">Goal: {macroGoals.carbs}g</div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all"
+                style={{ width: `${getProgress(todayTotals.carbs, macroGoals.carbs)}%` }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-600 mb-2">Fats</div>
+            <div className="text-2xl font-bold text-gray-900">{Math.round(todayTotals.fats)}g</div>
+            <div className="text-xs text-gray-500">Goal: {macroGoals.fats}g</div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div 
+                className="bg-yellow-500 h-2 rounded-full transition-all"
+                style={{ width: `${getProgress(todayTotals.fats, macroGoals.fats)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Log Food Entry</h3>
+        
+        {!extractedData ? (
+          <div className="space-y-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+              {previewUrl ? (
+                <div className="space-y-4">
+                  <img src={previewUrl} alt="Preview" className="max-h-64 mx-auto rounded-lg" />
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setPreviewUrl(null);
+                      }}
+                      className="px-4 py-2 text-red-600 hover:text-red-700 text-sm"
+                    >
+                      Remove
+                    </button>
+                    <button
+                      onClick={extractMacros}
+                      disabled={processing}
+                      className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50"
+                    >
+                      {processing ? 'Processing...' : 'Extract Macros'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="cursor-pointer">
+                  <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                  <div className="text-gray-600">Upload nutrition screenshot</div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="text-sm font-medium text-gray-700 mb-3">Extracted Macros (Edit if needed)</div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs text-gray-600 block mb-1">Protein (g)</label>
+                  <input
+                    type="number"
+                    value={extractedData.protein}
+                    onChange={(e) => setExtractedData({...extractedData, protein: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600 block mb-1">Carbs (g)</label>
+                  <input
+                    type="number"
+                    value={extractedData.carbs}
+                    onChange={(e) => setExtractedData({...extractedData, carbs: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600 block mb-1">Fats (g)</label>
+                  <input
+                    type="number"
+                    value={extractedData.fats}
+                    onChange={(e) => setExtractedData({...extractedData, fats: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setExtractedData(null);
+                  setSelectedFile(null);
+                  setPreviewUrl(null);
+                }}
+                className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEntry}
+                className="flex-1 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+              >
+                Save Entry
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Today's Entries ({todayEntries.length})</h3>
+        {todayEntries.length === 0 ? (
+          <p className="text-gray-600">No entries yet today. Log your first meal!</p>
+        ) : (
+          <div className="space-y-3">
+            {todayEntries.map(entry => (
+              <div key={entry.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                <div className="flex gap-6 text-sm">
+                  <div>
+                    <span className="text-gray-600">Protein:</span>
+                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.protein)}g</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Carbs:</span>
+                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.carbs)}g</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Fats:</span>
+                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.fats)}g</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeleteEntry(entry.id)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminNutrition() {
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [clientLogs, setClientLogs] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [dateEntries, setDateEntries] = useState([]);
+  const [editingGoals, setEditingGoals] = useState(false);
+  const [macroGoals, setMacroGoals] = useState({ protein: 0, carbs: 0, fats: 0 });
+
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const clientData = usersSnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(u => u.role === 'client');
+    setClients(clientData);
+  };
+
+  const loadClientLogs = async (clientId, clientData) => {
+    setSelectedClient(clientData);
+    setMacroGoals(clientData.macroGoals || { protein: 150, carbs: 200, fats: 50 });
+    
+    const q = query(
+      collection(db, 'nutrition-logs'),
+      where('userId', '==', clientId),
+      orderBy('date', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    const groupedByDate = logs.reduce((acc, log) => {
+      if (!acc[log.date]) {
+        acc[log.date] = [];
+      }
+      acc[log.date].push(log);
+      return acc;
+    }, {});
+    
+    const dailyTotals = Object.keys(groupedByDate).map(date => ({
+      date,
+      entries: groupedByDate[date],
+      totals: groupedByDate[date].reduce((acc, entry) => ({
+        protein: acc.protein + (entry.protein || 0),
+        carbs: acc.carbs + (entry.carbs || 0),
+        fats: acc.fats + (entry.fats || 0)
+      }), { protein: 0, carbs: 0, fats: 0 })
+    }));
+    
+    setClientLogs(dailyTotals);
+  };
+
+  const handleSelectDate = (dayLog) => {
+    setSelectedDate(dayLog.date);
+    setDateEntries(dayLog.entries);
+  };
+
+  const handleSaveGoals = async () => {
+    if (!selectedClient) return;
+    try {
+      await updateDoc(doc(db, 'users', selectedClient.id), {
+        macroGoals: macroGoals
+      });
+      setEditingGoals(false);
+      alert('Macro goals updated!');
+    } catch (error) {
+      console.error('Error updating goals:', error);
+      alert('Failed to update goals.');
+    }
+  };
+
+  if (selectedDate) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => setSelectedDate(null)}
+          className="text-emerald-600 hover:text-emerald-700 flex items-center gap-2"
+        >
+          ← Back to Timeline
+        </button>
+
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+          <h2 className="text-2xl font-bold">{selectedClient.name}</h2>
+          <p className="text-emerald-100">{new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Food Entries ({dateEntries.length})</h3>
+          <div className="space-y-3">
+            {dateEntries.map(entry => (
+              <div key={entry.id} className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex gap-6 text-sm">
+                  <div>
+                    <span className="text-gray-600">Protein:</span>
+                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.protein)}g</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Carbs:</span>
+                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.carbs)}g</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Fats:</span>
+                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.fats)}g</span>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 mt-2">
+                  {new Date(entry.createdAt).toLocaleTimeString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedClient) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => {
+            setSelectedClient(null);
+            setClientLogs([]);
+          }}
+          className="text-emerald-600 hover:text-emerald-700 flex items-center gap-2"
+        >
+          ← Back to Clients
+        </button>
+
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+          <h2 className="text-2xl font-bold">{selectedClient.name}'s Nutrition</h2>
+          <p className="text-emerald-100">{clientLogs.length} days logged</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-900">Macro Goals</h3>
+            <button
+              onClick={() => setEditingGoals(!editingGoals)}
+              className="text-emerald-600 hover:text-emerald-700 text-sm"
+            >
+              {editingGoals ? 'Cancel' : 'Edit Goals'}
+            </button>
+          </div>
+          
+          {editingGoals ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm text-gray-600 block mb-1">Protein (g)</label>
+                  <input
+                    type="number"
+                    value={macroGoals.protein}
+                    onChange={(e) => setMacroGoals({...macroGoals, protein: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 block mb-1">Carbs (g)</label>
+                  <input
+                    type="number"
+                    value={macroGoals.carbs}
+                    onChange={(e) => setMacroGoals({...macroGoals, carbs: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 block mb-1">Fats (g)</label>
+                  <input
+                    type="number"
+                    value={macroGoals.fats}
+                    onChange={(e) => setMacroGoals({...macroGoals, fats: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleSaveGoals}
+                className="w-full py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+              >
+                Save Goals
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-sm text-gray-600">Protein Goal</div>
+                <div className="text-2xl font-bold text-gray-900">{macroGoals.protein}g</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Carbs Goal</div>
+                <div className="text-2xl font-bold text-gray-900">{macroGoals.carbs}g</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Fats Goal</div>
+                <div className="text-2xl font-bold text-gray-900">{macroGoals.fats}g</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Daily Timeline</h3>
+          {clientLogs.length === 0 ? (
+            <p className="text-gray-600">No nutrition logs yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {clientLogs.map(dayLog => (
+                <button
+                  key={dayLog.date}
+                  onClick={() => handleSelectDate(dayLog)}
+                  className="w-full p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-left"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="font-medium text-gray-900">
+                      {new Date(dayLog.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                    </div>
+                    <div className="text-sm text-gray-600">{dayLog.entries.length} entries</div>
+                  </div>
+                  <div className="flex gap-6 text-sm">
+                    <div>
+                      <span className="text-gray-600">Protein:</span>
+                      <span className="font-medium text-gray-900 ml-1">{Math.round(dayLog.totals.protein)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Carbs:</span>
+                      <span className="font-medium text-gray-900 ml-1">{Math.round(dayLog.totals.carbs)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Fats:</span>
+                      <span className="font-medium text-gray-900 ml-1">{Math.round(dayLog.totals.fats)}g</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">Client Nutrition</h2>
+        <p className="text-emerald-100">View and manage client macro tracking</p>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Select a Client</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {clients.map(client => (
+            <button
+              key={client.id}
+              onClick={() => loadClientLogs(client.id, client)}
+              className="p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 transition text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                  {client.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="font-medium text-gray-900">{client.name}</div>
+                  <div className="text-sm text-gray-600">{client.email}</div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PhotoUpload({ user }) {
   const [uploading, setUploading] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -351,7 +918,7 @@ function PhotoUpload({ user, userRole }) {
   );
 }
 
-function AdminPhotos({ user }) {
+function AdminPhotos() {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientPhotos, setClientPhotos] = useState([]);
@@ -551,17 +1118,17 @@ export default function App() {
   }
 
   if (!user) {
-    return <AuthScreen onAuth={() => {}} />;
+    return <AuthScreen />;
   }
 
   const navItems = userRole === 'admin' ? [
     { id: 'dashboard', label: 'Overview', icon: Users },
-    { id: 'photos', label: 'Client Photos', icon: ImageIcon },
-    { id: 'exercises', label: 'Exercise Database', icon: BookOpen },
+    { id: 'photos', label: 'Client Photos', icon: Image },
+    { id: 'nutrition', label: 'Client Nutrition', icon: Apple },
   ] : [
     { id: 'dashboard', label: 'Dashboard', icon: User },
-    { id: 'photos', label: 'My Progress', icon: ImageIcon },
-    { id: 'workouts', label: 'My Workouts', icon: Dumbbell }
+    { id: 'photos', label: 'My Progress', icon: Image },
+    { id: 'nutrition', label: 'Nutrition', icon: Apple },
   ];
 
   return (
@@ -628,40 +1195,20 @@ export default function App() {
             {currentView === 'photos' && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
                 {userRole === 'admin' ? (
-                  <AdminPhotos user={user} />
+                  <AdminPhotos />
                 ) : (
-                  <PhotoUpload user={user} userRole={userRole} />
+                  <PhotoUpload user={user} />
                 )}
               </div>
             )}
 
-            {currentView === 'exercises' && (
+            {currentView === 'nutrition' && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Exercise Database</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {EXERCISE_DATABASE.map(exercise => (
-                    <div key={exercise.id} className="border border-gray-200 rounded-xl p-4">
-                      <h3 className="font-semibold text-gray-900 mb-2">{exercise.name}</h3>
-                      <div className="text-sm text-gray-600">
-                        <div>Category: {exercise.category}</div>
-                        <div>Muscle: {exercise.muscleGroup}</div>
-                        <div className={`font-medium ${
-                          exercise.difficulty === 'Beginner' ? 'text-green-600' :
-                          exercise.difficulty === 'Intermediate' ? 'text-yellow-600' : 'text-red-600'
-                        }`}>
-                          Level: {exercise.difficulty}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {currentView === 'workouts' && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">My Workouts</h2>
-                <p className="text-gray-600">Your assigned workouts will appear here.</p>
+                {userRole === 'admin' ? (
+                  <AdminNutrition />
+                ) : (
+                  <NutritionLogger user={user} />
+                )}
               </div>
             )}
           </div>
