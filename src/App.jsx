@@ -42,8 +42,12 @@ function AuthScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleAuth = async (e) => {
-    e.preventDefault();
+  const handleAuth = async () => {
+    if (!email || !password || (!isLogin && !name)) {
+      setError('Please fill in all fields');
+      return;
+    }
+    
     setError('');
     setLoading(true);
 
@@ -52,10 +56,15 @@ function AuthScreen() {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Check if this is the first user (make them admin)
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const isFirstUser = usersSnapshot.empty;
+        
         await setDoc(doc(db, 'users', userCredential.user.uid), {
           email,
           name,
-          role: 'client',
+          role: isFirstUser ? 'admin' : 'client',
           createdAt: new Date().toISOString(),
           macroGoals: { protein: 150, carbs: 200, fats: 50 }
         });
@@ -83,14 +92,13 @@ function AuthScreen() {
             {isLogin ? 'Sign In' : 'Create Account'}
           </h2>
 
-          <form onSubmit={handleAuth} className="space-y-4">
+          <div className="space-y-4">
             {!isLogin && (
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Full Name"
-                required
                 className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             )}
@@ -100,7 +108,6 @@ function AuthScreen() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              required
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             
@@ -109,7 +116,9 @@ function AuthScreen() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              required
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') handleAuth();
+              }}
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
 
@@ -120,13 +129,13 @@ function AuthScreen() {
             )}
 
             <button
-              type="submit"
+              onClick={handleAuth}
               disabled={loading}
               className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition"
             >
               {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
             </button>
-          </form>
+          </div>
 
           <button
             onClick={() => setIsLogin(!isLogin)}
@@ -1124,9 +1133,6 @@ function ClientWorkouts({ user }) {
   );
 }
 
-// Existing nutrition and photo components remain the same...
-// (NutritionLogger, AdminNutrition, PhotoUpload, AdminPhotos)
-
 function NutritionLogger({ user }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newEntry, setNewEntry] = useState({ protein: '', carbs: '', fats: '', mealName: '' });
@@ -1591,7 +1597,10 @@ export default function App() {
         setUser(firebaseUser);
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         if (userDoc.exists()) {
-          setUserRole(userDoc.data().role);
+          const role = userDoc.data().role;
+          console.log('🔍 User Role from Firebase:', role);
+          console.log('📧 User Email:', firebaseUser.email);
+          setUserRole(role);
         }
       } else {
         setUser(null);
@@ -1698,7 +1707,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mobile bottom navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-40">
         <div className="flex justify-around">
           {navItems.slice(0, 4).map(item => {
