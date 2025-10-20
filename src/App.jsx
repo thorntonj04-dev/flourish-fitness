@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+%d
+rt React, { useState } from 'react';
 import { User, Dumbbell, Users, BookOpen, Target, Calendar, Image, DollarSign, LogOut, Plus, X, Check, ChevronRight, Star, Clock, Edit, Trash2, Send, Award, Heart, TrendingUp, Minus, CheckCircle } from 'lucide-react';
 
 const CLIENTS = [
@@ -1143,5 +1144,4 @@ export default function App() {
         </main>
       </div>
     </div>
-  );
-}
+  
