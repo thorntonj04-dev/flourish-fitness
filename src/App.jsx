@@ -321,55 +321,64 @@ export default function App() {
   const [needsSetup, setNeedsSetup] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('🔐 Auth State Changed');
+  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    console.log('🔐 Auth State Changed');
+    
+    if (firebaseUser) {
+      console.log('✅ User logged in:', firebaseUser.email);
+      console.log('🆔 User ID:', firebaseUser.uid);
+      setUser(firebaseUser);
       
-     if (userDoc.exists()) {
-  const userData = userDoc.data();
-  console.log('✅ User document exists');
-  console.log('📄 User data:', userData);
-  
-  const role = userData.role || 'admin'; // Force admin if role exists but can't be read
-  console.log('👤 Role found:', role);
-  
-  setUserRole(role);
-  setNeedsSetup(false);
-} else {
-  // Document doesn't exist - force create it as admin
-  console.log('⚠️ Document missing - creating admin user');
-  try {
-    await setDoc(doc(db, 'users', firebaseUser.uid), {
-      email: firebaseUser.email,
-      name: firebaseUser.email.split('@')[0],
-      role: 'admin',
-      createdAt: new Date().toISOString(),
-      macroGoals: { protein: 150, carbs: 200, fats: 50 }
-    });
-    setUserRole('admin');
-    setNeedsSetup(false);
-  } catch (error) {
-    console.error('Error creating user doc:', error);
-    setNeedsSetup(true);
-  }
-}
-        } catch (error) {
-          console.error('❌ ERROR loading user data:', error);
-          console.error('Error details:', error.message);
-          setNeedsSetup(true);
+      try {
+        console.log('📖 Attempting to read user document...');
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          console.log('✅ User document exists');
+          console.log('📄 User data:', userData);
+          
+          const role = userData.role || 'admin'; // Force admin if role exists but can't be read
+          console.log('👤 Role found:', role);
+          
+          setUserRole(role);
+          setNeedsSetup(false);
+        } else {
+          // Document doesn't exist - force create it as admin
+          console.log('⚠️ Document missing - creating admin user');
+          try {
+            await setDoc(doc(db, 'users', firebaseUser.uid), {
+              email: firebaseUser.email,
+              name: firebaseUser.email.split('@')[0],
+              role: 'admin',
+              createdAt: new Date().toISOString(),
+              macroGoals: { protein: 150, carbs: 200, fats: 50 }
+            });
+            setUserRole('admin');
+            setNeedsSetup(false);
+          } catch (error) {
+            console.error('Error creating user doc:', error);
+            setNeedsSetup(true);
+          }
         }
-      } else {
-        console.log('🚪 User logged out');
-        setUser(null);
-        setUserRole(null);
-        setNeedsSetup(false);
+      } catch (error) {
+        console.error('❌ ERROR loading user data:', error);
+        console.error('Error details:', error.message);
+        setNeedsSetup(true);
       }
-      
-      console.log('✅ Auth state change complete');
-      setLoading(false);
-    });
+    } else {
+      console.log('🚪 User logged out');
+      setUser(null);
+      setUserRole(null);
+      setNeedsSetup(false);
+    }
+    
+    console.log('✅ Auth state change complete');
+    setLoading(false);
+  });
 
-    return () => unsubscribe();
-  }, []);
+  return () => unsubscribe();
+}, []);
 
   const handleSignOut = async () => {
     await signOut(auth);
