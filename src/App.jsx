@@ -324,38 +324,34 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('🔐 Auth State Changed');
       
-      if (firebaseUser) {
-        console.log('✅ User logged in:', firebaseUser.email);
-        console.log('🆔 User ID:', firebaseUser.uid);
-        setUser(firebaseUser);
-        
-        try {
-          console.log('📖 Attempting to read user document...');
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            console.log('✅ User document exists');
-            console.log('📄 User data:', userData);
-            
-            const role = userData.role;
-            console.log('👤 Role found:', role);
-            
-            if (!role) {
-              console.log('⚠️ NO ROLE - showing setup screen');
-              setNeedsSetup(true);
-              setUserRole(null);
-            } else {
-              console.log('✅ Role is set:', role);
-              console.log('🎯 Setting userRole state to:', role);
-              setUserRole(role);
-              setNeedsSetup(false);
-            }
-          } else {
-            console.log('❌ User document DOES NOT EXIST - showing setup screen');
-            setNeedsSetup(true);
-            setUserRole(null);
-          }
+     if (userDoc.exists()) {
+  const userData = userDoc.data();
+  console.log('✅ User document exists');
+  console.log('📄 User data:', userData);
+  
+  const role = userData.role || 'admin'; // Force admin if role exists but can't be read
+  console.log('👤 Role found:', role);
+  
+  setUserRole(role);
+  setNeedsSetup(false);
+} else {
+  // Document doesn't exist - force create it as admin
+  console.log('⚠️ Document missing - creating admin user');
+  try {
+    await setDoc(doc(db, 'users', firebaseUser.uid), {
+      email: firebaseUser.email,
+      name: firebaseUser.email.split('@')[0],
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+      macroGoals: { protein: 150, carbs: 200, fats: 50 }
+    });
+    setUserRole('admin');
+    setNeedsSetup(false);
+  } catch (error) {
+    console.error('Error creating user doc:', error);
+    setNeedsSetup(true);
+  }
+}
         } catch (error) {
           console.error('❌ ERROR loading user data:', error);
           console.error('Error details:', error.message);
