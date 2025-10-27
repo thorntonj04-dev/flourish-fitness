@@ -15,10 +15,19 @@ const firebaseConfig = {
   measurementId: "G-YN9E3W7T70"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const storage = getStorage(app);
-const db = getFirestore(app);
+let app;
+let auth;
+let storage;
+let db;
+
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  storage = getStorage(app);
+  db = getFirestore(app);
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+}
 
 // ADMIN SETUP COMPONENT - Add this first!
 function AdminSetup({ user }) {
