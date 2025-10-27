@@ -1,33 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { User, Dumbbell, Users, Image, Apple, LogOut, Plus, X, Trash2, Camera, ChevronRight, ChevronLeft, Play, Check, Edit, Save, Search, Filter, Calendar, Clock, BarChart3, Shield } from 'lucide-react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { getFirestore, collection, addDoc, query, where, getDocs, doc, getDoc, setDoc, orderBy, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCvishxOrmwvC2MhtiOhh1oLEEbLPamkrI",
-  authDomain: "flourish-fitness.firebaseapp.com",
-  projectId: "flourish-fitness",
-  storageBucket: "flourish-fitness.firebasestorage.app",
-  messagingSenderId: "941029788793",
-  appId: "1:941029788793:web:b2474ccf5c356bcee898a8",
-  measurementId: "G-YN9E3W7T70"
-};
-
-let app;
-let auth;
-let storage;
-let db;
-
-try {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  storage = getStorage(app);
-  db = getFirestore(app);
-} catch (error) {
-  console.error('Firebase initialization error:', error);
-}
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { collection, addDoc, query, where, getDocs, doc, getDoc, setDoc, orderBy, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { auth, db, storage } from './firebase';
 
 // ADMIN SETUP COMPONENT - Add this first!
 function AdminSetup({ user }) {
