@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Dumbbell, Users, Image, Apple, LogOut, Plus, X, Trash2, Camera, ChevronRight, ChevronLeft, Play, Check, Edit, Save, Search, Filter, Calendar, Clock, BarChart3, Shield } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { collection, addDoc, query, where, getDocs, doc, getDoc, setDoc, orderBy, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { ref as dbRef, get, set, push, remove, update, query as dbQuery, orderByChild, equalTo } from 'firebase/database';
 import { auth, db, storage } from './firebase';
 
 // ADMIN SETUP COMPONENT - Add this first!
@@ -16,73 +16,69 @@ function AdminSetup({ user }) {
     checkUserDocument();
   }, [user]);
 
-  const checkUserDocument = async () => {
-    setChecking(true);
-    try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        setDebugInfo({
-          exists: true,
-          data: data,
-          hasRole: !!data.role,
-          role: data.role || 'NONE'
-        });
-        console.log('📄 User Document Data:', data);
-      } else {
-        setDebugInfo({
-          exists: false,
-          data: null,
-          hasRole: false,
-          role: 'NONE'
-        });
-        console.log('❌ User document does not exist');
-      }
-    } catch (error) {
-      console.error('❌ Error reading document:', error);
+const checkUserDocument = async () => {
+  setChecking(true);
+  try {
+    const userRef = dbRef(db, `users/${user.uid}`);
+    const snapshot = await get(userRef);
+    
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      setDebugInfo({
+        exists: true,
+        data: data,
+        hasRole: !!data.role,
+        role: data.role || 'NONE'
+      });
+      console.log('📄 User Data:', data);
+    } else {
       setDebugInfo({
         exists: false,
-        error: error.message
+        data: null,
+        hasRole: false,
+        role: 'NONE'
       });
-    } finally {
-      setChecking(false);
+      console.log('❌ User document does not exist');
     }
-  };
+  } catch (error) {
+    console.error('❌ Error:', error);
+    setDebugInfo({
+      exists: false,
+      error: error.message
+    });
+  } finally {
+    setChecking(false);
+  }
+};
 
-  const makeUserAdmin = async () => {
-    if (!confirm('Make this account an admin? This cannot be easily undone.')) return;
+ const makeUserAdmin = async () => {
+  if (!confirm('Make this account an admin? This cannot be easily undone.')) return;
+  
+  setLoading(true);
+  setMessage('');
+  
+  try {
+    console.log('🔧 Setting admin role...');
     
-    setLoading(true);
-    setMessage('');
+    const userRef = dbRef(db, `users/${user.uid}`);
+    await set(userRef, {
+      email: user.email,
+      name: user.email.split('@')[0],
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+      macroGoals: { protein: 150, carbs: 200, fats: 50 }
+    });
     
-    try {
-      console.log('🔧 Attempting to set admin role...');
-      console.log('User ID:', user.uid);
-      console.log('User Email:', user.email);
-      
-      await setDoc(doc(db, 'users', user.uid), {
-        email: user.email,
-        name: user.email.split('@')[0],
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-        macroGoals: { protein: 150, carbs: 200, fats: 50 }
-      }, { merge: true });
-      
-      console.log('✅ Document written successfully');
-      
-      // Verify it was written
-      const verifyDoc = await getDoc(doc(db, 'users', user.uid));
-      console.log('🔍 Verification - Document data:', verifyDoc.data());
-      
-      setMessage('✅ Success! Refreshing in 2 seconds...');
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (error) {
-      console.error('❌ Error:', error);
-      setMessage('❌ Error: ' + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log('✅ Success!');
+    setMessage('✅ Success! Refreshing...');
+    setTimeout(() => window.location.reload(), 2000);
+  } catch (error) {
+    console.error('❌ Error:', error);
+    setMessage('❌ Error: ' + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -320,50 +316,39 @@ export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [needsSetup, setNeedsSetup] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
     console.log('🔐 Auth State Changed');
     
     if (firebaseUser) {
       console.log('✅ User logged in:', firebaseUser.email);
-      console.log('🆔 User ID:', firebaseUser.uid);
       setUser(firebaseUser);
       
       try {
-        console.log('📖 Attempting to read user document...');
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        // Read from Realtime Database instead of Firestore
+        const userRef = dbRef(db, `users/${firebaseUser.uid}`);
+        const snapshot = await get(userRef);
         
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          console.log('✅ User document exists');
-          console.log('📄 User data:', userData);
-          
-          const role = userData.role || 'admin'; // Force admin if role exists but can't be read
-          console.log('👤 Role found:', role);
-          
-          setUserRole(role);
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+          console.log('✅ User data:', userData);
+          setUserRole(userData.role || 'admin');
           setNeedsSetup(false);
         } else {
-          // Document doesn't exist - force create it as admin
-          console.log('⚠️ Document missing - creating admin user');
-          try {
-            await setDoc(doc(db, 'users', firebaseUser.uid), {
-              email: firebaseUser.email,
-              name: firebaseUser.email.split('@')[0],
-              role: 'admin',
-              createdAt: new Date().toISOString(),
-              macroGoals: { protein: 150, carbs: 200, fats: 50 }
-            });
-            setUserRole('admin');
-            setNeedsSetup(false);
-          } catch (error) {
-            console.error('Error creating user doc:', error);
-            setNeedsSetup(true);
-          }
+          // Create user as admin
+          console.log('⚠️ Creating new user as admin');
+          await set(userRef, {
+            email: firebaseUser.email,
+            name: firebaseUser.email.split('@')[0],
+            role: 'admin',
+            createdAt: new Date().toISOString(),
+            macroGoals: { protein: 150, carbs: 200, fats: 50 }
+          });
+          setUserRole('admin');
+          setNeedsSetup(false);
         }
       } catch (error) {
-        console.error('❌ ERROR loading user data:', error);
-        console.error('Error details:', error.message);
+        console.error('❌ ERROR:', error);
         setNeedsSetup(true);
       }
     } else {
@@ -373,7 +358,6 @@ export default function App() {
       setNeedsSetup(false);
     }
     
-    console.log('✅ Auth state change complete');
     setLoading(false);
   });
 
