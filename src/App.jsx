@@ -21,6 +21,9 @@ import MyWorkouts from './components/client/MyWorkouts';
 import MyGoals from './components/client/MyGoals';
 import NutritionLogger from './components/client/NutritionLogger';
 import PhotoUpload from './components/client/PhotoUpload';
+import ProgressDashboard from './components/client/ProgressDashboard';
+import WorkoutHistory from './components/client/WorkoutHistory';
+import PersonalRecords from './components/client/PersonalRecords';
 
 // Shared Components
 import { adminNavItems, clientNavItems } from './components/shared/Navigation';
@@ -213,7 +216,9 @@ export default function App() {
             {currentView === 'workouts' && (
               userRole === 'admin' ? <WorkoutBuilder /> : <MyWorkouts user={user} />
             )}
-
+		{view === 'progress' && <ProgressDashboard user={user} />}
+		{view === 'history' && <WorkoutHistory user={user} />}
+		{view === 'records' && <PersonalRecords user={user} />}
             {currentView === 'clients' && userRole === 'admin' && <ManageClients />}
             {currentView === 'reports' && userRole === 'admin' && <Reports />}
             {currentView === 'goals' && userRole === 'client' && <MyGoals user={user} />}

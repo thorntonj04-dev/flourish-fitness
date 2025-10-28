@@ -15,4 +15,7 @@ export const clientNavItems = [
   { id: 'nutrition', label: 'Nutrition', icon: Apple },
   { id: 'photos', label: 'My Progress', icon: Image },
   { id: 'goals', label: 'My Goals', icon: Target },
+  { id: 'progress', label: 'Progress', icon: TrendingUp },
+  { id: 'history', label: 'History', icon: Calendar },
+  { id: 'records', label: 'Records', icon: Trophy },
 ];
