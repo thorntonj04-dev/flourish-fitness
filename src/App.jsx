@@ -28,15 +28,7 @@ import PersonalRecords from './components/client/PersonalRecords';
 
 // Shared Components
 import { adminNavItems, clientNavItems } from './components/shared/Navigation';
-export const adminNavItems = [
-  { id: 'dashboard', label: 'Overview', icon: Users },
-  { id: 'workouts', label: 'Workout Builder', icon: Dumbbell },
-  { id: 'clients', label: 'Manage Clients', icon: Users },
-  { id: 'analytics', label: 'Client Analytics', icon: BarChart3 },  // NEW
-  { id: 'nutrition', label: 'Client Nutrition', icon: Apple },
-  { id: 'photos', label: 'Client Photos', icon: Image },
-  { id: 'reports', label: 'Reports', icon: BarChart3 },
-];
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
