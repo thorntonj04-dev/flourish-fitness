@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, Dumbbell, Users, Image, Apple, LogOut, Plus, X, Trash2, Camera, ChevronRight, ChevronLeft, Play, Check, Edit, Save, Search, Filter, Calendar, Clock, BarChart3, Shield } from 'lucide-react';
+import { User, Dumbbell, Users, Image, Apple, LogOut, Trash2, Camera, Shield } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { ref as dbRef, get, set, push, remove, update, query as dbQuery, orderByChild, equalTo } from 'firebase/database';
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref as dbRef, get, set, push, remove, update, query as dbQuery, orderByChild, equalTo, onValue } from 'firebase/database';
 import { auth, db, storage } from './firebase';
+import Tesseract from 'tesseract.js';
 
-// ADMIN SETUP COMPONENT - Add this first!
+// ADMIN SETUP COMPONENT
 function AdminSetup({ user }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -16,69 +17,65 @@ function AdminSetup({ user }) {
     checkUserDocument();
   }, [user]);
 
-const checkUserDocument = async () => {
-  setChecking(true);
-  try {
-    const userRef = dbRef(db, `users/${user.uid}`);
-    const snapshot = await get(userRef);
-    
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      setDebugInfo({
-        exists: true,
-        data: data,
-        hasRole: !!data.role,
-        role: data.role || 'NONE'
-      });
-      console.log('📄 User Data:', data);
-    } else {
+  const checkUserDocument = async () => {
+    setChecking(true);
+    try {
+      const userRef = dbRef(db, `users/${user.uid}`);
+      const snapshot = await get(userRef);
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setDebugInfo({
+          exists: true,
+          data: data,
+          hasRole: !!data.role,
+          role: data.role || 'NONE'
+        });
+        console.log('📄 User Data:', data);
+      } else {
+        setDebugInfo({
+          exists: false,
+          data: null,
+          hasRole: false,
+          role: 'NONE'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error:', error);
       setDebugInfo({
         exists: false,
-        data: null,
-        hasRole: false,
-        role: 'NONE'
+        error: error.message
       });
-      console.log('❌ User document does not exist');
+    } finally {
+      setChecking(false);
     }
-  } catch (error) {
-    console.error('❌ Error:', error);
-    setDebugInfo({
-      exists: false,
-      error: error.message
-    });
-  } finally {
-    setChecking(false);
-  }
-};
+  };
 
- const makeUserAdmin = async () => {
-  if (!confirm('Make this account an admin? This cannot be easily undone.')) return;
-  
-  setLoading(true);
-  setMessage('');
-  
-  try {
-    console.log('🔧 Setting admin role...');
+  const makeUserAdmin = async () => {
+    if (!confirm('Make this account an admin? This cannot be easily undone.')) return;
     
-    const userRef = dbRef(db, `users/${user.uid}`);
-    await set(userRef, {
-      email: user.email,
-      name: user.email.split('@')[0],
-      role: 'admin',
-      createdAt: new Date().toISOString(),
-      macroGoals: { protein: 150, carbs: 200, fats: 50 }
-    });
+    setLoading(true);
+    setMessage('');
     
-    console.log('✅ Success!');
-    setMessage('✅ Success! Refreshing...');
-    setTimeout(() => window.location.reload(), 2000);
-  } catch (error) {
-    console.error('❌ Error:', error);
-    setMessage('❌ Error: ' + error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      const userRef = dbRef(db, `users/${user.uid}`);
+      await set(userRef, {
+        email: user.email,
+        name: user.email.split('@')[0],
+        role: 'admin',
+        createdAt: new Date().toISOString(),
+        macroGoals: { protein: 150, carbs: 200, fats: 50 }
+      });
+      
+      setMessage('✅ Success! Refreshing...');
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (error) {
+      console.error('❌ Error:', error);
+      setMessage('❌ Error: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -108,16 +105,6 @@ const checkUserDocument = async () => {
                   <p className="text-sm text-yellow-800 mb-2">
                     <strong>👤 Current Role:</strong> {debugInfo.role}
                   </p>
-                  {debugInfo.exists && debugInfo.data && (
-                    <details className="mt-2">
-                      <summary className="text-xs text-yellow-700 cursor-pointer hover:underline">
-                        Show raw data
-                      </summary>
-                      <pre className="text-xs mt-2 bg-yellow-100 p-2 rounded overflow-auto max-h-32">
-                        {JSON.stringify(debugInfo.data, null, 2)}
-                      </pre>
-                    </details>
-                  )}
                 </>
               )}
             </div>
@@ -148,30 +135,12 @@ const checkUserDocument = async () => {
           </>
         )}
 
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-600">
-            <strong>⚠️ Note:</strong> If you just clicked "Make Account Admin" and it succeeded, 
-            the page should auto-refresh. If not, click the "Refresh Status" button or manually refresh your browser.
-          </p>
-        </div>
-
         <button
           onClick={() => signOut(auth)}
           className="w-full mt-4 py-2 text-gray-600 hover:text-gray-900 text-sm"
         >
           Sign Out
         </button>
-
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-xs font-medium text-blue-900 mb-2">🔍 Debugging Steps:</p>
-          <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-            <li>Open browser console (F12)</li>
-            <li>Look for console.log messages</li>
-            <li>Click "Make Account Admin"</li>
-            <li>Check if document was written successfully</li>
-            <li>Page should auto-refresh after 2 seconds</li>
-          </ol>
-        </div>
       </div>
     </div>
   );
@@ -200,11 +169,12 @@ function AuthScreen() {
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         
-        // Check if this is the first user (make them admin)
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        const isFirstUser = usersSnapshot.empty;
+        // Check if this is the first user
+        const usersRef = dbRef(db, 'users');
+        const snapshot = await get(usersRef);
+        const isFirstUser = !snapshot.exists();
         
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
+        await set(dbRef(db, `users/${userCredential.user.uid}`), {
           email,
           name,
           role: isFirstUser ? 'admin' : 'client',
@@ -292,23 +262,932 @@ function AuthScreen() {
   );
 }
 
-// Sample exercises data
-const SAMPLE_EXERCISES = [
-  { name: "Push-ups", muscleGroup: "Chest", equipment: "Bodyweight", description: "Classic upper body exercise" },
-  { name: "Squats", muscleGroup: "Legs", equipment: "Bodyweight", description: "Fundamental lower body movement" },
-  { name: "Bench Press", muscleGroup: "Chest", equipment: "Barbell", description: "Compound chest exercise" },
-  { name: "Deadlift", muscleGroup: "Back", equipment: "Barbell", description: "Full body compound lift" },
-  { name: "Bicep Curls", muscleGroup: "Arms", equipment: "Dumbbells", description: "Isolated bicep exercise" },
-  { name: "Tricep Dips", muscleGroup: "Arms", equipment: "Bodyweight", description: "Tricep focused movement" },
-  { name: "Lunges", muscleGroup: "Legs", equipment: "Bodyweight", description: "Unilateral leg exercise" },
-  { name: "Plank", muscleGroup: "Core", equipment: "Bodyweight", description: "Core stabilization hold" },
-  { name: "Pull-ups", muscleGroup: "Back", equipment: "Bodyweight", description: "Vertical pulling movement" },
-  { name: "Shoulder Press", muscleGroup: "Shoulders", equipment: "Dumbbells", description: "Overhead pressing movement" }
-];
+// NUTRITION LOGGER
+function NutritionLogger({ user }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [extractedData, setExtractedData] = useState(null);
+  const [todayEntries, setTodayEntries] = useState([]);
+  const [macroGoals, setMacroGoals] = useState({ protein: 0, carbs: 0, fats: 0 });
+  const [todayTotals, setTodayTotals] = useState({ protein: 0, carbs: 0, fats: 0 });
 
-// Rest of your components remain exactly the same...
-// (ExerciseLibrary, WorkoutBuilder, WorkoutAssignment, ClientWorkouts, NutritionLogger, PhotoUpload)
+  useEffect(() => {
+    loadUserData();
+    loadTodayEntries();
+  }, [user]);
 
+  const loadUserData = async () => {
+    const userRef = dbRef(db, `users/${user.uid}`);
+    const snapshot = await get(userRef);
+    if (snapshot.exists() && snapshot.val().macroGoals) {
+      setMacroGoals(snapshot.val().macroGoals);
+    }
+  };
+
+  const loadTodayEntries = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const logsRef = dbRef(db, 'nutrition-logs');
+    const snapshot = await get(logsRef);
+    
+    if (snapshot.exists()) {
+      const allLogs = snapshot.val();
+      const entries = Object.entries(allLogs)
+        .filter(([key, log]) => log.userId === user.uid && log.date === today)
+        .map(([key, log]) => ({ id: key, ...log }))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      
+      setTodayEntries(entries);
+      
+      const totals = entries.reduce((acc, entry) => ({
+        protein: acc.protein + (entry.protein || 0),
+        carbs: acc.carbs + (entry.carbs || 0),
+        fats: acc.fats + (entry.fats || 0)
+      }), { protein: 0, carbs: 0, fats: 0 });
+      setTodayTotals(totals);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const extractMacros = async () => {
+    if (!selectedFile) return;
+
+    setProcessing(true);
+    try {
+      const result = await Tesseract.recognize(selectedFile, 'eng');
+      const text = result.data.text;
+      const protein = extractNumber(text, ['protein', 'pro']);
+      const carbs = extractNumber(text, ['carb', 'carbohydrate']);
+      const fats = extractNumber(text, ['fat', 'fats']);
+
+      setExtractedData({
+        protein: protein || 0,
+        carbs: carbs || 0,
+        fats: fats || 0,
+        rawText: text
+      });
+    } catch (error) {
+      console.error('OCR Error:', error);
+      alert('Failed to extract text. Please try again or enter manually.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const extractNumber = (text, keywords) => {
+    const lines = text.toLowerCase().split('\n');
+    for (const keyword of keywords) {
+      for (const line of lines) {
+        if (line.includes(keyword)) {
+          const numbers = line.match(/\d+(\.\d+)?/g);
+          if (numbers && numbers.length > 0) {
+            return parseFloat(numbers[0]);
+          }
+        }
+      }
+    }
+    return 0;
+  };
+
+  const handleSaveEntry = async () => {
+    if (!extractedData) return;
+
+    try {
+      const logsRef = dbRef(db, 'nutrition-logs');
+      const newLogRef = push(logsRef);
+      await set(newLogRef, {
+        userId: user.uid,
+        userName: user.email,
+        protein: extractedData.protein,
+        carbs: extractedData.carbs,
+        fats: extractedData.fats,
+        date: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString()
+      });
+
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      setExtractedData(null);
+      loadTodayEntries();
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      alert('Failed to save entry.');
+    }
+  };
+
+  const handleDeleteEntry = async (entryId) => {
+    if (!confirm('Delete this entry?')) return;
+    try {
+      await remove(dbRef(db, `nutrition-logs/${entryId}`));
+      loadTodayEntries();
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+    }
+  };
+
+  const getProgress = (current, goal) => {
+    return goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">Nutrition Tracking</h2>
+        <p className="text-emerald-100">Track your daily macros and reach your goals</p>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Today's Progress</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <div className="text-sm text-gray-600 mb-2">Protein</div>
+            <div className="text-2xl font-bold text-gray-900">{Math.round(todayTotals.protein)}g</div>
+            <div className="text-xs text-gray-500">Goal: {macroGoals.protein}g</div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div 
+                className="bg-emerald-500 h-2 rounded-full transition-all"
+                style={{ width: `${getProgress(todayTotals.protein, macroGoals.protein)}%` }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-600 mb-2">Carbs</div>
+            <div className="text-2xl font-bold text-gray-900">{Math.round(todayTotals.carbs)}g</div>
+            <div className="text-xs text-gray-500">Goal: {macroGoals.carbs}g</div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div 
+                className="bg-blue-500 h-2 rounded-full transition-all"
+                style={{ width: `${getProgress(todayTotals.carbs, macroGoals.carbs)}%` }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-600 mb-2">Fats</div>
+            <div className="text-2xl font-bold text-gray-900">{Math.round(todayTotals.fats)}g</div>
+            <div className="text-xs text-gray-500">Goal: {macroGoals.fats}g</div>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div 
+                className="bg-yellow-500 h-2 rounded-full transition-all"
+                style={{ width: `${getProgress(todayTotals.fats, macroGoals.fats)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Log Food Entry</h3>
+        
+        {!extractedData ? (
+          <div className="space-y-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+              {previewUrl ? (
+                <div className="space-y-4">
+                  <img src={previewUrl} alt="Preview" className="max-h-64 mx-auto rounded-lg" />
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setPreviewUrl(null);
+                      }}
+                      className="px-4 py-2 text-red-600 hover:text-red-700 text-sm"
+                    >
+                      Remove
+                    </button>
+                    <button
+                      onClick={extractMacros}
+                      disabled={processing}
+                      className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50"
+                    >
+                      {processing ? 'Processing...' : 'Extract Macros'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="cursor-pointer">
+                  <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                  <div className="text-gray-600">Upload nutrition label</div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="text-sm font-medium text-gray-700 mb-3">Extracted Macros</div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs text-gray-600 block mb-1">Protein (g)</label>
+                  <input
+                    type="number"
+                    value={extractedData.protein}
+                    onChange={(e) => setExtractedData({...extractedData, protein: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600 block mb-1">Carbs (g)</label>
+                  <input
+                    type="number"
+                    value={extractedData.carbs}
+                    onChange={(e) => setExtractedData({...extractedData, carbs: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-600 block mb-1">Fats (g)</label>
+                  <input
+                    type="number"
+                    value={extractedData.fats}
+                    onChange={(e) => setExtractedData({...extractedData, fats: parseFloat(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setExtractedData(null);
+                  setSelectedFile(null);
+                  setPreviewUrl(null);
+                }}
+                className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEntry}
+                className="flex-1 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+              >
+                Save Entry
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Today's Entries ({todayEntries.length})</h3>
+        {todayEntries.length === 0 ? (
+          <p className="text-gray-600">No entries yet today. Log your first meal!</p>
+        ) : (
+          <div className="space-y-3">
+            {todayEntries.map(entry => (
+              <div key={entry.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                <div className="flex gap-6 text-sm">
+                  <div>
+                    <span className="text-gray-600">Protein:</span>
+                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.protein)}g</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Carbs:</span>
+                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.carbs)}g</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Fats:</span>
+                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.fats)}g</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeleteEntry(entry.id)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ADMIN NUTRITION VIEW
+function AdminNutrition() {
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [clientLogs, setClientLogs] = useState([]);
+  const [macroGoals, setMacroGoals] = useState({ protein: 0, carbs: 0, fats: 0 });
+  const [editingGoals, setEditingGoals] = useState(false);
+
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    const usersRef = dbRef(db, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (snapshot.exists()) {
+      const usersData = snapshot.val();
+      const clientData = Object.entries(usersData)
+        .filter(([id, user]) => user.role === 'client')
+        .map(([id, user]) => ({ id, ...user }));
+      setClients(clientData);
+    }
+  };
+
+  const loadClientLogs = async (clientId, clientData) => {
+    setSelectedClient(clientData);
+    setMacroGoals(clientData.macroGoals || { protein: 150, carbs: 200, fats: 50 });
+    
+    const logsRef = dbRef(db, 'nutrition-logs');
+    const snapshot = await get(logsRef);
+    
+    if (snapshot.exists()) {
+      const allLogs = snapshot.val();
+      const logs = Object.entries(allLogs)
+        .filter(([key, log]) => log.userId === clientId)
+        .map(([key, log]) => ({ id: key, ...log }))
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      const groupedByDate = logs.reduce((acc, log) => {
+        if (!acc[log.date]) {
+          acc[log.date] = [];
+        }
+        acc[log.date].push(log);
+        return acc;
+      }, {});
+      
+      const dailyTotals = Object.keys(groupedByDate).map(date => ({
+        date,
+        entries: groupedByDate[date],
+        totals: groupedByDate[date].reduce((acc, entry) => ({
+          protein: acc.protein + (entry.protein || 0),
+          carbs: acc.carbs + (entry.carbs || 0),
+          fats: acc.fats + (entry.fats || 0)
+        }), { protein: 0, carbs: 0, fats: 0 })
+      }));
+      
+      setClientLogs(dailyTotals);
+    }
+  };
+
+  const handleSaveGoals = async () => {
+    if (!selectedClient) return;
+    try {
+      await update(dbRef(db, `users/${selectedClient.id}`), {
+        macroGoals: macroGoals
+      });
+      setEditingGoals(false);
+      alert('Macro goals updated!');
+    } catch (error) {
+      console.error('Error updating goals:', error);
+      alert('Failed to update goals.');
+    }
+  };
+
+  if (selectedClient) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => {
+            setSelectedClient(null);
+            setClientLogs([]);
+          }}
+          className="text-emerald-600 hover:text-emerald-700 flex items-center gap-2"
+        >
+          ← Back to Clients
+        </button>
+
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+          <h2 className="text-2xl font-bold">{selectedClient.name}'s Nutrition</h2>
+          <p className="text-emerald-100">{clientLogs.length} days logged</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-900">Macro Goals</h3>
+            <button
+              onClick={() => setEditingGoals(!editingGoals)}
+              className="text-emerald-600 hover:text-emerald-700 text-sm"
+            >
+              {editingGoals ? 'Cancel' : 'Edit Goals'}
+            </button>
+          </div>
+          
+          {editingGoals ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm text-gray-600 block mb-1">Protein (g)</label>
+                  <input
+                    type="number"
+                    value={macroGoals.protein}
+                    onChange={(e) => setMacroGoals({...macroGoals, protein: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 block mb-1">Carbs (g)</label>
+                  <input
+                    type="number"
+                    value={macroGoals.carbs}
+                    onChange={(e) => setMacroGoals({...macroGoals, carbs: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 block mb-1">Fats (g)</label>
+                  <input
+                    type="number"
+                    value={macroGoals.fats}
+                    onChange={(e) => setMacroGoals({...macroGoals, fats: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleSaveGoals}
+                className="w-full py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+              >
+                Save Goals
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-sm text-gray-600">Protein Goal</div>
+                <div className="text-2xl font-bold text-gray-900">{macroGoals.protein}g</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Carbs Goal</div>
+                <div className="text-2xl font-bold text-gray-900">{macroGoals.carbs}g</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Fats Goal</div>
+                <div className="text-2xl font-bold text-gray-900">{macroGoals.fats}g</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Daily Timeline</h3>
+          {clientLogs.length === 0 ? (
+            <p className="text-gray-600">No nutrition logs yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {clientLogs.map(dayLog => (
+                <div key={dayLog.date} className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="font-medium text-gray-900">
+                      {new Date(dayLog.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                    </div>
+                    <div className="text-sm text-gray-600">{dayLog.entries.length} entries</div>
+                  </div>
+                  <div className="flex gap-6 text-sm">
+                    <div>
+                      <span className="text-gray-600">Protein:</span>
+                      <span className="font-medium text-gray-900 ml-1">{Math.round(dayLog.totals.protein)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Carbs:</span>
+                      <span className="font-medium text-gray-900 ml-1">{Math.round(dayLog.totals.carbs)}g</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Fats:</span>
+                      <span className="font-medium text-gray-900 ml-1">{Math.round(dayLog.totals.fats)}g</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">Client Nutrition</h2>
+        <p className="text-emerald-100">View and manage client macro tracking</p>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Select a Client</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {clients.map(client => (
+            <button
+              key={client.id}
+              onClick={() => loadClientLogs(client.id, client)}
+              className="p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 transition text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                  {client.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="font-medium text-gray-900">{client.name}</div>
+                  <div className="text-sm text-gray-600">{client.email}</div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// PHOTO UPLOAD
+function PhotoUpload({ user }) {
+  const [uploading, setUploading] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  useEffect(() => {
+    loadPhotos();
+  }, [user]);
+
+  const loadPhotos = async () => {
+    try {
+      const photosRef = dbRef(db, 'progress-photos');
+      const snapshot = await get(photosRef);
+      
+      if (snapshot.exists()) {
+        const allPhotos = snapshot.val();
+        const photoData = Object.entries(allPhotos)
+          .filter(([key, photo]) => photo.userId === user.uid)
+          .map(([key, photo]) => ({ id: key, ...photo }))
+          .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+        setPhotos(photoData);
+      }
+    } catch (error) {
+      console.error('Error loading photos:', error);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    setUploading(true);
+    try {
+      const fileName = `${Date.now()}_${selectedFile.name}`;
+      const fileRef = storageRef(storage, `progress-photos/${user.uid}/${fileName}`);
+      
+      await uploadBytes(fileRef, selectedFile);
+      const downloadURL = await getDownloadURL(fileRef);
+
+      const photosRef = dbRef(db, 'progress-photos');
+      const newPhotoRef = push(photosRef);
+      await set(newPhotoRef, {
+        userId: user.uid,
+        userName: user.displayName || user.email,
+        imageUrl: downloadURL,
+        storagePath: `progress-photos/${user.uid}/${fileName}`,
+        uploadedAt: new Date().toISOString(),
+        weekNumber: photos.length + 1
+      });
+
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      loadPhotos();
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Failed to upload photo. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (photo) => {
+    if (!confirm('Are you sure you want to delete this photo?')) return;
+
+    try {
+      const fileRef = storageRef(storage, photo.storagePath);
+      await deleteObject(fileRef);
+      await remove(dbRef(db, `progress-photos/${photo.id}`));
+      loadPhotos();
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      alert('Failed to delete photo.');
+    }
+  };
+
+  const getWeekComparison = () => {
+    if (photos.length < 2) return null;
+    return {
+      first: photos[photos.length - 1],
+      latest: photos[0]
+    };
+  };
+
+  const comparison = getWeekComparison();
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">Progress Photos</h2>
+        <p className="text-emerald-100">Track your transformation week by week</p>
+      </div>
+
+      {comparison && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Your Progress</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm font-medium text-gray-600 mb-2">Week 1</div>
+              <img 
+                src={comparison.first.imageUrl} 
+                alt="Week 1" 
+                className="w-full h-64 object-cover rounded-lg"
+              />
+              <div className="text-xs text-gray-500 mt-2">
+                {new Date(comparison.first.uploadedAt).toLocaleDateString()}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-600 mb-2">
+                Week {comparison.latest.weekNumber} (Latest)
+              </div>
+              <img 
+                src={comparison.latest.imageUrl} 
+                alt="Latest" 
+                className="w-full h-64 object-cover rounded-lg"
+              />
+              <div className="text-xs text-gray-500 mt-2">
+                {new Date(comparison.latest.uploadedAt).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Upload New Photo</h3>
+        
+        <div className="space-y-4">
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+            {previewUrl ? (
+              <div className="space-y-4">
+                <img src={previewUrl} alt="Preview" className="max-h-64 mx-auto rounded-lg" />
+                <button
+                  onClick={() => {
+                    setSelectedFile(null);
+                    setPreviewUrl(null);
+                  }}
+                  className="text-red-600 hover:text-red-700 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <label className="cursor-pointer">
+                <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                <div className="text-gray-600">Click to select a photo</div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
+          {selectedFile && (
+            <button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium disabled:opacity-50 hover:opacity-90 transition"
+            >
+              {uploading ? 'Uploading...' : 'Upload Photo'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">All Your Photos ({photos.length})</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {photos.map((photo) => (
+            <div key={photo.id} className="relative group">
+              <img 
+                src={photo.imageUrl} 
+                alt={`Week ${photo.weekNumber}`}
+                className="w-full h-32 object-cover rounded-lg"
+              />
+              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition rounded-lg flex items-center justify-center">
+                <button
+                  onClick={() => handleDelete(photo)}
+                  className="opacity-0 group-hover:opacity-100 bg-red-500 text-white p-2 rounded-lg transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                Week {photo.weekNumber}
+              </div>
+              <div className="text-xs text-gray-500">
+                {new Date(photo.uploadedAt).toLocaleDateString()}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ADMIN PHOTOS
+function AdminPhotos() {
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [clientPhotos, setClientPhotos] = useState([]);
+
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    try {
+      const usersRef = dbRef(db, 'users');
+      const snapshot = await get(usersRef);
+      
+      if (snapshot.exists()) {
+        const usersData = snapshot.val();
+        const clientData = Object.entries(usersData)
+          .filter(([id, user]) => user.role === 'client')
+          .map(([id, user]) => ({ id, ...user }));
+        setClients(clientData);
+      }
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
+  };
+
+  const loadClientPhotos = async (clientId) => {
+    try {
+      const photosRef = dbRef(db, 'progress-photos');
+      const snapshot = await get(photosRef);
+      
+      if (snapshot.exists()) {
+        const allPhotos = snapshot.val();
+        const photoData = Object.entries(allPhotos)
+          .filter(([key, photo]) => photo.userId === clientId)
+          .map(([key, photo]) => ({ id: key, ...photo }))
+          .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+        setClientPhotos(photoData);
+      }
+    } catch (error) {
+      console.error('Error loading photos:', error);
+    }
+  };
+
+  const handleSelectClient = (client) => {
+    setSelectedClient(client);
+    loadClientPhotos(client.id);
+  };
+
+  const getWeekComparison = () => {
+    if (clientPhotos.length < 2) return null;
+    return {
+      first: clientPhotos[clientPhotos.length - 1],
+      latest: clientPhotos[0]
+    };
+  };
+
+  const comparison = getWeekComparison();
+
+  if (!selectedClient) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+          <h2 className="text-2xl font-bold">Client Progress Photos</h2>
+          <p className="text-emerald-100">View and track all client transformations</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Select a Client</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {clients.map(client => (
+              <button
+                key={client.id}
+                onClick={() => handleSelectClient(client)}
+                className="p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 transition text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                    {client.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">{client.name}</div>
+                    <div className="text-sm text-gray-600">{client.email}</div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <button
+        onClick={() => {
+          setSelectedClient(null);
+          setClientPhotos([]);
+        }}
+        className="text-emerald-600 hover:text-emerald-700 flex items-center gap-2"
+      >
+        ← Back to Clients
+      </button>
+
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">{selectedClient.name}'s Progress</h2>
+        <p className="text-emerald-100">{clientPhotos.length} photos uploaded</p>
+      </div>
+
+      {comparison && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">Progress Comparison</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm font-medium text-gray-600 mb-2">Week 1</div>
+              <img 
+                src={comparison.first.imageUrl} 
+                alt="Week 1" 
+                className="w-full h-64 object-cover rounded-lg"
+              />
+              <div className="text-xs text-gray-500 mt-2">
+                {new Date(comparison.first.uploadedAt).toLocaleDateString()}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-600 mb-2">
+                Week {comparison.latest.weekNumber} (Latest)
+              </div>
+              <img 
+                src={comparison.latest.imageUrl} 
+                alt="Latest" 
+                className="w-full h-64 object-cover rounded-lg"
+              />
+              <div className="text-xs text-gray-500 mt-2">
+                {new Date(comparison.latest.uploadedAt).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">All Photos ({clientPhotos.length})</h3>
+        {clientPhotos.length === 0 ? (
+          <p className="text-gray-600">No photos uploaded yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {clientPhotos.map((photo) => (
+              <div key={photo.id}>
+                <img 
+                  src={photo.imageUrl} 
+                  alt={`Week ${photo.weekNumber}`}
+                  className="w-full h-32 object-cover rounded-lg"
+                />
+                <div className="text-xs text-gray-600 mt-1">
+                  Week {photo.weekNumber}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {new Date(photo.uploadedAt).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// MAIN APP
 export default function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -316,53 +1195,46 @@ export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [needsSetup, setNeedsSetup] = useState(false);
 
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-    console.log('🔐 Auth State Changed');
-    
-    if (firebaseUser) {
-      console.log('✅ User logged in:', firebaseUser.email);
-      setUser(firebaseUser);
-      
-      try {
-        // Read from Realtime Database instead of Firestore
-        const userRef = dbRef(db, `users/${firebaseUser.uid}`);
-        const snapshot = await get(userRef);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
         
-        if (snapshot.exists()) {
-          const userData = snapshot.val();
-          console.log('✅ User data:', userData);
-          setUserRole(userData.role || 'admin');
-          setNeedsSetup(false);
-        } else {
-          // Create user as admin
-          console.log('⚠️ Creating new user as admin');
-          await set(userRef, {
-            email: firebaseUser.email,
-            name: firebaseUser.email.split('@')[0],
-            role: 'admin',
-            createdAt: new Date().toISOString(),
-            macroGoals: { protein: 150, carbs: 200, fats: 50 }
-          });
-          setUserRole('admin');
-          setNeedsSetup(false);
+        try {
+          const userRef = dbRef(db, `users/${firebaseUser.uid}`);
+          const snapshot = await get(userRef);
+          
+          if (snapshot.exists()) {
+            const userData = snapshot.val();
+            const role = userData.role || 'admin';
+            setUserRole(role);
+            setNeedsSetup(false);
+          } else {
+            await set(userRef, {
+              email: firebaseUser.email,
+              name: firebaseUser.email.split('@')[0],
+              role: 'admin',
+              createdAt: new Date().toISOString(),
+              macroGoals: { protein: 150, carbs: 200, fats: 50 }
+            });
+            setUserRole('admin');
+            setNeedsSetup(false);
+          }
+        } catch (error) {
+          console.error('ERROR:', error);
+          setNeedsSetup(true);
         }
-      } catch (error) {
-        console.error('❌ ERROR:', error);
-        setNeedsSetup(true);
+      } else {
+        setUser(null);
+        setUserRole(null);
+        setNeedsSetup(false);
       }
-    } else {
-      console.log('🚪 User logged out');
-      setUser(null);
-      setUserRole(null);
-      setNeedsSetup(false);
-    }
-    
-    setLoading(false);
-  });
+      
+      setLoading(false);
+    });
 
-  return () => unsubscribe();
-}, []);
+    return () => unsubscribe();
+  }, []);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -384,23 +1256,21 @@ useEffect(() => {
     return <AuthScreen />;
   }
 
-  // Show setup screen if user needs role assignment
   if (needsSetup) {
     return <AdminSetup user={user} />;
   }
 
-  // Show error if somehow we still don't have a role
   if (!userRole) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-lg text-center">
           <div className="text-red-600 text-xl font-bold mb-4">Configuration Error</div>
-          <p className="text-gray-600 mb-4">Unable to load user role. Please try refreshing the page.</p>
+          <p className="text-gray-600 mb-4">Unable to load user role.</p>
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 mr-2"
           >
-            Refresh Page
+            Refresh
           </button>
           <button
             onClick={handleSignOut}
@@ -415,24 +1285,13 @@ useEffect(() => {
 
   const navItems = userRole === 'admin' ? [
     { id: 'dashboard', label: 'Overview', icon: Users },
-    { id: 'exercises', label: 'Exercise Library', icon: Dumbbell },
-    { id: 'workouts', label: 'Build Workouts', icon: BarChart3 },
-    { id: 'assign', label: 'Assign Workouts', icon: Calendar },
     { id: 'nutrition', label: 'Client Nutrition', icon: Apple },
     { id: 'photos', label: 'Client Photos', icon: Image },
   ] : [
     { id: 'dashboard', label: 'Dashboard', icon: User },
-    { id: 'workouts', label: 'My Workouts', icon: Dumbbell },
     { id: 'nutrition', label: 'Nutrition', icon: Apple },
     { id: 'photos', label: 'My Progress', icon: Image },
   ];
-
-  // Debug log for nav items
-  console.log('🧭 Navigation Items Generated');
-  console.log('Current userRole:', userRole);
-  console.log('Is Admin?', userRole === 'admin');
-  console.log('Nav Items Count:', navItems.length);
-  console.log('Nav Items:', navItems.map(item => item.label));
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -493,67 +1352,16 @@ useEffect(() => {
                   <div className="text-2xl font-bold text-gray-900 capitalize mb-4">
                     {userRole === 'admin' ? '👑 Admin/Trainer Account' : '💪 Client Account'}
                   </div>
-                  
-                  {/* Debug Panel */}
-                  <details className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <summary className="text-sm font-medium text-gray-700 cursor-pointer hover:text-gray-900">
-                      🔍 Debug Information (Click to expand)
-                    </summary>
-                    <div className="mt-3 space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Email:</span>
-                        <span className="font-medium text-gray-900">{user.email}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">User ID:</span>
-                        <span className="font-mono text-xs text-gray-900">{user.uid}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Role:</span>
-                        <span className="font-medium text-gray-900">{userRole || 'NONE'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Setup Needed:</span>
-                        <span className="font-medium text-gray-900">{needsSetup ? 'Yes' : 'No'}</span>
-                      </div>
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-xs text-gray-600 mb-2">
-                          If your role shows "admin" but you don't see admin menu items, try:
-                        </p>
-                        <button
-                          onClick={() => window.location.reload()}
-                          className="w-full py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600"
-                        >
-                          🔄 Hard Refresh Page
-                        </button>
-                      </div>
-                    </div>
-                  </details>
                 </div>
-                
-                {userRole === 'admin' && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6">
-                    <h3 className="text-lg font-bold text-emerald-900 mb-2">🎉 Admin Features Active</h3>
-                    <p className="text-sm text-emerald-700 mb-4">
-                      You have access to all admin features. Check the sidebar for:
-                    </p>
-                    <ul className="space-y-2 text-sm text-emerald-800">
-                      <li>• 📚 Exercise Library</li>
-                      <li>• 💪 Build Workouts</li>
-                      <li>• 📅 Assign Workouts</li>
-                      <li>• 🍎 Client Nutrition</li>
-                      <li>• 📸 Client Photos</li>
-                    </ul>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Add your other view components here */}
-            {currentView !== 'dashboard' && (
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <p className="text-gray-600">Content for {currentView} coming soon...</p>
-              </div>
+            {currentView === 'nutrition' && (
+              userRole === 'admin' ? <AdminNutrition /> : <NutritionLogger user={user} />
+            )}
+
+            {currentView === 'photos' && (
+              userRole === 'admin' ? <AdminPhotos /> : <PhotoUpload user={user} />
             )}
           </div>
         </main>
@@ -561,7 +1369,7 @@ useEffect(() => {
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-40">
         <div className="flex justify-around">
-          {navItems.slice(0, 4).map(item => {
+          {navItems.map(item => {
             const Icon = item.icon;
             return (
               <button
