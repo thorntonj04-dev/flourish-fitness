@@ -15,6 +15,7 @@ import ManageClients from './components/admin/ManageClients';
 import Reports from './components/admin/Reports';
 import AdminNutrition from './components/admin/AdminNutrition';
 import AdminPhotos from './components/admin/AdminPhotos';
+import AdminClientAnalytics from './components/admin/AdminClientAnalytics';
 
 // Client Components
 import MyWorkouts from './components/client/MyWorkouts';
@@ -27,7 +28,15 @@ import PersonalRecords from './components/client/PersonalRecords';
 
 // Shared Components
 import { adminNavItems, clientNavItems } from './components/shared/Navigation';
-
+export const adminNavItems = [
+  { id: 'dashboard', label: 'Overview', icon: Users },
+  { id: 'workouts', label: 'Workout Builder', icon: Dumbbell },
+  { id: 'clients', label: 'Manage Clients', icon: Users },
+  { id: 'analytics', label: 'Client Analytics', icon: BarChart3 },  // NEW
+  { id: 'nutrition', label: 'Client Nutrition', icon: Apple },
+  { id: 'photos', label: 'Client Photos', icon: Image },
+  { id: 'reports', label: 'Reports', icon: BarChart3 },
+];
 export default function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -219,6 +228,7 @@ export default function App() {
 		{view === 'progress' && <ProgressDashboard user={user} />}
 		{view === 'history' && <WorkoutHistory user={user} />}
 		{view === 'records' && <PersonalRecords user={user} />}
+		{view === 'analytics' && <AdminClientAnalytics />}
             {currentView === 'clients' && userRole === 'admin' && <ManageClients />}
             {currentView === 'reports' && userRole === 'admin' && <Reports />}
             {currentView === 'goals' && userRole === 'client' && <MyGoals user={user} />}
