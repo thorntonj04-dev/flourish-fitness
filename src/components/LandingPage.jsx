@@ -143,7 +143,7 @@ function LandingPage({ onLoginClick }) {
           {/* Image Side */}
           <div 
             className="h-[500px] md:h-[700px] bg-cover bg-center order-1 md:order-2"
-            style={{ backgroundImage: "url('/images/fly.jpg')" }}
+            style={{ backgroundImage: "url('/images/cherryblossoms.jpg')" }}
           ></div>
         </div>
       </section>
