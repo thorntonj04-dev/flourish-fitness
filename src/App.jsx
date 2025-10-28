@@ -1,10 +1,1107 @@
 import React, { useState, useEffect } from 'react';
-import { User, Dumbbell, Users, Image, Apple, LogOut, Trash2, Camera, Shield, BarChart3, Target, Menu, X, ChevronRight, Award, Heart, TrendingUp } from 'lucide-react';
+import { User, Dumbbell, Users, Image, Apple, LogOut, Trash2, Camera, Shield, BarChart3, Target, Menu, X, ChevronRight, Award, Heart, TrendingUp, Play, Pause, Check, Plus, Minus, Video, Calendar, Clock, Trophy, Save, Edit2 } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { ref as dbRef, get, set, push, remove, update, query as dbQuery, orderByChild, equalTo, onValue } from 'firebase/database';
 import { auth, db, storage } from './firebase';
 import Tesseract from 'tesseract.js';
+
+// ============================================
+// WORKOUT COMPONENTS - START
+// ============================================
+
+// Exercise Library Manager
+function ExerciseLibrary({ onSelectExercise, selectedExercises = [] }) {
+  const [exercises, setExercises] = useState([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newExercise, setNewExercise] = useState({
+    name: '',
+    description: '',
+    videoUrl: '',
+    muscleGroup: 'chest'
+  });
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+
+  useEffect(() => {
+    loadExercises();
+  }, []);
+
+  const loadExercises = async () => {
+    try {
+      const exercisesRef = dbRef(db, 'exercises');
+      const snapshot = await get(exercisesRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const exerciseList = Object.entries(data).map(([id, ex]) => ({ id, ...ex }));
+        setExercises(exerciseList);
+      }
+    } catch (error) {
+      console.error('Error loading exercises:', error);
+    }
+  };
+
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      alert('Please upload a video file');
+      return;
+    }
+
+    setUploadingVideo(true);
+    try {
+      const fileName = `${Date.now()}_${file.name}`;
+      const fileRef = storageRef(storage, `exercise-videos/${fileName}`);
+      await uploadBytes(fileRef, file);
+      const downloadURL = await getDownloadURL(fileRef);
+      setNewExercise({ ...newExercise, videoUrl: downloadURL });
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      alert('Failed to upload video');
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleAddExercise = async () => {
+    if (!newExercise.name.trim()) {
+      alert('Please enter an exercise name');
+      return;
+    }
+
+    try {
+      const exercisesRef = dbRef(db, 'exercises');
+      const newExerciseRef = push(exercisesRef);
+      await set(newExerciseRef, {
+        ...newExercise,
+        createdAt: new Date().toISOString()
+      });
+      
+      setNewExercise({ name: '', description: '', videoUrl: '', muscleGroup: 'chest' });
+      setShowAddForm(false);
+      loadExercises();
+    } catch (error) {
+      console.error('Error adding exercise:', error);
+      alert('Failed to add exercise');
+    }
+  };
+
+  const handleDeleteExercise = async (exerciseId) => {
+    if (!confirm('Delete this exercise? This will affect all workouts using it.')) return;
+    
+    try {
+      await remove(dbRef(db, `exercises/${exerciseId}`));
+      loadExercises();
+    } catch (error) {
+      console.error('Error deleting exercise:', error);
+      alert('Failed to delete exercise');
+    }
+  };
+
+  const muscleGroups = ['chest', 'back', 'shoulders', 'arms', 'legs', 'core', 'cardio', 'mobility'];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-bold text-gray-900">Exercise Library</h3>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Exercise
+        </button>
+      </div>
+
+      {showAddForm && (
+        <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+          <input
+            type="text"
+            placeholder="Exercise name"
+            value={newExercise.name}
+            onChange={(e) => setNewExercise({ ...newExercise, name: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+          />
+          <textarea
+            placeholder="Description / Instructions"
+            value={newExercise.description}
+            onChange={(e) => setNewExercise({ ...newExercise, description: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            rows="2"
+          />
+          <select
+            value={newExercise.muscleGroup}
+            onChange={(e) => setNewExercise({ ...newExercise, muscleGroup: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+          >
+            {muscleGroups.map(group => (
+              <option key={group} value={group}>{group.charAt(0).toUpperCase() + group.slice(1)}</option>
+            ))}
+          </select>
+          <div>
+            <label className="block text-sm text-gray-600 mb-2">How-to Video (optional)</label>
+            <input
+              type="file"
+              accept="video/*"
+              onChange={handleVideoUpload}
+              className="w-full text-sm"
+              disabled={uploadingVideo}
+            />
+            {uploadingVideo && <p className="text-sm text-emerald-600 mt-1">Uploading...</p>}
+            {newExercise.videoUrl && (
+              <p className="text-sm text-green-600 mt-1">✓ Video uploaded</p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAddExercise}
+              className="flex-1 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+            >
+              Save Exercise
+            </button>
+            <button
+              onClick={() => {
+                setShowAddForm(false);
+                setNewExercise({ name: '', description: '', videoUrl: '', muscleGroup: 'chest' });
+              }}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
+        {exercises.map(exercise => {
+          const isSelected = selectedExercises.some(ex => ex.id === exercise.id);
+          return (
+            <div
+              key={exercise.id}
+              className={`p-3 border-2 rounded-lg transition cursor-pointer ${
+                isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-emerald-300'
+              }`}
+              onClick={() => onSelectExercise && onSelectExercise(exercise)}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">{exercise.name}</div>
+                  <div className="text-xs text-gray-600 capitalize">{exercise.muscleGroup}</div>
+                  {exercise.videoUrl && (
+                    <div className="flex items-center gap-1 text-xs text-emerald-600 mt-1">
+                      <Video className="w-3 h-3" />
+                      Has video
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteExercise(exercise.id);
+                  }}
+                  className="text-red-600 hover:text-red-700 p-1"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ADMIN WORKOUT BUILDER
+function WorkoutBuilder() {
+  const [view, setView] = useState('list');
+  const [workouts, setWorkouts] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
+  const [currentWorkout, setCurrentWorkout] = useState({
+    name: '',
+    description: '',
+    warmup: [],
+    work: [],
+    cooldown: []
+  });
+  const [currentSection, setCurrentSection] = useState('warmup');
+
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  useEffect(() => {
+    loadWorkouts();
+    loadClients();
+  }, []);
+
+  const loadWorkouts = async () => {
+    try {
+      const workoutsRef = dbRef(db, 'workouts');
+      const snapshot = await get(workoutsRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const workoutList = Object.entries(data).map(([id, workout]) => ({ id, ...workout }));
+        setWorkouts(workoutList);
+      }
+    } catch (error) {
+      console.error('Error loading workouts:', error);
+    }
+  };
+
+  const loadClients = async () => {
+    try {
+      const usersRef = dbRef(db, 'users');
+      const snapshot = await get(usersRef);
+      if (snapshot.exists()) {
+        const usersData = snapshot.val();
+        const clientData = Object.entries(usersData)
+          .filter(([id, user]) => user.role === 'client')
+          .map(([id, user]) => ({ id, ...user }));
+        setClients(clientData);
+      }
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
+  };
+
+  const handleSelectExercise = (exercise) => {
+    const newExercise = {
+      ...exercise,
+      sets: 3,
+      reps: 10,
+      restSeconds: 60,
+      notes: ''
+    };
+
+    setCurrentWorkout({
+      ...currentWorkout,
+      [currentSection]: [...currentWorkout[currentSection], newExercise]
+    });
+  };
+
+  const handleRemoveExercise = (index) => {
+    const updated = currentWorkout[currentSection].filter((_, i) => i !== index);
+    setCurrentWorkout({
+      ...currentWorkout,
+      [currentSection]: updated
+    });
+  };
+
+  const handleUpdateExercise = (index, field, value) => {
+    const updated = [...currentWorkout[currentSection]];
+    updated[index] = { ...updated[index], [field]: value };
+    setCurrentWorkout({
+      ...currentWorkout,
+      [currentSection]: updated
+    });
+  };
+
+  const handleSaveWorkout = async () => {
+    if (!currentWorkout.name.trim()) {
+      alert('Please enter a workout name');
+      return;
+    }
+
+    try {
+      const workoutsRef = dbRef(db, 'workouts');
+      const newWorkoutRef = push(workoutsRef);
+      await set(newWorkoutRef, {
+        ...currentWorkout,
+        createdAt: new Date().toISOString()
+      });
+
+      setView('list');
+      setCurrentWorkout({ name: '', description: '', warmup: [], work: [], cooldown: [] });
+      loadWorkouts();
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      alert('Failed to save workout');
+    }
+  };
+
+  const handleAssignWorkout = async (clientId, day) => {
+    if (!selectedWorkout) return;
+
+    try {
+      const assignmentRef = dbRef(db, `workout-assignments/${clientId}/${day}`);
+      await set(assignmentRef, {
+        workoutId: selectedWorkout.id,
+        workoutName: selectedWorkout.name,
+        assignedAt: new Date().toISOString()
+      });
+      alert(`Workout assigned to ${day}`);
+    } catch (error) {
+      console.error('Error assigning workout:', error);
+      alert('Failed to assign workout');
+    }
+  };
+
+  if (view === 'create') {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => {
+            setView('list');
+            setCurrentWorkout({ name: '', description: '', warmup: [], work: [], cooldown: [] });
+          }}
+          className="text-emerald-600 hover:text-emerald-700"
+        >
+          ← Back to Workouts
+        </button>
+
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+          <h2 className="text-2xl font-bold">Create New Workout</h2>
+          <p className="text-emerald-100">Build a custom workout program</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+          <div className="space-y-4 mb-6">
+            <input
+              type="text"
+              placeholder="Workout name"
+              value={currentWorkout.name}
+              onChange={(e) => setCurrentWorkout({ ...currentWorkout, name: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg font-medium"
+            />
+            <textarea
+              placeholder="Description (optional)"
+              value={currentWorkout.description}
+              onChange={(e) => setCurrentWorkout({ ...currentWorkout, description: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+              rows="2"
+            />
+          </div>
+
+          <button
+            onClick={handleSaveWorkout}
+            className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium hover:opacity-90 flex items-center justify-center gap-2"
+          >
+            <Save className="w-5 h-5" />
+            Save Workout
+          </button>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <ExerciseLibrary
+              onSelectExercise={handleSelectExercise}
+              selectedExercises={currentWorkout[currentSection]}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-3">Workout Structure</h3>
+              
+              <div className="flex gap-2 mb-4">
+                {['warmup', 'work', 'cooldown'].map(section => (
+                  <button
+                    key={section}
+                    onClick={() => setCurrentSection(section)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                      currentSection === section
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {section.charAt(0).toUpperCase() + section.slice(1)} ({currentWorkout[section].length})
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                {currentWorkout[currentSection].length === 0 ? (
+                  <p className="text-gray-600 text-center py-8">
+                    No exercises added to {currentSection}. Select exercises from the library.
+                  </p>
+                ) : (
+                  currentWorkout[currentSection].map((exercise, idx) => (
+                    <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="font-medium text-gray-900">{exercise.name}</div>
+                          {exercise.videoUrl && (
+                            <a
+                              href={exercise.videoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-emerald-600 flex items-center gap-1 mt-1"
+                            >
+                              <Video className="w-3 h-3" />
+                              View form video
+                            </a>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleRemoveExercise(idx)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 mb-2">
+                        <div>
+                          <label className="text-xs text-gray-600">Sets</label>
+                          <input
+                            type="number"
+                            value={exercise.sets}
+                            onChange={(e) => handleUpdateExercise(idx, 'sets', parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            min="1"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600">Reps</label>
+                          <input
+                            type="number"
+                            value={exercise.reps}
+                            onChange={(e) => handleUpdateExercise(idx, 'reps', parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            min="1"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600">Rest (sec)</label>
+                          <input
+                            type="number"
+                            value={exercise.restSeconds}
+                            onChange={(e) => handleUpdateExercise(idx, 'restSeconds', parseInt(e.target.value) || 0)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+
+                      <input
+                        type="text"
+                        placeholder="Notes (optional)"
+                        value={exercise.notes || ''}
+                        onChange={(e) => handleUpdateExercise(idx, 'notes', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'assign') {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => {
+            setView('list');
+            setSelectedWorkout(null);
+          }}
+          className="text-emerald-600 hover:text-emerald-700"
+        >
+          ← Back to Workouts
+        </button>
+
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+          <h2 className="text-2xl font-bold">Assign Workout: {selectedWorkout?.name}</h2>
+          <p className="text-emerald-100">Choose clients and days to assign this workout</p>
+        </div>
+
+        <div className="grid gap-4">
+          {clients.map(client => (
+            <div key={client.id} className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                  {client.name.charAt(0)}
+                </div>
+                <div>
+                  <div className="font-medium text-gray-900">{client.name}</div>
+                  <div className="text-sm text-gray-600">{client.email}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {daysOfWeek.map(day => (
+                  <button
+                    key={day}
+                    onClick={() => handleAssignWorkout(client.id, day)}
+                    className="px-3 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 text-sm"
+                  >
+                    {day.substring(0, 3)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">Workout Builder</h2>
+        <p className="text-emerald-100">Create and manage workout programs for your clients</p>
+      </div>
+
+      <div className="flex gap-4">
+        <button
+          onClick={() => setView('create')}
+          className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Create New Workout
+        </button>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Your Workouts ({workouts.length})</h3>
+        {workouts.length === 0 ? (
+          <p className="text-gray-600">No workouts created yet. Create your first workout to get started!</p>
+        ) : (
+          <div className="grid gap-4">
+            {workouts.map(workout => (
+              <div key={workout.id} className="border border-gray-200 rounded-xl p-4 hover:border-emerald-500 transition">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-gray-900">{workout.name}</h4>
+                    {workout.description && (
+                      <p className="text-sm text-gray-600 mt-1">{workout.description}</p>
+                    )}
+                    <div className="flex gap-4 mt-2 text-xs text-gray-600">
+                      <span>Warmup: {workout.warmup?.length || 0} exercises</span>
+                      <span>Work: {workout.work?.length || 0} exercises</span>
+                      <span>Cooldown: {workout.cooldown?.length || 0} exercises</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedWorkout(workout);
+                        setView('assign');
+                      }}
+                      className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 flex items-center gap-2"
+                    >
+                      <Calendar className="w-4 h-4" />
+                      Assign
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (confirm('Delete this workout?')) {
+                          await remove(dbRef(db, `workouts/${workout.id}`));
+                          loadWorkouts();
+                        }
+                      }}
+                      className="p-2 text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// CLIENT WORKOUT PERFORMER
+function WorkoutPerformer({ workout, userId, onComplete, onCancel }) {
+  const [currentSection, setCurrentSection] = useState('warmup');
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  const [completedSets, setCompletedSets] = useState({});
+  const [weights, setWeights] = useState({});
+  const [isPaused, setIsPaused] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [startTime] = useState(Date.now());
+
+  useEffect(() => {
+    let interval;
+    if (!isPaused) {
+      interval = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isPaused, startTime]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getSectionExercises = () => {
+    return workout[currentSection] || [];
+  };
+
+  const getCurrentExercise = () => {
+    const exercises = getSectionExercises();
+    return exercises[currentExerciseIndex];
+  };
+
+  const getExerciseKey = () => {
+    return `${currentSection}-${currentExerciseIndex}`;
+  };
+
+  const handleSetComplete = (setNumber) => {
+    const key = getExerciseKey();
+    const completed = completedSets[key] || [];
+    
+    if (completed.includes(setNumber)) {
+      setCompletedSets({
+        ...completedSets,
+        [key]: completed.filter(s => s !== setNumber)
+      });
+    } else {
+      setCompletedSets({
+        ...completedSets,
+        [key]: [...completed, setNumber]
+      });
+    }
+  };
+
+  const handleWeightChange = (amount) => {
+    const key = getExerciseKey();
+    const currentWeight = weights[key] || 0;
+    const newWeight = Math.max(0, currentWeight + amount);
+    setWeights({
+      ...weights,
+      [key]: newWeight
+    });
+  };
+
+  const handleWeightInput = (value) => {
+    const key = getExerciseKey();
+    const numValue = parseFloat(value) || 0;
+    setWeights({
+      ...weights,
+      [key]: Math.max(0, numValue)
+    });
+  };
+
+  const isExerciseComplete = () => {
+    const exercise = getCurrentExercise();
+    if (!exercise) return false;
+    const key = getExerciseKey();
+    const completed = completedSets[key] || [];
+    return completed.length === exercise.sets;
+  };
+
+  const handleNextExercise = () => {
+    const exercises = getSectionExercises();
+    
+    if (currentExerciseIndex < exercises.length - 1) {
+      setCurrentExerciseIndex(currentExerciseIndex + 1);
+    } else {
+      // Move to next section
+      if (currentSection === 'warmup' && workout.work.length > 0) {
+        setCurrentSection('work');
+        setCurrentExerciseIndex(0);
+      } else if (currentSection === 'work' && workout.cooldown.length > 0) {
+        setCurrentSection('cooldown');
+        setCurrentExerciseIndex(0);
+      } else {
+        // Workout complete
+        handleCompleteWorkout();
+      }
+    }
+  };
+
+  const handleCompleteWorkout = async () => {
+    try {
+      const workoutData = {
+        workoutId: workout.id,
+        workoutName: workout.name,
+        userId: userId,
+        completedAt: new Date().toISOString(),
+        duration: elapsedTime,
+        weights: weights,
+        completedSets: completedSets
+      };
+
+      const logsRef = dbRef(db, 'workout-logs');
+      const newLogRef = push(logsRef);
+      await set(newLogRef, workoutData);
+
+      onComplete();
+    } catch (error) {
+      console.error('Error saving workout:', error);
+      alert('Failed to save workout. Please try again.');
+    }
+  };
+
+  const exercise = getCurrentExercise();
+  if (!exercise) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-600">No exercises in this section.</p>
+        <button
+          onClick={handleNextExercise}
+          className="mt-4 px-6 py-2 bg-emerald-500 text-white rounded-lg"
+        >
+          Continue
+        </button>
+      </div>
+    );
+  }
+
+  const key = getExerciseKey();
+  const currentWeight = weights[key] || 0;
+  const completed = completedSets[key] || [];
+
+  return (
+    <div className="space-y-6 pb-20">
+      {/* Header with Timer */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 sticky top-0 z-10">
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="text-sm text-gray-600 capitalize">{currentSection}</div>
+            <div className="text-xl font-bold text-gray-900">
+              Exercise {currentExerciseIndex + 1} of {getSectionExercises().length}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-gray-600">Time</div>
+            <div className="text-2xl font-bold text-emerald-600 flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              {formatTime(elapsedTime)}
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={() => setIsPaused(!isPaused)}
+            className="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center justify-center gap-2"
+          >
+            {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          >
+            Exit
+          </button>
+        </div>
+      </div>
+
+      {/* Current Exercise */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">{exercise.name}</h2>
+        <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+          <span>{exercise.sets} sets</span>
+          <span>•</span>
+          <span>{exercise.reps} reps</span>
+          <span>•</span>
+          <span>{exercise.restSeconds}s rest</span>
+        </div>
+
+        {exercise.notes && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-blue-900">{exercise.notes}</p>
+          </div>
+        )}
+
+        {exercise.videoUrl && (
+          <a
+            href={exercise.videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 mb-4"
+          >
+            <Video className="w-5 h-5" />
+            Watch form video
+          </a>
+        )}
+
+        {/* Weight Input */}
+        <div className="bg-gray-50 rounded-xl p-4 mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Weight Used (lbs)</label>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handleWeightChange(-5)}
+              className="w-12 h-12 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50"
+            >
+              <Minus className="w-5 h-5 text-gray-700" />
+            </button>
+            <input
+              type="number"
+              value={currentWeight}
+              onChange={(e) => handleWeightInput(e.target.value)}
+              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-2xl font-bold"
+            />
+            <button
+              onClick={() => handleWeightChange(5)}
+              className="w-12 h-12 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-50"
+            >
+              <Plus className="w-5 h-5 text-gray-700" />
+            </button>
+          </div>
+        </div>
+
+        {/* Sets Tracker */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Complete Sets</label>
+          {Array.from({ length: exercise.sets }, (_, i) => i + 1).map(setNum => (
+            <button
+              key={setNum}
+              onClick={() => handleSetComplete(setNum)}
+              className={`w-full py-3 rounded-lg font-medium transition flex items-center justify-center gap-2 ${
+                completed.includes(setNum)
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {completed.includes(setNum) && <Check className="w-5 h-5" />}
+              Set {setNum}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Navigation */}
+      {isExerciseComplete() && (
+        <button
+          onClick={handleNextExercise}
+          className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-lg hover:opacity-90 flex items-center justify-center gap-2"
+        >
+          {currentExerciseIndex < getSectionExercises().length - 1
+            ? 'Next Exercise'
+            : currentSection === 'warmup' && workout.work.length > 0
+            ? 'Start Main Workout'
+            : currentSection === 'work' && workout.cooldown.length > 0
+            ? 'Start Cooldown'
+            : 'Complete Workout'}
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// CLIENT WORKOUTS MAIN COMPONENT
+function MyWorkouts({ user }) {
+  const [assignments, setAssignments] = useState({});
+  const [workouts, setWorkouts] = useState({});
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
+  const [isPerforming, setIsPerforming] = useState(false);
+  const [completedWorkouts, setCompletedWorkouts] = useState([]);
+  const [stats, setStats] = useState({ total: 0, thisWeek: 0, thisMonth: 0 });
+
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  useEffect(() => {
+    loadAssignments();
+    loadCompletedWorkouts();
+  }, [user]);
+
+  const loadAssignments = async () => {
+    try {
+      const assignmentsRef = dbRef(db, `workout-assignments/${user.uid}`);
+      const snapshot = await get(assignmentsRef);
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setAssignments(data);
+
+        // Load full workout details
+        const workoutIds = Object.values(data).map(a => a.workoutId);
+        const uniqueIds = [...new Set(workoutIds)];
+        
+        const workoutData = {};
+        for (const id of uniqueIds) {
+          const workoutRef = dbRef(db, `workouts/${id}`);
+          const workoutSnap = await get(workoutRef);
+          if (workoutSnap.exists()) {
+            workoutData[id] = { id, ...workoutSnap.val() };
+          }
+        }
+        setWorkouts(workoutData);
+      }
+    } catch (error) {
+      console.error('Error loading assignments:', error);
+    }
+  };
+
+  const loadCompletedWorkouts = async () => {
+    try {
+      const logsRef = dbRef(db, 'workout-logs');
+      const snapshot = await get(logsRef);
+      
+      if (snapshot.exists()) {
+        const allLogs = Object.values(snapshot.val());
+        const userLogs = allLogs.filter(log => log.userId === user.uid);
+        setCompletedWorkouts(userLogs);
+
+        // Calculate stats
+        const now = new Date();
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        const thisWeek = userLogs.filter(log => new Date(log.completedAt) > weekAgo).length;
+        const thisMonth = userLogs.filter(log => new Date(log.completedAt) > monthAgo).length;
+
+        setStats({
+          total: userLogs.length,
+          thisWeek: thisWeek,
+          thisMonth: thisMonth
+        });
+      }
+    } catch (error) {
+      console.error('Error loading workout logs:', error);
+    }
+  };
+
+  const handleStartWorkout = (workoutId) => {
+    const workout = workouts[workoutId];
+    if (workout) {
+      setSelectedWorkout(workout);
+      setIsPerforming(true);
+    }
+  };
+
+  const handleWorkoutComplete = () => {
+    setIsPerforming(false);
+    setSelectedWorkout(null);
+    loadCompletedWorkouts();
+    loadAssignments();
+  };
+
+  const isWorkoutCompleted = (day) => {
+    const today = new Date().toISOString().split('T')[0];
+    return completedWorkouts.some(log => {
+      const logDate = new Date(log.completedAt).toISOString().split('T')[0];
+      const logDay = new Date(log.completedAt).toLocaleDateString('en-US', { weekday: 'long' });
+      return logDate === today && logDay === day;
+    });
+  };
+
+  if (isPerforming && selectedWorkout) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <WorkoutPerformer
+          workout={selectedWorkout}
+          userId={user.uid}
+          onComplete={handleWorkoutComplete}
+          onCancel={() => {
+            if (confirm('Are you sure you want to exit? Your progress will not be saved.')) {
+              setIsPerforming(false);
+              setSelectedWorkout(null);
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">My Workouts</h2>
+        <p className="text-emerald-100">Track your training and smash your goals</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-center">
+          <div className="text-2xl font-bold text-gray-900">{stats.thisWeek}</div>
+          <div className="text-sm text-gray-600">This Week</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-center">
+          <div className="text-2xl font-bold text-gray-900">{stats.thisMonth}</div>
+          <div className="text-sm text-gray-600">This Month</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-center">
+          <div className="text-2xl font-bold text-emerald-600">{stats.total}</div>
+          <div className="text-sm text-gray-600">Total</div>
+        </div>
+      </div>
+
+      {/* Weekly Calendar */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">This Week's Schedule</h3>
+        <div className="grid grid-cols-1 gap-3">
+          {daysOfWeek.map(day => {
+            const assignment = assignments[day];
+            const isCompleted = isWorkoutCompleted(day);
+            
+            return (
+              <div
+                key={day}
+                className={`p-4 rounded-xl border-2 transition ${
+                  isCompleted
+                    ? 'bg-green-50 border-green-500'
+                    : assignment
+                    ? 'bg-yellow-50 border-yellow-500'
+                    : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="font-medium text-gray-900">{day}</div>
+                    {assignment ? (
+                      <div className="text-sm text-gray-600">{assignment.workoutName}</div>
+                    ) : (
+                      <div className="text-sm text-gray-500">Rest day</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isCompleted && (
+                      <span className="px-3 py-1 bg-green-500 text-white rounded-full text-xs font-medium">
+                        ✓ Done
+                      </span>
+                    )}
+                    {assignment && !isCompleted && (
+                      <button
+                        onClick={() => handleStartWorkout(assignment.workoutId)}
+                        className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 text-sm"
+                      >
+                        Start
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Recent Workouts */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Workouts</h3>
+        {completedWorkouts.length === 0 ? (
+          <p className="text-gray-600">No completed workouts yet. Start your first workout today!</p>
+        ) : (
+          <div className="space-y-3">
+            {completedWorkouts.slice(0, 5).map((log, idx) => (
+              <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <div className="font-medium text-gray-900">{log.workoutName}</div>
+                  <div className="text-sm text-gray-600">
+                    {new Date(log.completedAt).toLocaleDateString()} • {Math.floor(log.duration / 60)} min
+                  </div>
+                </div>
+                <Trophy className="w-5 h-5 text-yellow-500" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// WORKOUT COMPONENTS - END
+// ============================================
 
 // LANDING PAGE COMPONENT
 function LandingPage({ onLoginClick }) {
@@ -1855,12 +2952,14 @@ export default function App() {
 
   const navItems = userRole === 'admin' ? [
     { id: 'dashboard', label: 'Overview', icon: Users },
+    { id: 'workouts', label: 'Workout Builder', icon: Dumbbell },
     { id: 'clients', label: 'Manage Clients', icon: Users },
     { id: 'nutrition', label: 'Client Nutrition', icon: Apple },
     { id: 'photos', label: 'Client Photos', icon: Image },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
   ] : [
     { id: 'dashboard', label: 'Dashboard', icon: User },
+    { id: 'workouts', label: 'My Workouts', icon: Dumbbell },
     { id: 'nutrition', label: 'Nutrition', icon: Apple },
     { id: 'photos', label: 'My Progress', icon: Image },
     { id: 'goals', label: 'My Goals', icon: Target },
@@ -1927,11 +3026,15 @@ export default function App() {
                   </div>
                   <p className="text-gray-600">
                     {userRole === 'admin' 
-                      ? 'You have full access to manage clients, track nutrition, and view progress photos.'
-                      : 'Track your nutrition, upload progress photos, and stay on top of your fitness goals.'}
+                      ? 'You have full access to manage clients, create workouts, track nutrition, and view progress photos.'
+                      : 'Track your workouts, nutrition, upload progress photos, and stay on top of your fitness goals.'}
                   </p>
                 </div>
               </div>
+            )}
+
+            {currentView === 'workouts' && (
+              userRole === 'admin' ? <WorkoutBuilder /> : <MyWorkouts user={user} />
             )}
 
             {currentView === 'clients' && userRole === 'admin' && <ManageClients />}
