@@ -16,6 +16,8 @@ import Reports from './components/admin/Reports';
 import AdminNutrition from './components/admin/AdminNutrition';
 import AdminPhotos from './components/admin/AdminPhotos';
 import AdminClientAnalytics from './components/admin/AdminClientAnalytics';
+import DebugClientList from './components/admin/DebugClientList';
+import AssignUserRoles from './components/admin/AssignUserRoles';
 
 // Client Components
 import MyWorkouts from './components/client/MyWorkouts';
@@ -166,6 +168,17 @@ export default function App() {
             <button onClick={handleSignOut} className="p-2 hover:bg-gray-100 rounded-lg transition">
               <LogOut className="w-5 h-5" />
             </button>
+            
+            
+            <button onClick={() => setView('debug')}>
+  🔍 Debug Users
+</button>
+
+<button onClick={() => setView('roles')}>
+  👥 Assign Roles
+</button>
+
+
           </div>
         </div>
       </header>
@@ -224,7 +237,8 @@ export default function App() {
             {currentView === 'clients' && userRole === 'admin' && <ManageClients />}
             {currentView === 'reports' && userRole === 'admin' && <Reports />}
             {currentView === 'goals' && userRole === 'client' && <MyGoals user={user} />}
-
+		{currentView === 'debug'&& userRole === 'admin' && <DebugClientList />}
+		{currentView === 'roles'&& userRole === 'admin' && <AssignUserRoles />}
             {currentView === 'nutrition' && (
               userRole === 'admin' ? <AdminNutrition /> : <NutritionLogger user={user} />
             )}
