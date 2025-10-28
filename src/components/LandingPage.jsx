@@ -59,18 +59,25 @@ function LandingPage({ onLoginClick }) {
         )}
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-emerald-50 via-teal-50 to-green-50">
-        <div className="max-w-7xl mx-auto text-center max-w-3xl">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-            Stronger. Healthier. Confident — for Life.
+      {/* Hero Section - Full Width Image with Overlay */}
+      <section className="relative h-screen min-h-[600px] flex items-center justify-center">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/images/naturelong.jpg')" }}
+        >
+          <div className="absolute inset-0 bg-black/40"></div>
+        </div>
+        
+        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6">
+            Stronger. Healthier.<br />Confident — for Life.
           </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            Flourish Fitness empowers women to build lasting strength, endurance, and confidence through purposeful training, balanced nutrition, and genuine support — no quick fixes, just real transformation that lasts.
+          <p className="text-xl sm:text-2xl text-white/95 mb-8 max-w-2xl mx-auto">
+            Build lasting strength, endurance, and confidence through purposeful training and genuine support.
           </p>
           <button
             onClick={onLoginClick}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium text-lg hover:opacity-90 transition"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 rounded-full font-semibold text-lg hover:bg-gray-100 transition"
           >
             Start Your Journey
             <ChevronRight className="w-5 h-5" />
@@ -78,152 +85,234 @@ function LandingPage({ onLoginClick }) {
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">About Flourish Fitness</h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Founded by <strong>Lindsey Thornton</strong>, a NASM Certified Personal Trainer and nutrition coach who believes true wellness begins with dedication, balance, and faith. Lindsey's approach blends science-backed training with heart-led guidance — helping women push past limits, stay consistent, and celebrate every win along the way.
-          </p>
-        </div>
+      {/* About Lindsey - Image Left, Text Right */}
+      <section id="about" className="relative">
+        <div className="grid md:grid-cols-2">
+          {/* Image Side */}
+          <div 
+            className="h-[500px] md:h-[700px] bg-cover bg-center"
+            style={{ backgroundImage: "url('/images/laugh.jpg')" }}
+          ></div>
 
-        <div className="grid md:grid-cols-3 gap-8 mt-12">
-          <div className="text-center p-6">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Award className="w-8 h-8 text-emerald-600" />
+          {/* Text Side */}
+          <div className="flex items-center px-8 py-16 md:px-16 bg-gray-50">
+            <div>
+              <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">
+                Meet Lindsey
+              </h2>
+              <p className="text-lg text-gray-700 mb-4">
+                <strong>Lindsey Thornton</strong> is a NASM Certified Personal Trainer and nutrition coach who believes true wellness begins with dedication, balance, and faith.
+              </p>
+              <p className="text-lg text-gray-700 mb-6">
+                Lindsey's approach blends science-backed training with heart-led guidance — helping women push past limits, stay consistent, and celebrate every win along the way.
+              </p>
+              <button
+                onClick={onLoginClick}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full font-semibold hover:opacity-90 transition"
+              >
+                Work with Lindsey
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Expert Guidance</h3>
-            <p className="text-gray-600">Personalized programs rooted in proven strength and endurance training.</p>
-          </div>
-
-          <div className="text-center p-6">
-            <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Heart className="w-8 h-8 text-teal-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Whole-Person Wellness</h3>
-            <p className="text-gray-600">Focus on physical, nutritional, and spiritual health for lifelong results.</p>
-          </div>
-
-          <div className="text-center p-6">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <TrendingUp className="w-8 h-8 text-green-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Accountability & Progress</h3>
-            <p className="text-gray-600">Stay motivated with structured tracking and encouraging mentorship.</p>
           </div>
         </div>
       </section>
 
-      {/* Services Section */}
-      <section id="services" className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Training That Meets You Where You Are</h2>
-          <p className="text-xl text-gray-600">Coaching designed to help women feel powerful, not pressured.</p>
+      {/* Training Philosophy - Text Left, Image Right */}
+      <section className="relative">
+        <div className="grid md:grid-cols-2">
+          {/* Text Side */}
+          <div className="flex items-center px-8 py-16 md:px-16 bg-white order-2 md:order-1">
+            <div>
+              <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">
+                Training That Meets You Where You Are
+              </h2>
+              <p className="text-lg text-gray-700 mb-4">
+                Coaching designed to help women feel powerful, not pressured. Whether you're building functional strength, improving endurance, or transforming your lifestyle, we customize every program to your goals and pace.
+              </p>
+              <p className="text-lg text-gray-700 mb-6">
+                No quick fixes — just real transformation that lasts through purposeful training, balanced nutrition, and genuine support.
+              </p>
+              <a href="#services" className="inline-flex items-center gap-2 text-emerald-600 font-semibold hover:gap-3 transition-all">
+                Explore Our Services
+                <ChevronRight className="w-5 h-5" />
+              </a>
+            </div>
+          </div>
+
+          {/* Image Side */}
+          <div 
+            className="h-[500px] md:h-[700px] bg-cover bg-center order-1 md:order-2"
+            style={{ backgroundImage: "url('/images/fly.jpg')" }}
+          ></div>
         </div>
+      </section>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <User className="w-12 h-12 text-emerald-500 mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">1:1 Personal Training</h3>
-            <p className="text-gray-600 mb-4">
-              In-person sessions focused on building functional strength, confidence, and endurance — customized to your goals and pace.
-            </p>
+      {/* Services Section */}
+      <section id="services" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">Our Services</h2>
+            <p className="text-xl text-gray-600">Personalized fitness solutions for every journey</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <Dumbbell className="w-12 h-12 text-teal-500 mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Online Coaching</h3>
-            <p className="text-gray-600 mb-4">
-              Fully tailored workouts and nutrition guidance delivered wherever you are, with regular check-ins and support to keep you progressing.
-            </p>
-          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="bg-white p-8 rounded-lg">
+              <User className="w-12 h-12 text-emerald-500 mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-3">1:1 Personal Training</h3>
+              <p className="text-gray-600">
+                In-person sessions focused on building functional strength, confidence, and endurance — customized to your goals and pace.
+              </p>
+            </div>
 
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <Users className="w-12 h-12 text-green-500 mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Group Fitness</h3>
-            <p className="text-gray-600 mb-4">
-              Join a community of women chasing progress together. High-energy classes that challenge you and remind you that fitness can be fun.
-            </p>
-          </div>
+            <div className="bg-white p-8 rounded-lg">
+              <Dumbbell className="w-12 h-12 text-teal-500 mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Online Coaching</h3>
+              <p className="text-gray-600">
+                Fully tailored workouts and nutrition guidance delivered wherever you are, with regular check-ins and support.
+              </p>
+            </div>
 
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <Apple className="w-12 h-12 text-amber-500 mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Nutrition Coaching</h3>
-            <p className="text-gray-600 mb-4">
-              Learn how to fuel your body to perform, recover, and maintain your results for life — no crash diets, no extremes.
-            </p>
+            <div className="bg-white p-8 rounded-lg">
+              <Users className="w-12 h-12 text-green-500 mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Group Fitness</h3>
+              <p className="text-gray-600">
+                Join a community of women chasing progress together. High-energy classes that challenge and inspire.
+              </p>
+            </div>
+
+            <div className="bg-white p-8 rounded-lg">
+              <Apple className="w-12 h-12 text-amber-500 mb-4" />
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Nutrition Coaching</h3>
+              <p className="text-gray-600">
+                Learn how to fuel your body to perform, recover, and maintain your results for life — no crash diets.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Lifestyle Section - Full Width with Overlay */}
+      <section className="relative h-[600px] flex items-center justify-center">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/images/naturetall.jpg')" }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/80 to-teal-900/60"></div>
+        </div>
+        
+        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">
+            Whole-Person Wellness
+          </h2>
+          <p className="text-xl text-white/95 mb-8">
+            Focus on physical, nutritional, and spiritual health for lifelong results. True transformation starts within.
+          </p>
+          <div className="grid md:grid-cols-3 gap-8 text-white">
+            <div>
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4">
+                <Award className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Expert Guidance</h3>
+              <p className="text-white/90">Proven strength and endurance training</p>
+            </div>
+            <div>
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Holistic Approach</h3>
+              <p className="text-white/90">Body, mind, and spirit wellness</p>
+            </div>
+            <div>
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Real Progress</h3>
+              <p className="text-white/90">Structured tracking and accountability</p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section id="testimonials" className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Real Women. Real Wins.</h2>
-          <p className="text-xl text-gray-600">Behind every transformation is a story of courage, consistency, and belief.</p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-8">
-            <div className="text-4xl mb-4">💪</div>
-            <p className="text-gray-700 mb-4 italic">
-              "Lindsey changed the way I see fitness. I've never been this strong — inside and out."
-            </p>
-            <div className="font-bold text-gray-900">- Lily</div>
+      <section id="testimonials" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">Real Women. Real Wins.</h2>
+            <p className="text-xl text-gray-600">Behind every transformation is a story of courage, consistency, and belief.</p>
           </div>
 
-          <div className="bg-gradient-to-br from-teal-50 to-green-50 rounded-2xl p-8">
-            <div className="text-4xl mb-4">🌟</div>
-            <p className="text-gray-700 mb-4 italic">
-              "I finally found a routine I can stick with. Her guidance helped me lose weight and keep it off."
-            </p>
-            <div className="font-bold text-gray-900">- Sophia</div>
-          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="p-8 bg-gray-50 rounded-lg">
+              <div className="text-4xl mb-4">💪</div>
+              <p className="text-gray-700 mb-4 italic">
+                "Lindsey changed the way I see fitness. I've never been this strong — inside and out."
+              </p>
+              <div className="font-bold text-gray-900">- Lily</div>
+            </div>
 
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8">
-            <div className="text-4xl mb-4">🏋️</div>
-            <p className="text-gray-700 mb-4 italic">
-              "She pushes hard but with purpose. I complained plenty, but I never quit — and I've never looked or felt better."
-            </p>
-            <div className="font-bold text-gray-900">- Jane</div>
+            <div className="p-8 bg-gray-50 rounded-lg">
+              <div className="text-4xl mb-4">🌟</div>
+              <p className="text-gray-700 mb-4 italic">
+                "I finally found a routine I can stick with. Her guidance helped me lose weight and keep it off."
+              </p>
+              <div className="font-bold text-gray-900">- Sophia</div>
+            </div>
+
+            <div className="p-8 bg-gray-50 rounded-lg">
+              <div className="text-4xl mb-4">🏋️</div>
+              <p className="text-gray-700 mb-4 italic">
+                "She pushes hard but with purpose. I complained plenty, but I never quit — and I've never looked or felt better."
+              </p>
+              <div className="font-bold text-gray-900">- John</div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Approach Section */}
-      <section id="approach" className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">The Flourish Method</h2>
-          <p className="text-xl text-gray-600">Sustainable fitness built on strength, balance, and faith.</p>
+      {/* Approach Section - Cherry Blossoms with Overlay */}
+      <section id="approach" className="relative h-[700px] flex items-center">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/images/cherryblossoms.jpg')" }}
+        >
+          <div className="absolute inset-0 bg-black/50"></div>
         </div>
+        
+        <div className="relative z-10 px-8 md:px-16 max-w-7xl mx-auto w-full">
+          <div className="max-w-2xl">
+            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-8">
+              The Flourish Method
+            </h2>
+            <div className="space-y-6">
+              <div className="bg-white/10 backdrop-blur-md p-6 rounded-lg border border-white/20">
+                <h3 className="text-2xl font-bold text-white mb-3">Progressive Training</h3>
+                <p className="text-white/90">
+                  Rooted in the NASM OPT model, Lindsey helps clients progressively challenge their bodies to build lasting results — not burnout.
+                </p>
+              </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Progressive Training</h3>
-            <p className="text-gray-600 mb-4">
-              Rooted in the NASM OPT model, Lindsey helps clients progressively challenge their bodies to build lasting results — not burnout.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Spiritual Mentorship</h3>
-            <p className="text-gray-600 mb-4">
-              True transformation starts within. Lindsey brings faith and encouragement into every session, helping you find peace, purpose, and pride in your journey.
-            </p>
+              <div className="bg-white/10 backdrop-blur-md p-6 rounded-lg border border-white/20">
+                <h3 className="text-2xl font-bold text-white mb-3">Spiritual Mentorship</h3>
+                <p className="text-white/90">
+                  True transformation starts within. Lindsey brings faith and encouragement into every session, helping you find peace, purpose, and pride in your journey.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-emerald-500 via-teal-500 to-green-500">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-emerald-500 via-teal-500 to-green-500">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to Flourish?</h2>
-          <p className="text-xl text-emerald-100 mb-8">
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6">Ready to Flourish?</h2>
+          <p className="text-xl text-white/95 mb-8">
             Start your transformation with a coach who believes in your strength, celebrates your progress, and guides you toward lifelong wellness.
           </p>
           <button
             onClick={onLoginClick}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-emerald-600 rounded-xl font-medium text-lg hover:bg-gray-50 transition"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 rounded-full font-semibold text-lg hover:bg-gray-100 transition"
           >
             Join Today
             <ChevronRight className="w-5 h-5" />
@@ -232,7 +321,7 @@ function LandingPage({ onLoginClick }) {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 px-4 sm:px-6 lg:px-8">
+      <footer className="bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
