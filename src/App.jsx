@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Dumbbell, Users, Image, Apple, LogOut, Trash2, Camera, Shield } from 'lucide-react';
+import { User, Dumbbell, Users, Image, Apple, LogOut, Trash2, Camera, Shield, BarChart3, Target } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { ref as dbRef, get, set, push, remove, update, query as dbQuery, orderByChild, equalTo, onValue } from 'firebase/database';
@@ -257,6 +257,270 @@ function AuthScreen() {
             {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// MANAGE CLIENTS
+function ManageClients() {
+  const [clients, setClients] = useState([]);
+
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    const usersRef = dbRef(db, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (snapshot.exists()) {
+      const usersData = snapshot.val();
+      const clientData = Object.entries(usersData)
+        .filter(([id, user]) => user.role === 'client')
+        .map(([id, user]) => ({ id, ...user }));
+      setClients(clientData);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">Manage Clients</h2>
+        <p className="text-emerald-100">View and manage all your clients</p>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">All Clients ({clients.length})</h3>
+        {clients.length === 0 ? (
+          <p className="text-gray-600">No clients yet. Clients will appear here when they sign up.</p>
+        ) : (
+          <div className="space-y-3">
+            {clients.map(client => (
+              <div key={client.id} className="p-4 border border-gray-200 rounded-xl hover:border-emerald-500 transition">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                    {client.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">{client.name}</div>
+                    <div className="text-sm text-gray-600">{client.email}</div>
+                    <div className="text-xs text-gray-500">Joined: {new Date(client.createdAt).toLocaleDateString()}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// REPORTS
+function Reports() {
+  const [clients, setClients] = useState([]);
+  const [stats, setStats] = useState({ totalClients: 0, activeToday: 0, totalPhotos: 0, totalNutritionLogs: 0 });
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      // Load clients
+      const usersRef = dbRef(db, 'users');
+      const usersSnapshot = await get(usersRef);
+      let clientCount = 0;
+      
+      if (usersSnapshot.exists()) {
+        const usersData = usersSnapshot.val();
+        clientCount = Object.values(usersData).filter(user => user.role === 'client').length;
+      }
+
+      // Load photos
+      const photosRef = dbRef(db, 'progress-photos');
+      const photosSnapshot = await get(photosRef);
+      const photoCount = photosSnapshot.exists() ? Object.keys(photosSnapshot.val()).length : 0;
+
+      // Load nutrition logs
+      const logsRef = dbRef(db, 'nutrition-logs');
+      const logsSnapshot = await get(logsRef);
+      const logCount = logsSnapshot.exists() ? Object.keys(logsSnapshot.val()).length : 0;
+
+      // Check active today (nutrition logs from today)
+      const today = new Date().toISOString().split('T')[0];
+      let activeToday = 0;
+      if (logsSnapshot.exists()) {
+        const logs = Object.values(logsSnapshot.val());
+        const uniqueUsers = new Set(logs.filter(log => log.date === today).map(log => log.userId));
+        activeToday = uniqueUsers.size;
+      }
+
+      setStats({
+        totalClients: clientCount,
+        activeToday: activeToday,
+        totalPhotos: photoCount,
+        totalNutritionLogs: logCount
+      });
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">Reports & Analytics</h2>
+        <p className="text-emerald-100">Track client progress and performance</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="text-sm text-gray-600 mb-1">Total Clients</div>
+          <div className="text-3xl font-bold text-gray-900">{stats.totalClients}</div>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="text-sm text-gray-600 mb-1">Active Today</div>
+          <div className="text-3xl font-bold text-emerald-600">{stats.activeToday}</div>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="text-sm text-gray-600 mb-1">Total Photos</div>
+          <div className="text-3xl font-bold text-gray-900">{stats.totalPhotos}</div>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="text-sm text-gray-600 mb-1">Nutrition Logs</div>
+          <div className="text-3xl font-bold text-gray-900">{stats.totalNutritionLogs}</div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Quick Stats</h3>
+        <p className="text-gray-600">More detailed analytics and charts coming soon!</p>
+      </div>
+    </div>
+  );
+}
+
+// CLIENT GOALS
+function MyGoals({ user }) {
+  const [macroGoals, setMacroGoals] = useState({ protein: 150, carbs: 200, fats: 50 });
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    loadGoals();
+  }, [user]);
+
+  const loadGoals = async () => {
+    const userRef = dbRef(db, `users/${user.uid}`);
+    const snapshot = await get(userRef);
+    if (snapshot.exists() && snapshot.val().macroGoals) {
+      setMacroGoals(snapshot.val().macroGoals);
+    }
+  };
+
+  const saveGoals = async () => {
+    try {
+      await update(dbRef(db, `users/${user.uid}`), {
+        macroGoals: macroGoals
+      });
+      setEditing(false);
+      alert('Goals updated!');
+    } catch (error) {
+      alert('Failed to update goals');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
+        <h2 className="text-2xl font-bold">My Goals</h2>
+        <p className="text-emerald-100">Set and track your fitness goals</p>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-gray-900">Macro Goals</h3>
+          <button
+            onClick={() => setEditing(!editing)}
+            className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+          >
+            {editing ? 'Cancel' : 'Edit Goals'}
+          </button>
+        </div>
+
+        {editing ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">Protein (g)</label>
+                <input
+                  type="number"
+                  value={macroGoals.protein}
+                  onChange={(e) => setMacroGoals({...macroGoals, protein: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">Carbs (g)</label>
+                <input
+                  type="number"
+                  value={macroGoals.carbs}
+                  onChange={(e) => setMacroGoals({...macroGoals, carbs: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-600 block mb-1">Fats (g)</label>
+                <input
+                  type="number"
+                  value={macroGoals.fats}
+                  onChange={(e) => setMacroGoals({...macroGoals, fats: parseInt(e.target.value) || 0})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+            <button
+              onClick={saveGoals}
+              className="w-full py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition"
+            >
+              Save Goals
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-emerald-50 rounded-lg">
+              <div className="text-sm text-gray-600 mb-1">Protein Goal</div>
+              <div className="text-3xl font-bold text-emerald-600">{macroGoals.protein}g</div>
+            </div>
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-sm text-gray-600 mb-1">Carbs Goal</div>
+              <div className="text-3xl font-bold text-blue-600">{macroGoals.carbs}g</div>
+            </div>
+            <div className="text-center p-4 bg-yellow-50 rounded-lg">
+              <div className="text-sm text-gray-600 mb-1">Fats Goal</div>
+              <div className="text-3xl font-bold text-yellow-600">{macroGoals.fats}g</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-xl font-bold text-gray-900 mb-4">Tips for Success</h3>
+        <ul className="space-y-2 text-gray-700">
+          <li className="flex items-start gap-2">
+            <span className="text-emerald-500 mt-1">✓</span>
+            <span>Track your meals consistently in the Nutrition section</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-emerald-500 mt-1">✓</span>
+            <span>Take progress photos weekly to see your transformation</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-emerald-500 mt-1">✓</span>
+            <span>Adjust your macro goals as you progress with your trainer</span>
+          </li>
+        </ul>
       </div>
     </div>
   );
@@ -783,25 +1047,29 @@ function AdminNutrition() {
 
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
         <h3 className="text-xl font-bold text-gray-900 mb-4">Select a Client</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {clients.map(client => (
-            <button
-              key={client.id}
-              onClick={() => loadClientLogs(client.id, client)}
-              className="p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 transition text-left"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
-                  {client.name.charAt(0)}
+        {clients.length === 0 ? (
+          <p className="text-gray-600">No clients yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {clients.map(client => (
+              <button
+                key={client.id}
+                onClick={() => loadClientLogs(client.id, client)}
+                className="p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 transition text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                    {client.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">{client.name}</div>
+                    <div className="text-sm text-gray-600">{client.email}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-medium text-gray-900">{client.name}</div>
-                  <div className="text-sm text-gray-600">{client.email}</div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1086,25 +1354,29 @@ function AdminPhotos() {
 
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
           <h3 className="text-xl font-bold text-gray-900 mb-4">Select a Client</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {clients.map(client => (
-              <button
-                key={client.id}
-                onClick={() => handleSelectClient(client)}
-                className="p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 transition text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
-                    {client.name.charAt(0)}
+          {clients.length === 0 ? (
+            <p className="text-gray-600">No clients yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {clients.map(client => (
+                <button
+                  key={client.id}
+                  onClick={() => handleSelectClient(client)}
+                  className="p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 transition text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
+                      {client.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">{client.name}</div>
+                      <div className="text-sm text-gray-600">{client.email}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium text-gray-900">{client.name}</div>
-                    <div className="text-sm text-gray-600">{client.email}</div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1285,12 +1557,15 @@ export default function App() {
 
   const navItems = userRole === 'admin' ? [
     { id: 'dashboard', label: 'Overview', icon: Users },
+    { id: 'clients', label: 'Manage Clients', icon: Users },
     { id: 'nutrition', label: 'Client Nutrition', icon: Apple },
     { id: 'photos', label: 'Client Photos', icon: Image },
+    { id: 'reports', label: 'Reports', icon: BarChart3 },
   ] : [
     { id: 'dashboard', label: 'Dashboard', icon: User },
     { id: 'nutrition', label: 'Nutrition', icon: Apple },
     { id: 'photos', label: 'My Progress', icon: Image },
+    { id: 'goals', label: 'My Goals', icon: Target },
   ];
 
   return (
@@ -1352,9 +1627,18 @@ export default function App() {
                   <div className="text-2xl font-bold text-gray-900 capitalize mb-4">
                     {userRole === 'admin' ? '👑 Admin/Trainer Account' : '💪 Client Account'}
                   </div>
+                  <p className="text-gray-600">
+                    {userRole === 'admin' 
+                      ? 'You have full access to manage clients, track nutrition, and view progress photos.'
+                      : 'Track your nutrition, upload progress photos, and stay on top of your fitness goals.'}
+                  </p>
                 </div>
               </div>
             )}
+
+            {currentView === 'clients' && userRole === 'admin' && <ManageClients />}
+            {currentView === 'reports' && userRole === 'admin' && <Reports />}
+            {currentView === 'goals' && userRole === 'client' && <MyGoals user={user} />}
 
             {currentView === 'nutrition' && (
               userRole === 'admin' ? <AdminNutrition /> : <NutritionLogger user={user} />
@@ -1369,7 +1653,7 @@ export default function App() {
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-40">
         <div className="flex justify-around">
-          {navItems.map(item => {
+          {navItems.slice(0, 4).map(item => {
             const Icon = item.icon;
             return (
               <button
