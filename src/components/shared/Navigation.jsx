@@ -8,6 +8,8 @@ export const adminNavItems = [
   { id: 'nutrition', label: 'Client Nutrition', icon: Apple },
   { id: 'photos', label: 'Client Photos', icon: Image },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'debug', label: 'Debug Users', icon: Users },      // ADD THIS
+  { id: 'roles', label: 'Assign Roles', icon: Users },     // ADD THIS
 ];
 
 export const clientNavItems = [

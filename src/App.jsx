@@ -169,16 +169,6 @@ export default function App() {
               <LogOut className="w-5 h-5" />
             </button>
             
-            
-            <button onClick={() => setView('debug')}>
-  🔍 Debug Users
-</button>
-
-<button onClick={() => setView('roles')}>
-  👥 Assign Roles
-</button>
-
-
           </div>
         </div>
       </header>
