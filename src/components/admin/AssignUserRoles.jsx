@@ -57,7 +57,7 @@ export default function AssignUserRoles() {
     );
   }
 
-  const usersWithoutRole = users.filter(u => !u.role);
+  const usersWithoutRole = users.filter(u => !u.role || u.role === 'user');
   const admins = users.filter(u => u.role === 'admin');
   const clients = users.filter(u => u.role === 'client');
 
@@ -91,10 +91,10 @@ export default function AssignUserRoles() {
             <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
               <span className="text-lg">⚠️</span>
             </div>
-            <h3 className="text-xl font-bold text-gray-900">Users Without Roles ({usersWithoutRole.length})</h3>
+            <h3 className="text-xl font-bold text-gray-900">Users Need Role Assignment ({usersWithoutRole.length})</h3>
           </div>
           
-          <p className="text-gray-600 mb-4">These users need to be assigned a role:</p>
+          <p className="text-gray-600 mb-4">These users need to be assigned either 'client' or 'admin' role:</p>
           
           <div className="space-y-3">
             {usersWithoutRole.map(user => (
@@ -104,6 +104,11 @@ export default function AssignUserRoles() {
                     <div className="font-bold text-gray-900">{user.name || user.email || 'No name'}</div>
                     <div className="text-sm text-gray-600">{user.email}</div>
                     <div className="text-xs text-gray-500 mt-1">ID: {user.id}</div>
+                    {user.role && (
+                      <div className="text-xs text-orange-600 mt-1">
+                        Current role: <span className="font-semibold">{user.role}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
