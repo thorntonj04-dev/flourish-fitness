@@ -225,10 +225,10 @@ export default function App() {
             {currentView === 'workouts' && (
               userRole === 'admin' ? <WorkoutBuilder /> : <MyWorkouts user={user} />
             )}
-		{view === 'progress' && <ProgressDashboard user={user} />}
-		{view === 'history' && <WorkoutHistory user={user} />}
-		{view === 'records' && <PersonalRecords user={user} />}
-		{view === 'analytics' && <AdminClientAnalytics />}
+		{currentView === 'progress' && userRole === 'client' && <ProgressDashboard user={user} />}
+		{currentView === 'history' && userRole === 'client' && <WorkoutHistory user={user} />}
+		{currentView === 'records' && userRole === 'client' && <PersonalRecords user={user} />}
+		{currentView === 'analytics' && userRole === 'admin' && <AdminClientAnalytics user={user} />}
             {currentView === 'clients' && userRole === 'admin' && <ManageClients />}
             {currentView === 'reports' && userRole === 'admin' && <Reports />}
             {currentView === 'goals' && userRole === 'client' && <MyGoals user={user} />}
