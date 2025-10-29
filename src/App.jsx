@@ -61,9 +61,6 @@ export default function App() {
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [isInWorkout, setIsInWorkout] = useState(false);
 
-  // NEW: State for “Read Me” note
-  const [showReadMe, setShowReadMe] = useState(false);
-
   // ============================================
   // AUTHENTICATION & USER DATA
   // ============================================
@@ -261,11 +258,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* ============================================ */}
       {/* HEADER */}
+      {/* ============================================ */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
+            {/* Dark Mode Toggle */}
             <DarkModeToggle />
+            
             <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
               <Dumbbell className="w-5 h-5 text-white" />
             </div>
@@ -286,7 +287,9 @@ export default function App() {
       </header>
 
       <div className="flex">
-        {/* Sidebar Navigation */}
+        {/* ============================================ */}
+        {/* SIDEBAR NAVIGATION (Desktop) */}
+        {/* ============================================ */}
         <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen p-4 hidden md:block">
           <nav className="space-y-2">
             {navItems.map(item => {
@@ -309,25 +312,23 @@ export default function App() {
           </nav>
         </aside>
 
-        {/* Main Content */}
+        {/* ============================================ */}
+        {/* MAIN CONTENT AREA */}
+        {/* This is where different "views" are rendered */}
+        {/* based on the currentView state */}
+        {/* ============================================ */}
         <main className="flex-1 p-4 md:p-6">
           <div className="max-w-4xl mx-auto">
-            {/* Dashboard View */}
+            
+            {/* ========== DASHBOARD VIEW ========== */}
             {currentView === 'dashboard' && (
               <div className="space-y-6">
                 <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
                   <h2 className="text-2xl font-bold">Welcome back!</h2>
                   <p className="text-emerald-100">Your fitness journey starts here</p>
                 </div>
-
-                {/* “Read Me” Button */}
-                <button
-                  onClick={() => setShowReadMe(true)}
-                  className="mt-4 bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-2xl shadow-md transition-all duration-200"
-                >
-                  💌 Read Me
-                </button>
-
+                
+                {/* Quick Start Workout Button (Client Only) */}
                 {userRole === 'client' && (
                   <button
                     onClick={handleStartTodaysWorkout}
@@ -337,7 +338,7 @@ export default function App() {
                     Start Today's Workout
                   </button>
                 )}
-
+                
                 <div className="bg-white rounded-2xl p-6 border border-gray-200">
                   <div className="text-sm text-gray-600 mb-2">Account Status</div>
                   <div className="text-2xl font-bold text-gray-900 capitalize mb-4">
@@ -352,56 +353,77 @@ export default function App() {
               </div>
             )}
 
-            {/* Modal for Read Me */}
-            {showReadMe && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-xl relative overflow-y-auto max-h-[90vh]">
-                  <button
-                    className="absolute top-2 right-3 text-gray-500 text-2xl font-bold"
-                    onClick={() => setShowReadMe(false)}
-                  >
-                    ×
-                  </button>
-                  <div className="prose max-w-none">
-                    <h2>🌸 Flourish Fitness — Built Just for You, Babe</h2>
-                    <p>
-                      This entire platform was designed and built exclusively for you — a place where your passion for fitness, your care for clients, and your professional expertise all come together in one beautiful, seamless platform. I didn't think something existed that was good enough for you. This still isn’t, but... it will be over time.
-                    </p>
-                    <p>
-                      This isn’t just an app. It’s your digital training home — built to reflect the way <em>you</em> coach, organize, and inspire people to become their strongest, healthiest selves.
-                    </p>
-                    <h3>💪 What Flourish Fitness Lets You Do</h3>
-                    <ul>
-                      <li><strong>A Personal Trainer’s Command Center</strong> - Everything you need to run your coaching — from managing clients to tracking their results — all in one place, made just for your workflow.</li>
-                      <li><strong>Quick & Simple Client Onboarding</strong> - Add clients in seconds and get them started immediately with personalized training plans. No complicated setup, just clean and intuitive design.</li>
-                      <li><strong>Program Templates Made for You</strong> - Build your signature programs once — like your transformation series or seasonal challenges — and reuse them whenever you want.</li>
-                      <li><strong>Workout Builder That Speaks Your Language</strong> - Create detailed, customized workouts using your own structure: sets, reps, rest, tempo, and notes. Include exercise demos so clients always understand exactly what to do.</li>
-                      <li><strong>Beautiful Progress Tracking</strong> - Track each client’s journey — from body metrics to workout consistency — and visualize their progress over time. It’s more than data; it’s motivation made visible.</li>
-                      <li><strong>Built-In Scheduling Tools</strong> - Keep all your sessions, appointments, and program timelines organized. Your whole coaching week at a glance.</li>
-                      <li><strong>Elegant, Branded Experience</strong> - Flourish Fitness looks and feels like <em>you</em>. It’s personalized, clean, and professional — just like the experience you give every client.</li>
-                    </ul>
-                    <h3>🌿 Why This Matters</h3>
-                    <p>
-                      Flourish Fitness was created to free up your time, simplify your workflow, and give your clients a smooth, engaging way to connect with your coaching. It’s not about doing more — it’s about doing what you love more easily.
-                    </p>
-                    <p>
-                      This app mirrors the care, structure, and thoughtfulness you bring to every client — now in digital form.
-                    </p>
-                    <h3>✨ The Heart Behind It</h3>
-                    <p>
-                      You are not just another trainer, and you need more than a generic training platform for your clients. This isn’t a generic training platform. It’s a handcrafted, one-of-a-kind system — built just for <strong>you</strong>, to reflect your approach, your standards, and your passion for helping others flourish.  You'll see the features on this app continue to grow.  I've specifically been focused on the user experience with workouts and your experience with building them and being able to assign and see schedules... So I have a lot of work to do.  Coming up I will be working on the "my progress" section with progress picture uploads(adding in body measurements), and the nutrition portion where clients can upload macro's per meal and follow tracking over time, along with other feature upgrades here and there.  I'd like this to turn into an app the client opens every day to communicate with you when they save an update. I hope this makes your journey fun and exciting.  I need your help to continue to add things that make sense, and tell me when something doesn't so I can fix it! 
-                    </p>
-                    <p>I love you!<br/>John</p>
-                  </div>
-                </div>
-              </div>
+            {/* ========== WORKOUT VIEWS ========== */}
+            {currentView === 'workouts' && (
+              userRole === 'admin' ? <WorkoutBuilder /> : <MyWorkouts user={user} />
             )}
 
+            {/* ========== NEW: WEEKLY DASHBOARD (Client) ========== */}
+            {currentView === 'weekly-dashboard' && userRole === 'client' && (
+              <WeeklyDashboard userId={user.uid} />
+            )}
+
+            {/* ========== NEW: WORKOUT CALENDAR (Client) ========== */}
+            {currentView === 'calendar' && userRole === 'client' && (
+              <WorkoutCalendar 
+                userId={user.uid}
+                onStartWorkout={handleStartWorkout}
+                onPreviewWorkout={(workoutId) => {
+                  // Preview workout - could open a modal or navigate to a preview view
+                  alert('Preview feature - you can add a preview modal here!');
+                }}
+              />
+            )}
+
+            {/* ========== PROGRESS & TRACKING VIEWS ========== */}
+            {currentView === 'progress' && userRole === 'client' && (
+              <ProgressDashboard user={user} />
+            )}
+            {currentView === 'history' && userRole === 'client' && (
+              <WorkoutHistory user={user} />
+            )}
+            {currentView === 'records' && userRole === 'client' && (
+              <PersonalRecords user={user} />
+            )}
+
+            {/* ========== ADMIN VIEWS ========== */}
+            {currentView === 'analytics' && userRole === 'admin' && (
+              <AdminClientAnalytics user={user} />
+            )}
+            {currentView === 'clients' && userRole === 'admin' && (
+              <ManageClients />
+            )}
+            {currentView === 'reports' && userRole === 'admin' && (
+              <Reports />
+            )}
+            {currentView === 'debug' && userRole === 'admin' && (
+              <DebugClientList />
+            )}
+            {currentView === 'roles' && userRole === 'admin' && (
+              <AssignUserRoles />
+            )}
+
+            {/* ========== GOALS VIEW ========== */}
+            {currentView === 'goals' && userRole === 'client' && (
+              <MyGoals user={user} />
+            )}
+
+            {/* ========== NUTRITION VIEWS ========== */}
+            {currentView === 'nutrition' && (
+              userRole === 'admin' ? <AdminNutrition /> : <NutritionLogger user={user} />
+            )}
+
+            {/* ========== PHOTO VIEWS ========== */}
+            {currentView === 'photos' && (
+              userRole === 'admin' ? <AdminPhotos /> : <PhotoUpload user={user} />
+            )}
           </div>
         </main>
       </div>
 
-      {/* Mobile Bottom Nav */}
+      {/* ============================================ */}
+      {/* MOBILE BOTTOM NAVIGATION */}
+      {/* ============================================ */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 z-40">
         <div className="flex justify-around">
           {navItems.slice(0, 4).map(item => {
@@ -424,4 +446,3 @@ export default function App() {
     </div>
   );
 }
-
