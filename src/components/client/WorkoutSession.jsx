@@ -253,7 +253,7 @@ export default function WorkoutSession({ workout, userId, onExit }) {
   };
 
   if (isCompleted) {
-    return <WorkoutComplete workout={workout} onClose={onExit} />;
+    return <WorkoutComplete workout={workout} onClose={onExit} userId={userId} sessionId={sessionId} />;
   }
 
   if (!getCurrentExercise()) return null;

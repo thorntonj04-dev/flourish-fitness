@@ -14,12 +14,9 @@ export const adminNavItems = [
 
 export const clientNavItems = [
   { id: 'dashboard', label: 'Dashboard', icon: User },
-  { id: 'progress', label: 'Progress', icon: TrendingUp },  
   { id: 'weekly-dashboard', label: 'Progress', icon: TrendingUp },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
-  { id: 'workouts', label: 'My Workouts', icon: Dumbbell },
-  { id: 'history', label: 'History', icon: Calendar },      
-  { id: 'records', label: 'Records', icon: Trophy },        
+  { id: 'workouts', label: 'My Workouts', icon: Dumbbell },    
   { id: 'nutrition', label: 'Nutrition', icon: Apple },
   { id: 'photos', label: 'My Progress', icon: Image },
   { id: 'goals', label: 'My Goals', icon: Target },

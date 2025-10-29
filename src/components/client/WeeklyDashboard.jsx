@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, TrendingUp, Flame, Trophy, Target, Clock } from 'lucide-react';
+import { Calendar, TrendingUp, Flame, Trophy, Target, Clock, Check } from 'lucide-react';
 import { ref as dbRef, get } from 'firebase/database';
 import { db } from '../../firebase';
 
