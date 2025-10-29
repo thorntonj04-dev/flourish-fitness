@@ -1,113 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, Calendar, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, Edit, FileText } from 'lucide-react';
-import { ref as dbRef, get, set, push, remove, update } from 'firebase/database';
+import { Plus, Save, Calendar, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp } from 'lucide-react';
+import { ref as dbRef, get, set, push, remove } from 'firebase/database';
 import { db } from '../../firebase';
 import ExerciseLibrary from '../workout/ExerciseLibrary';
-
-// WORKOUT TEMPLATES
-const WORKOUT_TEMPLATES = [
-  {
-    name: 'Push Day (Chest, Shoulders, Triceps)',
-    description: 'Classic push workout focusing on chest, shoulders, and triceps',
-    exercises: [
-      { name: 'Treadmill Incline Walk', section: 'warmup', sets: 1, reps: 5, restSeconds: 0, recommendedWeight: 0, notes: '5 minutes at moderate pace' },
-      { name: 'Arm Circles', section: 'warmup', sets: 2, reps: 15, restSeconds: 30, recommendedWeight: 0, notes: 'Forward and backward' },
-      { name: 'Barbell Bench Press', section: 'work', sets: 4, reps: 8, restSeconds: 120, recommendedWeight: 135, notes: 'Primary chest exercise' },
-      { name: 'Incline Dumbbell Press', section: 'work', sets: 3, reps: 10, restSeconds: 90, recommendedWeight: 50, notes: 'Upper chest focus' },
-      { name: 'Overhead Press (Barbell)', section: 'work', sets: 3, reps: 8, restSeconds: 90, recommendedWeight: 95, notes: '' },
-      { name: 'Lateral Raises', section: 'work', sets: 3, reps: 15, restSeconds: 60, recommendedWeight: 15, notes: 'Side delts' },
-      { name: 'Tricep Pushdown (Rope)', section: 'work', sets: 3, reps: 12, restSeconds: 60, recommendedWeight: 0, notes: '' },
-      { name: 'Overhead Tricep Extension', section: 'work', sets: 3, reps: 12, restSeconds: 60, recommendedWeight: 30, notes: '' },
-      { name: 'Chest Stretch', section: 'cooldown', sets: 1, reps: 1, restSeconds: 0, recommendedWeight: 0, notes: 'Hold 30 seconds each side' },
-    ]
-  },
-  {
-    name: 'Pull Day (Back, Biceps)',
-    description: 'Complete back and biceps workout',
-    exercises: [
-      { name: 'Rowing Machine', section: 'warmup', sets: 1, reps: 5, restSeconds: 0, recommendedWeight: 0, notes: '5 minutes light rowing' },
-      { name: 'Band Pull-Aparts', section: 'warmup', sets: 2, reps: 20, restSeconds: 30, recommendedWeight: 0, notes: 'Activate rear delts' },
-      { name: 'Deadlift', section: 'work', sets: 4, reps: 6, restSeconds: 180, recommendedWeight: 225, notes: 'Maintain neutral spine' },
-      { name: 'Pull-Ups', section: 'work', sets: 4, reps: 8, restSeconds: 120, recommendedWeight: 0, notes: 'Use assistance if needed' },
-      { name: 'Barbell Row', section: 'work', sets: 3, reps: 10, restSeconds: 90, recommendedWeight: 135, notes: '' },
-      { name: 'Face Pulls', section: 'work', sets: 3, reps: 15, restSeconds: 60, recommendedWeight: 0, notes: 'Focus on rear delts' },
-      { name: 'Barbell Curl', section: 'work', sets: 3, reps: 10, restSeconds: 60, recommendedWeight: 60, notes: '' },
-      { name: 'Hammer Curl', section: 'work', sets: 3, reps: 12, restSeconds: 60, recommendedWeight: 30, notes: '' },
-      { name: "Child's Pose", section: 'cooldown', sets: 1, reps: 1, restSeconds: 0, recommendedWeight: 0, notes: 'Hold 60 seconds' },
-    ]
-  },
-  {
-    name: 'Leg Day',
-    description: 'Complete lower body workout',
-    exercises: [
-      { name: 'Stationary Bike', section: 'warmup', sets: 1, reps: 5, restSeconds: 0, recommendedWeight: 0, notes: '5 minutes light cycling' },
-      { name: 'Bodyweight Squats', section: 'warmup', sets: 2, reps: 15, restSeconds: 30, recommendedWeight: 0, notes: 'Focus on form' },
-      { name: 'Barbell Back Squat', section: 'work', sets: 4, reps: 8, restSeconds: 180, recommendedWeight: 185, notes: 'Go to parallel or below' },
-      { name: 'Romanian Deadlift', section: 'work', sets: 3, reps: 10, restSeconds: 90, recommendedWeight: 135, notes: 'Hamstring focus' },
-      { name: 'Leg Press', section: 'work', sets: 3, reps: 12, restSeconds: 90, recommendedWeight: 270, notes: '' },
-      { name: 'Walking Lunges', section: 'work', sets: 3, reps: 12, restSeconds: 60, recommendedWeight: 25, notes: 'Each leg' },
-      { name: 'Leg Curls', section: 'work', sets: 3, reps: 15, restSeconds: 60, recommendedWeight: 0, notes: '' },
-      { name: 'Standing Calf Raises', section: 'work', sets: 4, reps: 15, restSeconds: 45, recommendedWeight: 0, notes: '' },
-      { name: 'Hamstring Stretch', section: 'cooldown', sets: 1, reps: 1, restSeconds: 0, recommendedWeight: 0, notes: 'Hold 30 seconds each leg' },
-      { name: 'Quad Stretch', section: 'cooldown', sets: 1, reps: 1, restSeconds: 0, recommendedWeight: 0, notes: 'Hold 30 seconds each leg' },
-    ]
-  },
-  {
-    name: 'Upper Body Strength',
-    description: 'Compound upper body movements',
-    exercises: [
-      { name: 'Arm Circles', section: 'warmup', sets: 2, reps: 20, restSeconds: 30, recommendedWeight: 0, notes: 'Dynamic warmup' },
-      { name: 'Barbell Bench Press', section: 'work', sets: 5, reps: 5, restSeconds: 180, recommendedWeight: 155, notes: 'Heavy strength work' },
-      { name: 'Overhead Press (Barbell)', section: 'work', sets: 4, reps: 6, restSeconds: 150, recommendedWeight: 95, notes: '' },
-      { name: 'Barbell Row', section: 'work', sets: 4, reps: 8, restSeconds: 120, recommendedWeight: 135, notes: '' },
-      { name: 'Pull-Ups', section: 'work', sets: 3, reps: 10, restSeconds: 120, recommendedWeight: 0, notes: '' },
-      { name: 'Tricep Dips', section: 'work', sets: 3, reps: 12, restSeconds: 90, recommendedWeight: 0, notes: '' },
-      { name: 'Chest Doorway Stretch', section: 'cooldown', sets: 1, reps: 1, restSeconds: 0, recommendedWeight: 0, notes: '30 seconds' },
-    ]
-  },
-  {
-    name: 'Full Body Beginner',
-    description: 'Perfect introduction to strength training',
-    exercises: [
-      { name: 'Jumping Jacks', section: 'warmup', sets: 2, reps: 20, restSeconds: 30, recommendedWeight: 0, notes: 'Get heart rate up' },
-      { name: 'Goblet Squat', section: 'work', sets: 3, reps: 10, restSeconds: 90, recommendedWeight: 25, notes: 'Learn squat pattern' },
-      { name: 'Push-Ups', section: 'work', sets: 3, reps: 10, restSeconds: 60, recommendedWeight: 0, notes: 'Modify on knees if needed' },
-      { name: 'Dumbbell Rows', section: 'work', sets: 3, reps: 10, restSeconds: 60, recommendedWeight: 20, notes: 'Each arm' },
-      { name: 'Dumbbell Shoulder Press', section: 'work', sets: 3, reps: 10, restSeconds: 60, recommendedWeight: 15, notes: '' },
-      { name: 'Plank', section: 'work', sets: 3, reps: 1, restSeconds: 60, recommendedWeight: 0, notes: 'Hold 30-45 seconds' },
-      { name: 'Glute Bridge', section: 'work', sets: 3, reps: 15, restSeconds: 45, recommendedWeight: 0, notes: '' },
-      { name: 'Cat-Cow Stretch', section: 'cooldown', sets: 1, reps: 10, restSeconds: 0, recommendedWeight: 0, notes: 'Slow and controlled' },
-    ]
-  },
-  {
-    name: 'HIIT Cardio & Core',
-    description: 'High intensity cardio with core work',
-    exercises: [
-      { name: 'High Knees', section: 'warmup', sets: 2, reps: 30, restSeconds: 30, recommendedWeight: 0, notes: '30 seconds' },
-      { name: 'Burpees', section: 'work', sets: 5, reps: 10, restSeconds: 60, recommendedWeight: 0, notes: 'Max effort' },
-      { name: 'Mountain Climbers', section: 'work', sets: 4, reps: 20, restSeconds: 45, recommendedWeight: 0, notes: 'Each leg' },
-      { name: 'Jump Rope', section: 'work', sets: 4, reps: 1, restSeconds: 60, recommendedWeight: 0, notes: '1 minute' },
-      { name: 'Plank', section: 'work', sets: 3, reps: 1, restSeconds: 30, recommendedWeight: 0, notes: '45-60 seconds' },
-      { name: 'Bicycle Crunches', section: 'work', sets: 3, reps: 20, restSeconds: 30, recommendedWeight: 0, notes: 'Each side' },
-      { name: 'Russian Twists', section: 'work', sets: 3, reps: 30, restSeconds: 30, recommendedWeight: 0, notes: 'Total reps' },
-      { name: 'Cobra Stretch', section: 'cooldown', sets: 1, reps: 1, restSeconds: 0, recommendedWeight: 0, notes: 'Hold 30 seconds' },
-    ]
-  },
-];
 
 export default function WorkoutBuilder() {
   const [view, setView] = useState('list');
   const [workouts, setWorkouts] = useState([]);
   const [clients, setClients] = useState([]);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
-  const [editingWorkoutId, setEditingWorkoutId] = useState(null);
   const [currentWorkout, setCurrentWorkout] = useState({
     name: '',
     description: '',
-    exercises: []
+    exercises: [] // Changed to single array with section property
   });
   const [showExerciseLibrary, setShowExerciseLibrary] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
   const [expandedExercises, setExpandedExercises] = useState({});
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -156,7 +63,7 @@ export default function WorkoutBuilder() {
       restSeconds: 60,
       recommendedWeight: 0,
       notes: '',
-      tempId: Date.now()
+      tempId: Date.now() // Temporary ID for tracking before save
     };
 
     setCurrentWorkout({
@@ -164,51 +71,6 @@ export default function WorkoutBuilder() {
       exercises: [...currentWorkout.exercises, newExercise]
     });
     setShowExerciseLibrary(false);
-  };
-
-  const handleUseTemplate = (template) => {
-    if (currentWorkout.exercises.length > 0) {
-      if (!confirm('This will replace your current workout. Continue?')) {
-        return;
-      }
-    }
-    
-    const exercisesWithTempIds = template.exercises.map(ex => ({
-      ...ex,
-      tempId: Date.now() + Math.random()
-    }));
-
-    setCurrentWorkout({
-      name: template.name,
-      description: template.description,
-      exercises: exercisesWithTempIds
-    });
-    setShowTemplates(false);
-  };
-
-  const handleEditWorkout = (workout) => {
-    // Convert legacy format to new format if needed
-    let exercises = [];
-    if (workout.exercises && Array.isArray(workout.exercises)) {
-      exercises = workout.exercises.map(ex => ({
-        ...ex,
-        tempId: Date.now() + Math.random()
-      }));
-    } else {
-      // Legacy format conversion
-      const warmup = (workout.warmup || []).map(ex => ({ ...ex, section: 'warmup', tempId: Date.now() + Math.random() }));
-      const work = (workout.work || []).map(ex => ({ ...ex, section: 'work', tempId: Date.now() + Math.random() }));
-      const cooldown = (workout.cooldown || []).map(ex => ({ ...ex, section: 'cooldown', tempId: Date.now() + Math.random() }));
-      exercises = [...warmup, ...work, ...cooldown];
-    }
-
-    setCurrentWorkout({
-      name: workout.name,
-      description: workout.description || '',
-      exercises: exercises
-    });
-    setEditingWorkoutId(workout.id);
-    setView('create');
   };
 
   const handleDuplicateExercise = (index) => {
@@ -284,35 +146,21 @@ export default function WorkoutBuilder() {
       const work = currentWorkout.exercises.filter(ex => ex.section === 'work');
       const cooldown = currentWorkout.exercises.filter(ex => ex.section === 'cooldown');
 
-      const workoutData = {
+      const workoutsRef = dbRef(db, 'workouts');
+      const newWorkoutRef = push(workoutsRef);
+      await set(newWorkoutRef, {
         name: currentWorkout.name,
         description: currentWorkout.description,
         exercises: currentWorkout.exercises, // New format
         warmup, // Legacy format
         work, // Legacy format
         cooldown, // Legacy format
-        updatedAt: new Date().toISOString()
-      };
+        createdAt: new Date().toISOString()
+      });
 
-      if (editingWorkoutId) {
-        // Update existing workout
-        const workoutRef = dbRef(db, `workouts/${editingWorkoutId}`);
-        await update(workoutRef, workoutData);
-        alert('Workout updated successfully!');
-      } else {
-        // Create new workout
-        const workoutsRef = dbRef(db, 'workouts');
-        const newWorkoutRef = push(workoutsRef);
-        await set(newWorkoutRef, {
-          ...workoutData,
-          createdAt: new Date().toISOString()
-        });
-        alert('Workout saved successfully!');
-      }
-
+      alert('Workout saved successfully!');
       setView('list');
       setCurrentWorkout({ name: '', description: '', exercises: [] });
-      setEditingWorkoutId(null);
       loadWorkouts();
     } catch (error) {
       console.error('Error saving workout:', error);
@@ -356,13 +204,12 @@ export default function WorkoutBuilder() {
         <button
           onClick={() => {
             if (currentWorkout.exercises.length > 0) {
-              if (!confirm('Discard changes? All unsaved changes will be lost.')) {
+              if (!confirm('Discard this workout? All unsaved changes will be lost.')) {
                 return;
               }
             }
             setView('list');
             setCurrentWorkout({ name: '', description: '', exercises: [] });
-            setEditingWorkoutId(null);
           }}
           className="text-emerald-600 hover:text-emerald-700 font-medium"
         >
@@ -370,26 +217,13 @@ export default function WorkoutBuilder() {
         </button>
 
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
-          <h2 className="text-2xl font-bold">
-            {editingWorkoutId ? 'Edit Workout' : 'Create New Workout'}
-          </h2>
-          <p className="text-emerald-100">
-            {editingWorkoutId ? 'Update your workout program' : 'Build a custom workout program'}
-          </p>
+          <h2 className="text-2xl font-bold">Create New Workout</h2>
+          <p className="text-emerald-100">Build a custom workout program</p>
         </div>
 
         {/* Workout Details */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Workout Details</h3>
-            <button
-              onClick={() => setShowTemplates(true)}
-              className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center gap-2 text-sm font-medium"
-            >
-              <FileText className="w-4 h-4" />
-              Use Template
-            </button>
-          </div>
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Workout Details</h3>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Workout Name *</label>
@@ -432,22 +266,13 @@ export default function WorkoutBuilder() {
           {currentWorkout.exercises.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
               <p className="text-gray-600 mb-4">No exercises added yet</p>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => setShowTemplates(true)}
-                  className="px-6 py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 inline-flex items-center gap-2"
-                >
-                  <FileText className="w-5 h-5" />
-                  Start from Template
-                </button>
-                <button
-                  onClick={() => setShowExerciseLibrary(true)}
-                  className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 inline-flex items-center gap-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Exercise
-                </button>
-              </div>
+              <button
+                onClick={() => setShowExerciseLibrary(true)}
+                className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 inline-flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Add Your First Exercise
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -678,50 +503,9 @@ export default function WorkoutBuilder() {
             className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-lg hover:opacity-90 flex items-center justify-center gap-2 shadow-lg"
           >
             <Save className="w-6 h-6" />
-            {editingWorkoutId ? 'Update Workout' : 'Save Workout'}
+            Save Workout
           </button>
         </div>
-
-        {/* Template Selection Modal */}
-        {showTemplates && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-bold text-gray-900">Workout Templates</h3>
-                  <button
-                    onClick={() => setShowTemplates(false)}
-                    className="text-gray-600 hover:text-gray-900 text-2xl font-bold"
-                  >
-                    ×
-                  </button>
-                </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  Choose a pre-built template to get started quickly
-                </p>
-              </div>
-              <div className="p-6 overflow-y-auto">
-                <div className="grid gap-4">
-                  {WORKOUT_TEMPLATES.map((template, idx) => (
-                    <div
-                      key={idx}
-                      className="border-2 border-gray-200 rounded-xl p-5 hover:border-emerald-500 transition cursor-pointer"
-                      onClick={() => handleUseTemplate(template)}
-                    >
-                      <h4 className="font-bold text-lg text-gray-900 mb-2">{template.name}</h4>
-                      <p className="text-sm text-gray-600 mb-3">{template.description}</p>
-                      <div className="flex gap-4 text-sm text-gray-500">
-                        <span>🔥 {template.exercises.filter(e => e.section === 'warmup').length} warmup</span>
-                        <span>💪 {template.exercises.filter(e => e.section === 'work').length} work</span>
-                        <span>🧘 {template.exercises.filter(e => e.section === 'cooldown').length} cooldown</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Exercise Library Modal */}
         {showExerciseLibrary && (
@@ -863,13 +647,6 @@ export default function WorkoutBuilder() {
                       </div>
                     </div>
                     <div className="flex gap-2 ml-4">
-                      <button
-                        onClick={() => handleEditWorkout(workout)}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 text-sm font-medium"
-                      >
-                        <Edit className="w-4 h-4" />
-                        Edit
-                      </button>
                       <button
                         onClick={() => {
                           setSelectedWorkout(workout);
