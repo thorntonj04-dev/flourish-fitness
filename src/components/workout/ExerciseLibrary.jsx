@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Video } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Trash2, Video, Search } from 'lucide-react';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { ref as dbRef, get, set, push, remove } from 'firebase/database';
 import { db, storage } from '../../firebase';
@@ -7,6 +7,7 @@ import { db, storage } from '../../firebase';
 export default function ExerciseLibrary({ onSelectExercise, selectedExercises = [] }) {
   const [exercises, setExercises] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [newExercise, setNewExercise] = useState({
     name: '',
     description: '',
@@ -92,6 +93,32 @@ export default function ExerciseLibrary({ onSelectExercise, selectedExercises = 
     }
   };
 
+  // Filter and sort exercises using useMemo for performance
+  const filteredExercises = useMemo(() => {
+    let filtered = exercises;
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(exercise => {
+        const name = exercise.name || '';
+        const muscleGroup = exercise.muscleGroup || '';
+        const description = exercise.description || '';
+        
+        return name.toLowerCase().includes(query) ||
+               muscleGroup.toLowerCase().includes(query) ||
+               description.toLowerCase().includes(query);
+      });
+    }
+    
+    // Sort alphabetically by name
+    return filtered.sort((a, b) => {
+      const nameA = a.name || '';
+      const nameB = b.name || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [exercises, searchQuery]);
+
   const muscleGroups = ['chest', 'back', 'shoulders', 'arms', 'legs', 'core', 'cardio', 'mobility'];
 
   return (
@@ -166,41 +193,85 @@ export default function ExerciseLibrary({ onSelectExercise, selectedExercises = 
         </div>
       )}
 
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search exercises by name, muscle group, or description..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {/* Exercise Count */}
+      <div className="text-sm text-gray-600">
+        Showing {filteredExercises.length} exercise{filteredExercises.length !== 1 ? 's' : ''}
+        {searchQuery && ` matching "${searchQuery}"`}
+      </div>
+
       <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
-        {exercises.map(exercise => {
-          const isSelected = selectedExercises.some(ex => ex.id === exercise.id);
-          return (
-            <div
-              key={exercise.id}
-              className={`p-3 border-2 rounded-lg transition cursor-pointer ${
-                isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-emerald-300'
-              }`}
-              onClick={() => onSelectExercise && onSelectExercise(exercise)}
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">{exercise.name}</div>
-                  <div className="text-xs text-gray-600 capitalize">{exercise.muscleGroup}</div>
-                  {exercise.videoUrl && (
-                    <div className="flex items-center gap-1 text-xs text-emerald-600 mt-1">
-                      <Video className="w-3 h-3" />
-                      Has video
-                    </div>
-                  )}
-                </div>
+        {filteredExercises.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            {searchQuery ? (
+              <>
+                <p>No exercises found matching "{searchQuery}"</p>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteExercise(exercise.id);
-                  }}
-                  className="text-red-600 hover:text-red-700 p-1"
+                  onClick={() => setSearchQuery('')}
+                  className="mt-2 text-emerald-600 hover:text-emerald-700 font-medium"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  Clear search
                 </button>
+              </>
+            ) : (
+              <p>No exercises in library. Add your first exercise above!</p>
+            )}
+          </div>
+        ) : (
+          filteredExercises.map(exercise => {
+            const isSelected = selectedExercises.some(ex => ex.id === exercise.id);
+            return (
+              <div
+                key={exercise.id}
+                className={`p-3 border-2 rounded-lg transition cursor-pointer ${
+                  isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:border-emerald-300'
+                }`}
+                onClick={() => onSelectExercise && onSelectExercise(exercise)}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{exercise.name}</div>
+                    <div className="text-xs text-gray-600 capitalize">{exercise.muscleGroup}</div>
+                    {exercise.videoUrl && (
+                      <div className="flex items-center gap-1 text-xs text-emerald-600 mt-1">
+                        <Video className="w-3 h-3" />
+                        Has video
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteExercise(exercise.id);
+                    }}
+                    className="text-red-600 hover:text-red-700 p-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

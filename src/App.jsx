@@ -18,7 +18,7 @@ import AdminPhotos from './components/admin/AdminPhotos';
 import AdminClientAnalytics from './components/admin/AdminClientAnalytics';
 import DebugClientList from './components/admin/DebugClientList';
 import AssignUserRoles from './components/admin/AssignUserRoles';
-import ExercisePopulator from './components/admin/ExercisePopulator';
+
 
 // Client Components
 import MyWorkouts from './components/client/MyWorkouts';
@@ -221,9 +221,7 @@ export default function App() {
             {currentView === 'workouts' && (
               userRole === 'admin' ? <WorkoutBuilder /> : <MyWorkouts user={user} />
             )}
-                        {currentView === 'workouts' && (
-              userRole === 'admin' ? <ExercisePopulator /> : <MyWorkouts user={user} />
-            )}
+
 		{currentView === 'progress' && userRole === 'client' && <ProgressDashboard user={user} />}
 		{currentView === 'history' && userRole === 'client' && <WorkoutHistory user={user} />}
 		{currentView === 'records' && userRole === 'client' && <PersonalRecords user={user} />}

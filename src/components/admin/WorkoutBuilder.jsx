@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, Calendar, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, Edit, FileText } from 'lucide-react';
+import { Plus, Save, Calendar, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, Edit, FileText, Star } from 'lucide-react';
 import { ref as dbRef, get, set, push, remove, update } from 'firebase/database';
 import { db } from '../../firebase';
 import ExerciseLibrary from '../workout/ExerciseLibrary';
 
-// WORKOUT TEMPLATES
-const WORKOUT_TEMPLATES = [
+// WORKOUT TEMPLATES - Default templates
+const DEFAULT_WORKOUT_TEMPLATES = [
   {
     name: 'Push Day (Chest, Shoulders, Triceps)',
     description: 'Classic push workout focusing on chest, shoulders, and triceps',
+    isDefault: true,
     exercises: [
       { name: 'Treadmill Incline Walk', section: 'warmup', sets: 1, reps: 5, restSeconds: 0, recommendedWeight: 0, notes: '5 minutes at moderate pace' },
       { name: 'Arm Circles', section: 'warmup', sets: 2, reps: 15, restSeconds: 30, recommendedWeight: 0, notes: 'Forward and backward' },
@@ -24,6 +25,7 @@ const WORKOUT_TEMPLATES = [
   {
     name: 'Pull Day (Back, Biceps)',
     description: 'Complete back and biceps workout',
+    isDefault: true,
     exercises: [
       { name: 'Rowing Machine', section: 'warmup', sets: 1, reps: 5, restSeconds: 0, recommendedWeight: 0, notes: '5 minutes light rowing' },
       { name: 'Band Pull-Aparts', section: 'warmup', sets: 2, reps: 20, restSeconds: 30, recommendedWeight: 0, notes: 'Activate rear delts' },
@@ -39,6 +41,7 @@ const WORKOUT_TEMPLATES = [
   {
     name: 'Leg Day',
     description: 'Complete lower body workout',
+    isDefault: true,
     exercises: [
       { name: 'Stationary Bike', section: 'warmup', sets: 1, reps: 5, restSeconds: 0, recommendedWeight: 0, notes: '5 minutes light cycling' },
       { name: 'Bodyweight Squats', section: 'warmup', sets: 2, reps: 15, restSeconds: 30, recommendedWeight: 0, notes: 'Focus on form' },
@@ -55,6 +58,7 @@ const WORKOUT_TEMPLATES = [
   {
     name: 'Upper Body Strength',
     description: 'Compound upper body movements',
+    isDefault: true,
     exercises: [
       { name: 'Arm Circles', section: 'warmup', sets: 2, reps: 20, restSeconds: 30, recommendedWeight: 0, notes: 'Dynamic warmup' },
       { name: 'Barbell Bench Press', section: 'work', sets: 5, reps: 5, restSeconds: 180, recommendedWeight: 155, notes: 'Heavy strength work' },
@@ -68,6 +72,7 @@ const WORKOUT_TEMPLATES = [
   {
     name: 'Full Body Beginner',
     description: 'Perfect introduction to strength training',
+    isDefault: true,
     exercises: [
       { name: 'Jumping Jacks', section: 'warmup', sets: 2, reps: 20, restSeconds: 30, recommendedWeight: 0, notes: 'Get heart rate up' },
       { name: 'Goblet Squat', section: 'work', sets: 3, reps: 10, restSeconds: 90, recommendedWeight: 25, notes: 'Learn squat pattern' },
@@ -82,6 +87,7 @@ const WORKOUT_TEMPLATES = [
   {
     name: 'HIIT Cardio & Core',
     description: 'High intensity cardio with core work',
+    isDefault: true,
     exercises: [
       { name: 'High Knees', section: 'warmup', sets: 2, reps: 30, restSeconds: 30, recommendedWeight: 0, notes: '30 seconds' },
       { name: 'Burpees', section: 'work', sets: 5, reps: 10, restSeconds: 60, recommendedWeight: 0, notes: 'Max effort' },
@@ -99,6 +105,7 @@ export default function WorkoutBuilder() {
   const [view, setView] = useState('list');
   const [workouts, setWorkouts] = useState([]);
   const [clients, setClients] = useState([]);
+  const [customTemplates, setCustomTemplates] = useState([]);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [editingWorkoutId, setEditingWorkoutId] = useState(null);
   const [currentWorkout, setCurrentWorkout] = useState({
@@ -108,13 +115,18 @@ export default function WorkoutBuilder() {
   });
   const [showExerciseLibrary, setShowExerciseLibrary] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false);
   const [expandedExercises, setExpandedExercises] = useState({});
+  const [templateName, setTemplateName] = useState('');
+  const [templateDescription, setTemplateDescription] = useState('');
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   useEffect(() => {
     loadWorkouts();
     loadClients();
+    loadCustomTemplates();
   }, []);
 
   const loadWorkouts = async () => {
@@ -147,6 +159,66 @@ export default function WorkoutBuilder() {
     }
   };
 
+  const loadCustomTemplates = async () => {
+    try {
+      const templatesRef = dbRef(db, 'workout-templates');
+      const snapshot = await get(templatesRef);
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const templateList = Object.entries(data).map(([id, template]) => ({ id, ...template }));
+        setCustomTemplates(templateList);
+      }
+    } catch (error) {
+      console.error('Error loading templates:', error);
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim()) {
+      alert('Please enter a template name');
+      return;
+    }
+
+    if (currentWorkout.exercises.length === 0) {
+      alert('Cannot save an empty workout as a template');
+      return;
+    }
+
+    try {
+      const templatesRef = dbRef(db, 'workout-templates');
+      const newTemplateRef = push(templatesRef);
+      await set(newTemplateRef, {
+        name: templateName,
+        description: templateDescription,
+        exercises: currentWorkout.exercises,
+        isDefault: false,
+        createdAt: new Date().toISOString()
+      });
+
+      alert('Template saved successfully!');
+      setShowSaveAsTemplate(false);
+      setTemplateName('');
+      setTemplateDescription('');
+      loadCustomTemplates();
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('Failed to save template');
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId) => {
+    if (!confirm('Delete this template? This cannot be undone.')) return;
+
+    try {
+      await remove(dbRef(db, `workout-templates/${templateId}`));
+      loadCustomTemplates();
+      alert('Template deleted successfully');
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      alert('Failed to delete template');
+    }
+  };
+
   const handleSelectExercise = (exercise, section = 'work') => {
     const newExercise = {
       ...exercise,
@@ -156,6 +228,9 @@ export default function WorkoutBuilder() {
       restSeconds: 60,
       recommendedWeight: 0,
       notes: '',
+      useDuration: false,
+      durationMinutes: 0,
+      durationSeconds: 30,
       tempId: Date.now()
     };
 
@@ -267,6 +342,47 @@ export default function WorkoutBuilder() {
     });
   };
 
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    // Add a slight transparency to show it's being dragged
+    e.currentTarget.style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e) => {
+    e.currentTarget.style.opacity = '1';
+    setDraggedIndex(null);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      return;
+    }
+
+    const newExercises = [...currentWorkout.exercises];
+    const draggedExercise = newExercises[draggedIndex];
+    
+    // Remove from old position
+    newExercises.splice(draggedIndex, 1);
+    
+    // Insert at new position
+    newExercises.splice(dropIndex, 0, draggedExercise);
+    
+    setCurrentWorkout({
+      ...currentWorkout,
+      exercises: newExercises
+    });
+    
+    setDraggedIndex(null);
+  };
+
   const handleSaveWorkout = async () => {
     if (!currentWorkout.name.trim()) {
       alert('Please enter a workout name');
@@ -350,6 +466,9 @@ export default function WorkoutBuilder() {
     }
   };
 
+  // Combine default and custom templates
+  const allTemplates = [...DEFAULT_WORKOUT_TEMPLATES, ...customTemplates];
+
   if (view === 'create') {
     return (
       <div className="space-y-6 pb-20">
@@ -382,13 +501,28 @@ export default function WorkoutBuilder() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold text-gray-900">Workout Details</h3>
-            <button
-              onClick={() => setShowTemplates(true)}
-              className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center gap-2 text-sm font-medium"
-            >
-              <FileText className="w-4 h-4" />
-              Use Template
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowTemplates(true)}
+                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 flex items-center gap-2 text-sm font-medium"
+              >
+                <FileText className="w-4 h-4" />
+                Use Template
+              </button>
+              {currentWorkout.exercises.length > 0 && (
+                <button
+                  onClick={() => {
+                    setTemplateName(currentWorkout.name);
+                    setTemplateDescription(currentWorkout.description);
+                    setShowSaveAsTemplate(true);
+                  }}
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 flex items-center gap-2 text-sm font-medium"
+                >
+                  <Star className="w-4 h-4" />
+                  Save as Template
+                </button>
+              )}
+            </div>
           </div>
           <div className="space-y-4">
             <div>
@@ -455,34 +589,20 @@ export default function WorkoutBuilder() {
                 <div
                   key={exercise.tempId || idx}
                   className="border-2 border-gray-200 rounded-xl overflow-hidden hover:border-emerald-300 transition"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, idx)}
                 >
                   {/* Exercise Header */}
                   <div
-                    className="p-4 bg-gray-50 cursor-pointer"
+                    className="p-4 bg-gray-50 cursor-move"
                     onClick={() => toggleExerciseExpanded(idx)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex flex-col gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveExercise(idx, 'up');
-                          }}
-                          disabled={idx === 0}
-                          className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveExercise(idx, 'down');
-                          }}
-                          disabled={idx === currentWorkout.exercises.length - 1}
-                          className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
+                        <GripVertical className="w-5 h-5 text-gray-400" title="Drag to reorder" />
                       </div>
                       
                       <div className="flex-1">
@@ -494,8 +614,17 @@ export default function WorkoutBuilder() {
                         </div>
                         <div className="font-bold text-gray-900">{exercise.name}</div>
                         <div className="text-sm text-gray-600 mt-1">
-                          {exercise.sets} sets × {exercise.reps} reps
-                          {exercise.recommendedWeight > 0 && ` @ ${exercise.recommendedWeight} lbs`}
+                          {exercise.useDuration ? (
+                            <>
+                              {exercise.durationMinutes > 0 && `${exercise.durationMinutes}m `}
+                              {exercise.durationSeconds}s duration
+                            </>
+                          ) : (
+                            <>
+                              {exercise.sets} sets × {exercise.reps} reps
+                              {exercise.recommendedWeight > 0 && ` @ ${exercise.recommendedWeight} lbs`}
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -550,62 +679,127 @@ export default function WorkoutBuilder() {
                         </div>
                       </div>
 
-                      {/* Sets, Reps, Rest */}
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Sets</label>
+                      {/* Duration Mode Toggle */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <label className="flex items-center gap-3 cursor-pointer">
                           <input
-                            type="number"
-                            value={exercise.sets}
-                            onChange={(e) => handleUpdateExercise(idx, 'sets', parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-emerald-500"
-                            min="1"
-                            max="20"
+                            type="checkbox"
+                            checked={exercise.useDuration || false}
+                            onChange={(e) => handleUpdateExercise(idx, 'useDuration', e.target.checked)}
+                            className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                           />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Reps</label>
-                          <input
-                            type="number"
-                            value={exercise.reps}
-                            onChange={(e) => handleUpdateExercise(idx, 'reps', parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-emerald-500"
-                            min="1"
-                            max="100"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Rest (sec)</label>
-                          <input
-                            type="number"
-                            value={exercise.restSeconds}
-                            onChange={(e) => handleUpdateExercise(idx, 'restSeconds', parseInt(e.target.value) || 0)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-emerald-500"
-                            min="0"
-                            max="600"
-                            step="15"
-                          />
-                        </div>
+                          <div>
+                            <div className="font-medium text-gray-900">Use Time Duration</div>
+                            <div className="text-sm text-gray-600">
+                              {exercise.useDuration 
+                                ? 'Exercise is based on time duration' 
+                                : 'Switch to time-based exercise (e.g., plank, running)'}
+                            </div>
+                          </div>
+                        </label>
                       </div>
 
-                      {/* Recommended Weight */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Recommended Weight (lbs) - Optional
-                        </label>
-                        <input
-                          type="number"
-                          value={exercise.recommendedWeight || 0}
-                          onChange={(e) => handleUpdateExercise(idx, 'recommendedWeight', parseInt(e.target.value) || 0)}
-                          placeholder="Leave at 0 if not applicable"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
-                          min="0"
-                          step="5"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Suggest a starting weight for this exercise (optional)
-                        </p>
-                      </div>
+                      {/* Duration Inputs (shown when useDuration is true) */}
+                      {exercise.useDuration ? (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Minutes</label>
+                              <input
+                                type="number"
+                                value={exercise.durationMinutes || 0}
+                                onChange={(e) => handleUpdateExercise(idx, 'durationMinutes', parseInt(e.target.value) || 0)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-blue-500"
+                                min="0"
+                                max="60"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Seconds</label>
+                              <input
+                                type="number"
+                                value={exercise.durationSeconds || 0}
+                                onChange={(e) => handleUpdateExercise(idx, 'durationSeconds', parseInt(e.target.value) || 0)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-blue-500"
+                                min="0"
+                                max="59"
+                              />
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Rest Between Rounds (sec)</label>
+                            <input
+                              type="number"
+                              value={exercise.restSeconds}
+                              onChange={(e) => handleUpdateExercise(idx, 'restSeconds', parseInt(e.target.value) || 0)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-blue-500"
+                              min="0"
+                              max="600"
+                              step="15"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Sets, Reps, Rest (shown when useDuration is false) */}
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Sets</label>
+                              <input
+                                type="number"
+                                value={exercise.sets}
+                                onChange={(e) => handleUpdateExercise(idx, 'sets', parseInt(e.target.value) || 1)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-emerald-500"
+                                min="1"
+                                max="20"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Reps</label>
+                              <input
+                                type="number"
+                                value={exercise.reps}
+                                onChange={(e) => handleUpdateExercise(idx, 'reps', parseInt(e.target.value) || 1)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-emerald-500"
+                                min="1"
+                                max="100"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Rest (sec)</label>
+                              <input
+                                type="number"
+                                value={exercise.restSeconds}
+                                onChange={(e) => handleUpdateExercise(idx, 'restSeconds', parseInt(e.target.value) || 0)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-lg focus:ring-2 focus:ring-emerald-500"
+                                min="0"
+                                max="600"
+                                step="15"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Recommended Weight */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Recommended Weight (lbs) - Optional
+                            </label>
+                            <input
+                              type="number"
+                              value={exercise.recommendedWeight || 0}
+                              onChange={(e) => handleUpdateExercise(idx, 'recommendedWeight', parseInt(e.target.value) || 0)}
+                              placeholder="Leave at 0 if not applicable"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
+                              min="0"
+                              step="5"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Suggest a starting weight for this exercise (optional)
+                            </p>
+                          </div>
+                        </>
+                      )}
 
                       {/* Notes */}
                       <div>
@@ -682,6 +876,55 @@ export default function WorkoutBuilder() {
           </button>
         </div>
 
+        {/* Save as Template Modal */}
+        {showSaveAsTemplate && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Save as Template</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Template Name *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g., My Custom Push Day"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description (optional)</label>
+                  <textarea
+                    placeholder="What makes this template special?"
+                    value={templateDescription}
+                    onChange={(e) => setTemplateDescription(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                    rows="2"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveAsTemplate}
+                    className="flex-1 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 font-medium"
+                  >
+                    Save Template
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowSaveAsTemplate(false);
+                      setTemplateName('');
+                      setTemplateDescription('');
+                    }}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Template Selection Modal */}
         {showTemplates && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -702,7 +945,48 @@ export default function WorkoutBuilder() {
               </div>
               <div className="p-6 overflow-y-auto">
                 <div className="grid gap-4">
-                  {WORKOUT_TEMPLATES.map((template, idx) => (
+                  {/* Custom Templates Section */}
+                  {customTemplates.length > 0 && (
+                    <>
+                      <h4 className="font-bold text-lg text-gray-900 flex items-center gap-2">
+                        <Star className="w-5 h-5 text-yellow-500" />
+                        Your Custom Templates
+                      </h4>
+                      {customTemplates.map((template) => (
+                        <div
+                          key={template.id}
+                          className="border-2 border-yellow-200 rounded-xl p-5 hover:border-yellow-400 transition"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div
+                              className="flex-1 cursor-pointer"
+                              onClick={() => handleUseTemplate(template)}
+                            >
+                              <h4 className="font-bold text-lg text-gray-900 mb-2">{template.name}</h4>
+                              <p className="text-sm text-gray-600 mb-3">{template.description}</p>
+                              <div className="flex gap-4 text-sm text-gray-500">
+                                <span>🔥 {template.exercises.filter(e => e.section === 'warmup').length} warmup</span>
+                                <span>💪 {template.exercises.filter(e => e.section === 'work').length} work</span>
+                                <span>🧘 {template.exercises.filter(e => e.section === 'cooldown').length} cooldown</span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteTemplate(template.id)}
+                              className="ml-4 p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                              title="Delete template"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="border-t border-gray-300 my-4"></div>
+                      <h4 className="font-bold text-lg text-gray-900">Default Templates</h4>
+                    </>
+                  )}
+
+                  {/* Default Templates */}
+                  {DEFAULT_WORKOUT_TEMPLATES.map((template, idx) => (
                     <div
                       key={idx}
                       className="border-2 border-gray-200 rounded-xl p-5 hover:border-emerald-500 transition cursor-pointer"
