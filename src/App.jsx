@@ -16,7 +16,6 @@ import WorkoutBuilder from './components/admin/WorkoutBuilder';
 import ManageClients from './components/admin/ManageClients';
 import Reports from './components/admin/Reports';
 import AdminNutrition from './components/admin/AdminNutrition';
-import AdminPhotos from './components/admin/AdminPhotos';
 import AdminClientAnalytics from './components/admin/AdminClientAnalytics';
 import DebugClientList from './components/admin/DebugClientList';
 import AssignUserRoles from './components/admin/AssignUserRoles';
@@ -28,7 +27,8 @@ import AboutModal from './components/admin/AboutModal';
 import MyWorkouts from './components/client/MyWorkouts';
 import MyGoals from './components/client/MyGoals';
 import NutritionLogger from './components/client/NutritionLogger';
-import PhotoUpload from './components/client/PhotoUpload';
+import MeasurementTracking from './components/client/MeasurementTracking';
+import ClientMeasurements from './components/admin/ClientMeasurements';
 import ProgressDashboard from './components/client/ProgressDashboard';
 import WorkoutHistory from './components/client/WorkoutHistory';
 import PersonalRecords from './components/client/PersonalRecords';
@@ -419,6 +419,12 @@ export default function App() {
             {currentView === 'roles' && userRole === 'admin' && (
               <AssignUserRoles />
             )}
+            {currentView === 'photos' && userRole === 'admin' && (
+            <ClientMeasurements />
+            )}
+	    {currentView === 'nutrition' && userRole === 'admin' && (
+            <AdminNutrition />
+            )}
 
             {/* ========== GOALS VIEW ========== */}
             {currentView === 'goals' && userRole === 'client' && (
@@ -427,12 +433,12 @@ export default function App() {
 
             {/* ========== NUTRITION VIEWS ========== */}
             {currentView === 'nutrition' && (
-              userRole === 'admin' ? <AdminNutrition /> : <NutritionLogger user={user} />
+              userRole === 'client' && <NutritionLogger user={user} />
             )}
 
             {/* ========== PHOTO VIEWS ========== */}
             {currentView === 'photos' && (
-              userRole === 'admin' ? <AdminPhotos /> : <PhotoUpload user={user} />
+            userRole === 'client' && <MeasurementTracking user={user} />
             )}
           </div>
         </main>
