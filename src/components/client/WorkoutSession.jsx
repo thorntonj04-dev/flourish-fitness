@@ -264,20 +264,20 @@ export default function WorkoutSession({ workout, userId, onExit }) {
   const prevSet = getPreviousSetData();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800">
       {showCelebration && <Confetti recycle={false} numberOfPieces={500} />}
       
       {/* Header with Progress */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto p-4">
           <div className="flex justify-between items-center mb-3">
             <button
               onClick={onExit}
-              className="text-gray-600 hover:text-gray-900"
+              className="text-gray-600 hover:text-gray-900 dark:text-white"
             >
               <X className="w-6 h-6" />
             </button>
-            <h1 className="text-lg font-bold text-gray-900">{workout.name}</h1>
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white">{workout.name}</h1>
             <div className="text-sm font-medium text-emerald-600">
               {progress}%
             </div>
@@ -310,13 +310,13 @@ export default function WorkoutSession({ workout, userId, onExit }) {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-4 pb-32">
         {/* Current Exercise Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 {currentExercise.name}
               </h2>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                 <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full font-medium">
                   {currentExercise.section}
                 </span>
@@ -326,7 +326,7 @@ export default function WorkoutSession({ workout, userId, onExit }) {
               </div>
             </div>
             {currentExercise.videoUrl && (
-              <button className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100">
+              <button className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg hover:bg-blue-100">
                 <Play className="w-5 h-5" />
               </button>
             )}
@@ -334,11 +334,11 @@ export default function WorkoutSession({ workout, userId, onExit }) {
 
           {/* Previous Workout Comparison */}
           {prevSet && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
               <div className="text-sm font-medium text-blue-900 mb-1">
                 📊 Last Time:
               </div>
-              <div className="text-lg font-bold text-blue-700">
+              <div className="text-lg font-bold text-blue-700 dark:text-blue-400">
                 {prevSet.weight} lbs × {prevSet.reps} reps
               </div>
               <div className="text-xs text-blue-600 mt-1">
@@ -374,11 +374,11 @@ export default function WorkoutSession({ workout, userId, onExit }) {
 
           {/* Notes */}
           {currentExercise.notes && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
               <div className="text-sm font-medium text-yellow-900 mb-1">
                 💡 Coach's Notes:
               </div>
-              <div className="text-sm text-yellow-800">{currentExercise.notes}</div>
+              <div className="text-sm text-yellow-800 dark:text-yellow-300">{currentExercise.notes}</div>
             </div>
           )}
 
@@ -393,17 +393,17 @@ export default function WorkoutSession({ workout, userId, onExit }) {
 
         {/* Completed Sets */}
         {currentExercise.sets.some(s => s.completed) && (
-          <div className="bg-white rounded-xl shadow p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4">
             <h3 className="font-bold text-gray-900 mb-3">Completed Sets</h3>
             <div className="space-y-2">
               {currentExercise.sets.map((set, idx) => (
                 set.completed && (
-                  <div key={idx} className="flex justify-between items-center p-2 bg-emerald-50 rounded-lg">
+                  <div key={idx} className="flex justify-between items-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
                     <div className="flex items-center gap-2">
                       <Check className="w-5 h-5 text-emerald-600" />
-                      <span className="font-medium text-gray-900">Set {idx + 1}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">Set {idx + 1}</span>
                     </div>
-                    <div className="text-sm font-bold text-emerald-700">
+                    <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
                       {set.weight} lbs × {set.reps} reps
                     </div>
                   </div>
@@ -453,7 +453,7 @@ function SetLogForm({ defaultWeight, defaultReps, useDuration, onComplete }) {
             type="number"
             value={weight}
             onChange={(e) => setWeight(parseInt(e.target.value) || 0)}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-2xl font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+            className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-center text-2xl font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
           />
         </div>
         <div>
@@ -462,7 +462,7 @@ function SetLogForm({ defaultWeight, defaultReps, useDuration, onComplete }) {
             type="number"
             value={reps}
             onChange={(e) => setReps(parseInt(e.target.value) || 0)}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-center text-2xl font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+            className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-center text-2xl font-bold focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
           />
         </div>
       </div>
@@ -472,7 +472,7 @@ function SetLogForm({ defaultWeight, defaultReps, useDuration, onComplete }) {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="How did this set feel? Any notes..."
-          className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+          className="w-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
           rows="2"
         />
       )}
@@ -480,7 +480,7 @@ function SetLogForm({ defaultWeight, defaultReps, useDuration, onComplete }) {
       <div className="flex gap-2">
         <button
           onClick={() => setShowNotes(!showNotes)}
-          className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           {showNotes ? 'Hide' : 'Add'} Notes
         </button>

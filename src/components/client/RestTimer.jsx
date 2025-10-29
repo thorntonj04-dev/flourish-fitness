@@ -94,7 +94,7 @@ export default function RestTimer({ duration, onComplete, onSkip }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-md w-full p-8 relative overflow-hidden">
         {/* Background Progress */}
         <div
           className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 transition-all duration-1000"
@@ -104,11 +104,11 @@ export default function RestTimer({ duration, onComplete, onSkip }) {
         <div className="relative z-10">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full mb-4">
               <Timer className="w-8 h-8 text-emerald-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Rest Time</h2>
-            <p className="text-gray-600">Catch your breath and get ready!</p>
+            <p className="text-gray-600 dark:text-gray-300">Catch your breath and get ready!</p>
           </div>
 
           {/* Timer Display */}
@@ -136,35 +136,35 @@ export default function RestTimer({ duration, onComplete, onSkip }) {
             <button
               onClick={() => addTime(-15)}
               disabled={timeLeft <= 15}
-              className="flex flex-col items-center justify-center py-3 px-2 bg-gray-100 rounded-xl hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex flex-col items-center justify-center py-3 px-2 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Minus className="w-5 h-5 text-gray-700 mb-1" />
-              <span className="text-xs font-medium text-gray-700">-15s</span>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">-15s</span>
             </button>
             
             <button
               onClick={togglePause}
-              className="flex flex-col items-center justify-center py-3 px-2 bg-emerald-100 rounded-xl hover:bg-emerald-200"
+              className="flex flex-col items-center justify-center py-3 px-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl hover:bg-emerald-200 dark:hover:bg-emerald-900/50"
             >
               {isPaused ? (
                 <>
                   <Timer className="w-5 h-5 text-emerald-700 mb-1" />
-                  <span className="text-xs font-medium text-emerald-700">Resume</span>
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Resume</span>
                 </>
               ) : (
                 <>
                   <Timer className="w-5 h-5 text-emerald-700 mb-1" />
-                  <span className="text-xs font-medium text-emerald-700">Pause</span>
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Pause</span>
                 </>
               )}
             </button>
             
             <button
               onClick={() => addTime(15)}
-              className="flex flex-col items-center justify-center py-3 px-2 bg-gray-100 rounded-xl hover:bg-gray-200"
+              className="flex flex-col items-center justify-center py-3 px-2 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600"
             >
               <Plus className="w-5 h-5 text-gray-700 mb-1" />
-              <span className="text-xs font-medium text-gray-700">+15s</span>
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">+15s</span>
             </button>
           </div>
 

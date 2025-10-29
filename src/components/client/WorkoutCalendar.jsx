@@ -118,7 +118,7 @@ export default function WorkoutCalendar({ userId, onStartWorkout, onPreviewWorko
   const days = getDaysInMonth(currentDate);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 pb-20">
       <div className="max-w-4xl mx-auto p-4">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white mb-6 shadow-lg">
@@ -135,26 +135,26 @@ export default function WorkoutCalendar({ userId, onStartWorkout, onPreviewWorko
         </div>
 
         {/* Calendar Navigation */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-4">
           <div className="flex items-center justify-between">
             <button
               onClick={goToPreviousMonth}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition"
             >
-              <ChevronLeft className="w-6 h-6 text-gray-600" />
+              <ChevronLeft className="w-6 h-6 text-gray-600 dark:text-gray-300" />
             </button>
-            <h2 className="text-xl font-bold text-gray-900">{monthName}</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{monthName}</h2>
             <button
               onClick={goToNextMonth}
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition"
             >
-              <ChevronRight className="w-6 h-6 text-gray-600" />
+              <ChevronRight className="w-6 h-6 text-gray-600 dark:text-gray-300" />
             </button>
           </div>
         </div>
 
         {/* Calendar Grid */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-6">
           {/* Day Headers */}
           <div className="grid grid-cols-7 gap-2 mb-2">
             {shortDays.map(day => (
@@ -186,7 +186,7 @@ export default function WorkoutCalendar({ userId, onStartWorkout, onPreviewWorko
                           ? 'bg-blue-50 border border-blue-200 hover:bg-blue-100'
                           : workout && past && !completed
                           ? 'bg-red-50 border border-red-200'
-                          : 'hover:bg-gray-50 border border-gray-200'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-700 border border-gray-200'
                       }`}
                     >
                       <span className={`text-sm font-medium ${
@@ -213,31 +213,31 @@ export default function WorkoutCalendar({ userId, onStartWorkout, onPreviewWorko
         </div>
 
         {/* Legend */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Legend</h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-emerald-100 border-2 border-emerald-500" />
-              <span className="text-gray-600">Today</span>
+              <span className="text-gray-600 dark:text-gray-300">Today</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-green-50 border border-green-200" />
-              <span className="text-gray-600">Completed</span>
+              <span className="text-gray-600 dark:text-gray-300">Completed</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-blue-50 border border-blue-200" />
-              <span className="text-gray-600">Scheduled</span>
+              <span className="text-gray-600 dark:text-gray-300">Scheduled</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-red-50 border border-red-200" />
-              <span className="text-gray-600">Missed</span>
+              <span className="text-gray-600 dark:text-gray-300">Missed</span>
             </div>
           </div>
         </div>
 
         {/* Selected Date Details */}
         {selectedDate && (
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {selectedDate.toLocaleDateString('en-US', { 
                 weekday: 'long', 
@@ -256,18 +256,18 @@ export default function WorkoutCalendar({ userId, onStartWorkout, onPreviewWorko
                 return (
                   <div className="text-center py-8">
                     <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-600">No workout scheduled for this day</p>
+                    <p className="text-gray-600 dark:text-gray-300">No workout scheduled for this day</p>
                   </div>
                 );
               }
               
               return (
                 <div>
-                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 mb-4">
+                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg p-4 mb-4">
                     <div className="font-semibold text-gray-900 mb-1">
                       {workout.workoutName}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
                       Assigned by your trainer
                     </div>
                   </div>
@@ -303,7 +303,7 @@ export default function WorkoutCalendar({ userId, onStartWorkout, onPreviewWorko
                     )}
                     <button
                       onClick={() => onPreviewWorkout(workout.workoutId)}
-                      className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 flex items-center justify-center gap-2"
+                      className="flex-1 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-700 flex items-center justify-center gap-2"
                     >
                       <CalendarIcon className="w-5 h-5" />
                       Preview

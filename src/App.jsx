@@ -43,6 +43,7 @@ import WorkoutCalendar from './components/client/WorkoutCalendar';
 // SHARED COMPONENTS
 // ============================================
 import { adminNavItems, clientNavItems } from './components/shared/Navigation';
+import DarkModeToggle from './components/shared/DarkModeToggle';
 
 export default function App() {
   // ============================================
@@ -256,27 +257,30 @@ export default function App() {
   const navItems = userRole === 'admin' ? adminNavItems : clientNavItems;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* ============================================ */}
       {/* HEADER */}
       {/* ============================================ */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
+            {/* Dark Mode Toggle */}
+            <DarkModeToggle />
+            
             <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
               <Dumbbell className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-gray-900">Flourish Fitness</span>
+            <span className="font-bold text-gray-900 dark:text-white">Flourish Fitness</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="text-sm font-medium text-gray-900">{user.email}</div>
-              <div className="text-xs text-emerald-600 capitalize font-medium">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</div>
+              <div className="text-xs text-emerald-600 dark:text-emerald-400 capitalize font-medium">
                 {userRole === 'admin' ? '👑 Admin' : '💪 Client'}
               </div>
             </div>
-            <button onClick={handleSignOut} className="p-2 hover:bg-gray-100 rounded-lg transition">
-              <LogOut className="w-5 h-5" />
+            <button onClick={handleSignOut} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
+              <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
           </div>
         </div>
@@ -286,7 +290,7 @@ export default function App() {
         {/* ============================================ */}
         {/* SIDEBAR NAVIGATION (Desktop) */}
         {/* ============================================ */}
-        <aside className="w-64 bg-white border-r border-gray-200 min-h-screen p-4 hidden md:block">
+        <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen p-4 hidden md:block">
           <nav className="space-y-2">
             {navItems.map(item => {
               const Icon = item.icon;
@@ -297,7 +301,7 @@ export default function App() {
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
                     currentView === item.id 
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white' 
-                      : 'text-gray-600 hover:bg-gray-100'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -420,7 +424,7 @@ export default function App() {
       {/* ============================================ */}
       {/* MOBILE BOTTOM NAVIGATION */}
       {/* ============================================ */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 z-40">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 z-40">
         <div className="flex justify-around">
           {navItems.slice(0, 4).map(item => {
             const Icon = item.icon;
@@ -429,7 +433,7 @@ export default function App() {
                 key={item.id}
                 onClick={() => setCurrentView(item.id)}
                 className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${
-                  currentView === item.id ? 'text-emerald-500' : 'text-gray-600'
+                  currentView === item.id ? 'text-emerald-500' : 'text-gray-600 dark:text-gray-300'
                 }`}
               >
                 <Icon className="w-6 h-6" />

@@ -122,7 +122,7 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 relative overflow-hidden">
       {showConfetti && (
         <Confetti
           width={window.innerWidth}
@@ -149,7 +149,7 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Workout Complete! 🎉
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-xl text-gray-600 dark:text-gray-300">
             {workout.name}
           </p>
         </div>
@@ -157,36 +157,36 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
         {/* Stats Cards */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {/* Streak */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center">
             <Flame className="w-8 h-8 text-orange-500 mx-auto mb-2" />
             <div className="text-3xl font-bold text-gray-900 mb-1">
               {stats?.currentStreak || 1}
             </div>
-            <div className="text-sm text-gray-600">Day Streak</div>
+            <div className="text-sm text-gray-600 dark:text-gray-300">Day Streak</div>
           </div>
 
           {/* Total Workouts */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center">
             <TrendingUp className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
             <div className="text-3xl font-bold text-gray-900 mb-1">
               {stats?.totalWorkouts || 1}
             </div>
-            <div className="text-sm text-gray-600">Total</div>
+            <div className="text-sm text-gray-600 dark:text-gray-300">Total</div>
           </div>
 
           {/* Longest Streak */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center">
             <Star className="w-8 h-8 text-purple-500 mx-auto mb-2" />
             <div className="text-3xl font-bold text-gray-900 mb-1">
               {stats?.longestStreak || 1}
             </div>
-            <div className="text-sm text-gray-600">Best Streak</div>
+            <div className="text-sm text-gray-600 dark:text-gray-300">Best Streak</div>
           </div>
         </div>
 
         {/* New Achievements */}
         {achievements.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
             <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Trophy className="w-6 h-6 text-yellow-500" />
               New Achievements!
@@ -195,12 +195,12 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
               {achievements.map((achievement, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border-2 border-yellow-200 animate-pulse"
+                  className="flex items-center gap-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-xl border-2 border-yellow-200 dark:border-yellow-800 animate-pulse"
                 >
                   <div className="text-4xl">{achievement.icon}</div>
                   <div>
-                    <div className="font-bold text-gray-900">{achievement.title}</div>
-                    <div className="text-sm text-gray-600">{achievement.description}</div>
+                    <div className="font-bold text-gray-900 dark:text-white">{achievement.title}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-300">{achievement.description}</div>
                   </div>
                 </div>
               ))}
@@ -209,7 +209,7 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
         )}
 
         {/* Difficulty Rating */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8">
           <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
             How was this workout?
           </h3>
@@ -219,10 +219,10 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
                 <button
                   key={rating}
                   onClick={() => handleRating(rating)}
-                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition flex items-center justify-between group"
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition flex items-center justify-between group"
                 >
                   <span className="text-3xl">{getRatingEmoji(rating)}</span>
-                  <span className="text-lg font-medium text-gray-700 group-hover:text-emerald-700">
+                  <span className="text-lg font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-700">
                     {getRatingLabel(rating)}
                   </span>
                   <div className="flex gap-1">
@@ -239,7 +239,7 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
               <div className="text-2xl font-bold text-emerald-600 mb-2">
                 Thanks for your feedback!
               </div>
-              <div className="text-gray-600">
+              <div className="text-gray-600 dark:text-gray-300">
                 This helps your trainer create better workouts for you
               </div>
             </div>
@@ -266,7 +266,7 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={onClose}
-            className="py-4 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50"
+            className="py-4 bg-white dark:bg-gray-800 border-2 border-gray-300 text-gray-700 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-50"
           >
             Back to Home
           </button>

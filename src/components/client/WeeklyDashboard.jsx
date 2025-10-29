@@ -118,14 +118,14 @@ export default function WeeklyDashboard({ userId }) {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your progress...</p>
+          <p className="text-gray-600 dark:text-gray-300">Loading your progress...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 dark:from-gray-900 dark:to-gray-800 pb-20">
       <div className="max-w-4xl mx-auto p-4">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white mb-6 shadow-lg">
@@ -136,62 +136,62 @@ export default function WeeklyDashboard({ userId }) {
         {/* Key Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {/* Streak */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="bg-white dark:bg-gray-800 dark:bg-gray-800 rounded-xl shadow-sm p-4">
             <div className="flex items-center gap-2 mb-2">
               <Flame className="w-5 h-5 text-orange-500" />
-              <span className="text-sm font-medium text-gray-600">Streak</span>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Streak</span>
             </div>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
               {stats?.currentStreak || 0}
             </div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {stats?.currentStreak === 1 ? 'day' : 'days'}
             </div>
           </div>
 
           {/* Total Workouts */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="bg-white dark:bg-gray-800 dark:bg-gray-800 rounded-xl shadow-sm p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-5 h-5 text-emerald-500" />
-              <span className="text-sm font-medium text-gray-600">Total</span>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Total</span>
             </div>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
               {stats?.totalWorkouts || 0}
             </div>
-            <div className="text-xs text-gray-500 mt-1">workouts</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">workouts</div>
           </div>
 
           {/* Best Streak */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="bg-white dark:bg-gray-800 dark:bg-gray-800 rounded-xl shadow-sm p-4">
             <div className="flex items-center gap-2 mb-2">
               <Trophy className="w-5 h-5 text-purple-500" />
-              <span className="text-sm font-medium text-gray-600">Best</span>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Best</span>
             </div>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
               {stats?.longestStreak || 0}
             </div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {stats?.longestStreak === 1 ? 'day' : 'days'}
             </div>
           </div>
 
           {/* This Week */}
-          <div className="bg-white rounded-xl shadow-sm p-4">
+          <div className="bg-white dark:bg-gray-800 dark:bg-gray-800 rounded-xl shadow-sm p-4">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="w-5 h-5 text-blue-500" />
-              <span className="text-sm font-medium text-gray-600">This Week</span>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">This Week</span>
             </div>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">
               {weeklyData.filter(d => d.completed).length}
             </div>
-            <div className="text-xs text-gray-500 mt-1">workouts</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">workouts</div>
           </div>
         </div>
 
         {/* Weekly Progress Chart */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-emerald-600" />
+        <div className="bg-white dark:bg-gray-800 dark:bg-gray-800 rounded-2xl shadow-sm p-6 mb-6">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             Weekly Activity
           </h3>
           <div className="flex items-end justify-between gap-2 h-32">
@@ -215,11 +215,11 @@ export default function WeeklyDashboard({ userId }) {
             ))}
           </div>
           <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               {weeklyData.filter(d => d.completed).length > 0 ? (
                 <>
                   Great job! You've completed{' '}
-                  <span className="font-bold text-emerald-600">
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
                     {weeklyData.filter(d => d.completed).length}
                   </span>{' '}
                   {weeklyData.filter(d => d.completed).length === 1 ? 'workout' : 'workouts'} this week 🎉
@@ -233,22 +233,22 @@ export default function WeeklyDashboard({ userId }) {
 
         {/* Recent Workouts */}
         {recentWorkouts.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 mb-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-emerald-600" />
+              <Clock className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               Recent Workouts
             </h3>
             <div className="space-y-3">
               {recentWorkouts.map(workout => (
                 <div
                   key={workout.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition cursor-pointer"
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition cursor-pointer"
                 >
                   <div>
-                    <div className="font-semibold text-gray-900">
+                    <div className="font-semibold text-gray-900 dark:text-white">
                       {workout.workoutName}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
                       {formatDate(workout.startTime)}
                     </div>
                   </div>
@@ -258,7 +258,7 @@ export default function WeeklyDashboard({ userId }) {
                       Complete
                     </div>
                     {workout.duration && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
                         {formatDuration(workout.duration)}
                       </div>
                     )}
@@ -271,7 +271,7 @@ export default function WeeklyDashboard({ userId }) {
 
         {/* Personal Records */}
         {personalRecords.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
               Recent Personal Records
@@ -280,21 +280,21 @@ export default function WeeklyDashboard({ userId }) {
               {personalRecords.map((record, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border border-yellow-200"
+                  className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800"
                 >
                   <div>
-                    <div className="font-semibold text-gray-900">
+                    <div className="font-semibold text-gray-900 dark:text-white">
                       {record.exerciseName}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
                       {formatDate(record.date)}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-bold text-yellow-700">
+                    <div className="text-xl font-bold text-yellow-700 dark:text-yellow-400">
                       {record.bestWeight} lbs
                     </div>
-                    <div className="text-sm text-yellow-600">
+                    <div className="text-sm text-yellow-600 dark:text-yellow-500">
                       × {record.bestReps} reps
                     </div>
                   </div>
