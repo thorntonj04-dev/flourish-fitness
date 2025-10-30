@@ -1,32 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, LogOut, Play, Heart, Database } from 'lucide-react';
+import { LogOut, Play, Heart } from 'lucide-react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref as dbRef, get, set } from 'firebase/database';
 import { auth, db } from './firebase';
-
-
 
 // Import all components
 import LandingPage from './components/LandingPage';
 import AuthScreen from './components/AuthScreen';
 import AdminSetup from './components/AdminSetup';
 
-// ============================================
 // ADMIN COMPONENTS
-// ============================================
 import WorkoutBuilder from './components/admin/WorkoutBuilder';
 import ManageClients from './components/admin/ManageClients';
 import Reports from './components/admin/Reports';
 import AdminNutrition from './components/admin/AdminNutrition';
-import AdminFoodManagement from './components/admin/AdminFoodManagement';
 import AdminClientAnalytics from './components/admin/AdminClientAnalytics';
 import DebugClientList from './components/admin/DebugClientList';
 import AssignUserRoles from './components/admin/AssignUserRoles';
 import AboutModal from './components/admin/AboutModal';
 
-// ============================================
-// CLIENT COMPONENTS - Original
-// ============================================
+// CLIENT COMPONENTS
 import MyWorkouts from './components/client/MyWorkouts';
 import MyGoals from './components/client/MyGoals';
 import NutritionLogger from './components/client/NutritionLogger';
@@ -35,25 +28,14 @@ import ClientMeasurements from './components/admin/ClientMeasurements';
 import ProgressDashboard from './components/client/ProgressDashboard';
 import WorkoutHistory from './components/client/WorkoutHistory';
 import PersonalRecords from './components/client/PersonalRecords';
-
-// ============================================
-// CLIENT COMPONENTS - New Client Experience
-// ============================================
 import WorkoutSession from './components/client/WorkoutSession';
 import WeeklyDashboard from './components/client/WeeklyDashboard';
 import WorkoutCalendar from './components/client/WorkoutCalendar';
-import WeeklyNutritionDashboard from './components/client/WeeklyNutritionDashboard';
 
-// ============================================
 // SHARED COMPONENTS
-// ============================================
 import { adminNavItems, clientNavItems } from './components/shared/Navigation';
-import DarkModeToggle from './components/shared/DarkModeToggle';
 
 export default function App() {
-  // ============================================
-  // STATE MANAGEMENT
-  // ============================================
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -61,17 +43,10 @@ export default function App() {
   const [needsSetup, setNeedsSetup] = useState(false);
   const [showLanding, setShowLanding] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
-  
-  // NEW: State for workout session
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [isInWorkout, setIsInWorkout] = useState(false);
-
-  // NEW: State for About modal
   const [showAbout, setShowAbout] = useState(false);
 
-  // ============================================
-  // AUTHENTICATION & USER DATA
-  // ============================================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -94,7 +69,7 @@ export default function App() {
               name: firebaseUser.email.split('@')[0],
               role: 'admin',
               createdAt: new Date().toISOString(),
-              macroGoals: { protein: 150, carbs: 200, fats: 50, calories: 2000 }
+              macroGoals: { protein: 150, carbs: 200, fats: 50 }
             });
             setUserRole('admin');
             setNeedsSetup(false);
@@ -116,9 +91,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // ============================================
-  // EVENT HANDLERS
-  // ============================================
   const handleSignOut = async () => {
     await signOut(auth);
     setCurrentView('dashboard');
@@ -137,7 +109,6 @@ export default function App() {
     setShowLanding(true);
   };
 
-  // NEW: Start workout handler
   const handleStartWorkout = async (workoutId) => {
     try {
       const workoutRef = dbRef(db, `workouts/${workoutId}`);
@@ -155,14 +126,12 @@ export default function App() {
     }
   };
 
-  // NEW: Exit workout handler
   const handleExitWorkout = () => {
     setIsInWorkout(false);
     setActiveWorkout(null);
     setCurrentView('weekly-dashboard');
   };
 
-  // NEW: Get today's assigned workout
   const getTodaysWorkout = async () => {
     if (!user) return null;
     
@@ -181,7 +150,6 @@ export default function App() {
     }
   };
 
-  // NEW: Start today's workout
   const handleStartTodaysWorkout = async () => {
     const todaysWorkout = await getTodaysWorkout();
     if (todaysWorkout) {
@@ -191,23 +159,17 @@ export default function App() {
     }
   };
 
-  // ============================================
-  // LOADING STATE
-  // ============================================
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-charcoal flex items-center justify-center">
         <div className="text-center">
-          <Dumbbell className="w-12 h-12 mx-auto text-emerald-600 animate-pulse mb-4" />
-          <div className="text-emerald-600 text-xl font-medium">Loading...</div>
+          <img src="/logos/logosmall2.png" alt="Loading" className="w-24 h-24 mx-auto animate-spin mb-4" style={{animationDuration: '2s'}} />
+          <div className="text-gold text-xl font-display font-bold">Loading...</div>
         </div>
       </div>
     );
   }
 
-  // ============================================
-  // UNAUTHENTICATED VIEWS
-  // ============================================
   if (showLanding && !user) {
     return <LandingPage onLoginClick={handleLoginClick} />;
   }
@@ -216,28 +178,25 @@ export default function App() {
     return <AuthScreen onBackToLanding={handleBackToLanding} />;
   }
 
-  // ============================================
-  // SETUP & ERROR STATES
-  // ============================================
   if (needsSetup) {
     return <AdminSetup user={user} />;
   }
 
   if (!userRole) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-lg text-center">
-          <div className="text-red-600 text-xl font-bold mb-4">Configuration Error</div>
-          <p className="text-gray-600 mb-4">Unable to load user role.</p>
+      <div className="min-h-screen bg-charcoal flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-charcoal-light rounded-2xl p-8 shadow-2xl border border-sage-dark text-center">
+          <div className="text-gold text-xl font-display font-bold mb-4">Configuration Error</div>
+          <p className="text-cream/70 mb-4">Unable to load user role.</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 mr-2"
+            className="px-6 py-2 bg-gold text-charcoal rounded-lg hover:bg-gold-light font-semibold mr-2"
           >
             Refresh
           </button>
           <button
             onClick={handleSignOut}
-            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+            className="px-6 py-2 bg-sage text-cream rounded-lg hover:bg-sage-dark font-semibold"
           >
             Sign Out
           </button>
@@ -246,9 +205,6 @@ export default function App() {
     );
   }
 
-  // ============================================
-  // ACTIVE WORKOUT SESSION (FULL SCREEN)
-  // ============================================
   if (isInWorkout && activeWorkout) {
     return (
       <WorkoutSession 
@@ -259,46 +215,34 @@ export default function App() {
     );
   }
 
-  // ============================================
-  // MAIN APP INTERFACE
-  // ============================================
   const navItems = userRole === 'admin' ? adminNavItems : clientNavItems;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* ============================================ */}
+    <div className="min-h-screen bg-charcoal">
       {/* HEADER */}
-      {/* ============================================ */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+      <header className="bg-charcoal-light border-b border-sage-dark/30 sticky top-0 z-40 shadow-lg">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            {/* Dark Mode Toggle */}
-            <DarkModeToggle />
-            
-            <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
-              <Dumbbell className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-gray-900 dark:text-white">Flourish Fitness</span>
+          <div className="flex items-center gap-3">
+            <img src="/logos/logosmall.png" alt="Flourish Fitness" className="w-10 h-10" />
+            <span className="font-display font-bold text-cream text-lg">Flourish Fitness</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="text-sm font-medium text-gray-900 dark:text-white">{user.email}</div>
-              <div className="text-xs text-emerald-600 dark:text-emerald-400 capitalize font-medium">
+              <div className="text-sm font-semibold text-cream">{user.email}</div>
+              <div className="text-xs text-gold font-bold capitalize">
                 {userRole === 'admin' ? '👑 Admin' : '💪 Client'}
               </div>
             </div>
-            <button onClick={handleSignOut} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">
-              <LogOut className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            <button onClick={handleSignOut} className="p-2 hover:bg-sage-dark/20 rounded-lg transition">
+              <LogOut className="w-5 h-5 text-gold" />
             </button>
           </div>
         </div>
       </header>
 
       <div className="flex">
-        {/* ============================================ */}
-        {/* SIDEBAR NAVIGATION (Desktop) */}
-        {/* ============================================ */}
-        <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 min-h-screen p-4 hidden md:block">
+        {/* SIDEBAR */}
+        <aside className="w-64 bg-charcoal-light border-r border-sage-dark/30 min-h-screen p-4 hidden md:block">
           <nav className="space-y-2">
             {navItems.map(item => {
               const Icon = item.icon;
@@ -306,10 +250,10 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => setCurrentView(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-semibold ${
                     currentView === item.id 
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white' 
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      ? 'bg-gradient-to-r from-gold to-gold-light text-charcoal shadow-lg' 
+                      : 'text-cream/70 hover:bg-sage-dark/20 hover:text-cream'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -320,28 +264,20 @@ export default function App() {
           </nav>
         </aside>
 
-        {/* ============================================ */}
-        {/* MAIN CONTENT AREA */}
-        {/* This is where different "views" are rendered */}
-        {/* based on the currentView state */}
-        {/* ============================================ */}
+        {/* MAIN CONTENT */}
         <main className="flex-1 p-4 md:p-6">
           <div className="max-w-4xl mx-auto">
             
-            {/* ========== DASHBOARD VIEW ========== */}
             {currentView === 'dashboard' && (
               <div className="space-y-6">
-                {/* Header with About Button (Admin Only) */}
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white relative">
-                  <h2 className="text-2xl font-bold">Welcome back!</h2>
-                  <p className="text-emerald-100">Your fitness journey starts here</p>
+                <div className="bg-gradient-to-br from-sage-dark to-sage rounded-2xl p-8 text-cream relative border border-gold/20 shadow-xl">
+                  <h2 className="text-3xl font-display font-bold mb-2">Welcome back!</h2>
+                  <p className="text-gold-light font-medium">Your fitness journey starts here</p>
                   
-                  {/* About Button - Only shows for admin */}
                   {userRole === 'admin' && (
                     <button
                       onClick={() => setShowAbout(true)}
-                      className="absolute top-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg font-semibold transition-all border border-white/30"
-                      title="Learn about Flourish Fitness"
+                      className="absolute top-6 right-6 flex items-center gap-2 px-4 py-2 bg-gold/20 hover:bg-gold/30 backdrop-blur-sm text-gold rounded-lg font-bold transition-all border border-gold/40"
                     >
                       <Heart className="w-4 h-4" />
                       <span className="hidden sm:inline">About</span>
@@ -349,23 +285,22 @@ export default function App() {
                   )}
                 </div>
                 
-                {/* Quick Start Workout Button (Client Only) */}
                 {userRole === 'client' && (
                   <button
                     onClick={handleStartTodaysWorkout}
-                    className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-lg hover:opacity-90 flex items-center justify-center gap-2 shadow-lg"
+                    className="w-full py-5 bg-gradient-to-r from-gold to-gold-light text-charcoal rounded-xl font-display font-bold text-lg hover:opacity-90 flex items-center justify-center gap-3 shadow-xl"
                   >
                     <Play className="w-6 h-6" />
                     Start Today's Workout
                   </button>
                 )}
                 
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700">
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Account Status</div>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white capitalize mb-4">
+                <div className="bg-charcoal-light rounded-2xl p-6 border border-sage-dark/30 shadow-lg">
+                  <div className="text-sm text-gold font-semibold mb-2">Account Status</div>
+                  <div className="text-2xl font-display font-bold text-cream capitalize mb-4">
                     {userRole === 'admin' ? '👑 Admin/Trainer Account' : '💪 Client Account'}
                   </div>
-                  <p className="text-gray-600 dark:text-gray-300">
+                  <p className="text-cream/70">
                     {userRole === 'admin' 
                       ? 'You have full access to manage clients, create workouts, track nutrition, and view progress photos.'
                       : 'Track your workouts, nutrition, upload progress photos, and stay on top of your fitness goals.'}
@@ -374,29 +309,21 @@ export default function App() {
               </div>
             )}
 
-            {/* ========== WORKOUT VIEWS ========== */}
             {currentView === 'workouts' && (
               userRole === 'admin' ? <WorkoutBuilder /> : <MyWorkouts user={user} />
             )}
-
-            {/* ========== NEW: WEEKLY DASHBOARD (Client) ========== */}
             {currentView === 'weekly-dashboard' && userRole === 'client' && (
               <WeeklyDashboard userId={user.uid} />
             )}
-
-            {/* ========== NEW: WORKOUT CALENDAR (Client) ========== */}
             {currentView === 'calendar' && userRole === 'client' && (
               <WorkoutCalendar 
                 userId={user.uid}
                 onStartWorkout={handleStartWorkout}
                 onPreviewWorkout={(workoutId) => {
-                  // Preview workout - could open a modal or navigate to a preview view
                   alert('Preview feature - you can add a preview modal here!');
                 }}
               />
             )}
-
-            {/* ========== PROGRESS & TRACKING VIEWS ========== */}
             {currentView === 'progress' && userRole === 'client' && (
               <ProgressDashboard user={user} />
             )}
@@ -406,8 +333,6 @@ export default function App() {
             {currentView === 'records' && userRole === 'client' && (
               <PersonalRecords user={user} />
             )}
-
-            {/* ========== ADMIN VIEWS ========== */}
             {currentView === 'analytics' && userRole === 'admin' && (
               <AdminClientAnalytics user={user} />
             )}
@@ -424,40 +349,26 @@ export default function App() {
               <AssignUserRoles />
             )}
             {currentView === 'photos' && userRole === 'admin' && (
-            <ClientMeasurements />
+              <ClientMeasurements />
             )}
-	    {currentView === 'nutrition' && userRole === 'admin' && (
-            <AdminNutrition />
+            {currentView === 'nutrition' && userRole === 'admin' && (
+              <AdminNutrition />
             )}
-            {currentView === 'food-database' && userRole === 'admin' && (
-  	    <AdminFoodManagement user={user}/>
-  	    )}
-
-            {/* ========== GOALS VIEW ========== */}
             {currentView === 'goals' && userRole === 'client' && (
               <MyGoals user={user} />
             )}
-
-            {/* ========== NUTRITION VIEWS ========== */}
             {currentView === 'nutrition' && (
               userRole === 'client' && <NutritionLogger user={user} />
             )}
-            {currentView === 'weekly-nutrition' && (
-            userRole === 'client' && <WeeklyNutritionDashboard user={user} />
-            )}
-
-            {/* ========== PHOTO VIEWS ========== */}
             {currentView === 'photos' && (
-            userRole === 'client' && <MeasurementTracking user={user} />
+              userRole === 'client' && <MeasurementTracking user={user} />
             )}
           </div>
         </main>
       </div>
 
-      {/* ============================================ */}
-      {/* MOBILE BOTTOM NAVIGATION */}
-      {/* ============================================ */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 z-40">
+      {/* MOBILE NAV */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-charcoal-light border-t border-sage-dark/30 px-4 py-2 z-40">
         <div className="flex justify-around">
           {navItems.slice(0, 4).map(item => {
             const Icon = item.icon;
@@ -466,21 +377,17 @@ export default function App() {
                 key={item.id}
                 onClick={() => setCurrentView(item.id)}
                 className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${
-                  currentView === item.id ? 'text-emerald-500' : 'text-gray-600 dark:text-gray-300'
+                  currentView === item.id ? 'text-gold' : 'text-cream/70'
                 }`}
               >
                 <Icon className="w-6 h-6" />
-                <span className="text-xs">{item.label.split(' ')[0]}</span>
+                <span className="text-xs font-semibold">{item.label.split(' ')[0]}</span>
               </button>
             );
           })}
         </div>
       </nav>
 
-      {/* ============================================ */}
-      {/* ABOUT MODAL - Shows special message about Flourish Fitness */}
-      {/* Only visible to admin users when showAbout is true */}
-      {/* ============================================ */}
       {userRole === 'admin' && (
         <AboutModal 
           isOpen={showAbout} 

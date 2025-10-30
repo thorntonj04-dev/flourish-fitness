@@ -88,7 +88,7 @@ export default function AdminNutrition() {
             setSelectedClient(null);
             setClientLogs([]);
           }}
-          className="text-emerald-600 hover:text-emerald-700 flex items-center gap-2"
+          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-2"
         >
           ← Back to Clients
         </button>
@@ -98,12 +98,12 @@ export default function AdminNutrition() {
           <p className="text-emerald-100">{clientLogs.length} days logged</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-900">Macro Goals</h3>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Macro Goals</h3>
             <button
               onClick={() => setEditingGoals(!editingGoals)}
-              className="text-emerald-600 hover:text-emerald-700 text-sm"
+              className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-sm"
             >
               {editingGoals ? 'Cancel' : 'Edit Goals'}
             </button>
@@ -113,30 +113,30 @@ export default function AdminNutrition() {
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm text-gray-600 block mb-1">Protein (g)</label>
+                  <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">Protein (g)</label>
                   <input
                     type="number"
                     value={macroGoals.protein}
                     onChange={(e) => setMacroGoals({...macroGoals, protein: parseInt(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-600 block mb-1">Carbs (g)</label>
+                  <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">Carbs (g)</label>
                   <input
                     type="number"
                     value={macroGoals.carbs}
                     onChange={(e) => setMacroGoals({...macroGoals, carbs: parseInt(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-600 block mb-1">Fats (g)</label>
+                  <label className="text-sm text-gray-600 dark:text-gray-300 block mb-1">Fats (g)</label>
                   <input
                     type="number"
                     value={macroGoals.fats}
                     onChange={(e) => setMacroGoals({...macroGoals, fats: parseInt(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -150,47 +150,47 @@ export default function AdminNutrition() {
           ) : (
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <div className="text-sm text-gray-600">Protein Goal</div>
-                <div className="text-2xl font-bold text-gray-900">{macroGoals.protein}g</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Protein Goal</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{macroGoals.protein}g</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Carbs Goal</div>
-                <div className="text-2xl font-bold text-gray-900">{macroGoals.carbs}g</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Carbs Goal</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{macroGoals.carbs}g</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Fats Goal</div>
-                <div className="text-2xl font-bold text-gray-900">{macroGoals.fats}g</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">Fats Goal</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{macroGoals.fats}g</div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Daily Timeline</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Daily Timeline</h3>
           {clientLogs.length === 0 ? (
-            <p className="text-gray-600">No nutrition logs yet.</p>
+            <p className="text-gray-600 dark:text-gray-300">No nutrition logs yet.</p>
           ) : (
             <div className="space-y-3">
               {clientLogs.map(dayLog => (
-                <div key={dayLog.date} className="p-4 bg-gray-50 rounded-lg">
+                <div key={dayLog.date} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div className="flex justify-between items-start mb-2">
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-gray-900 dark:text-white">
                       {new Date(dayLog.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                     </div>
-                    <div className="text-sm text-gray-600">{dayLog.entries.length} entries</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-300">{dayLog.entries.length} entries</div>
                   </div>
                   <div className="flex gap-6 text-sm">
                     <div>
-                      <span className="text-gray-600">Protein:</span>
-                      <span className="font-medium text-gray-900 ml-1">{Math.round(dayLog.totals.protein)}g</span>
+                      <span className="text-gray-600 dark:text-gray-300">Protein:</span>
+                      <span className="font-medium text-gray-900 dark:text-white ml-1">{Math.round(dayLog.totals.protein)}g</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Carbs:</span>
-                      <span className="font-medium text-gray-900 ml-1">{Math.round(dayLog.totals.carbs)}g</span>
+                      <span className="text-gray-600 dark:text-gray-300">Carbs:</span>
+                      <span className="font-medium text-gray-900 dark:text-white ml-1">{Math.round(dayLog.totals.carbs)}g</span>
                     </div>
                     <div>
-                      <span className="text-gray-600">Fats:</span>
-                      <span className="font-medium text-gray-900 ml-1">{Math.round(dayLog.totals.fats)}g</span>
+                      <span className="text-gray-600 dark:text-gray-300">Fats:</span>
+                      <span className="font-medium text-gray-900 dark:text-white ml-1">{Math.round(dayLog.totals.fats)}g</span>
                     </div>
                   </div>
                 </div>
@@ -209,25 +209,25 @@ export default function AdminNutrition() {
         <p className="text-emerald-100">View and manage client macro tracking</p>
       </div>
 
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Select a Client</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Select a Client</h3>
         {clients.length === 0 ? (
-          <p className="text-gray-600">No clients yet.</p>
+          <p className="text-gray-600 dark:text-gray-300">No clients yet.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {clients.map(client => (
               <button
                 key={client.id}
                 onClick={() => loadClientLogs(client.id, client)}
-                className="p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 transition text-left"
+                className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-400 transition text-left"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
                     {client.name.charAt(0)}
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">{client.name}</div>
-                    <div className="text-sm text-gray-600">{client.email}</div>
+                    <div className="font-medium text-gray-900 dark:text-white">{client.name}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-300">{client.email}</div>
                   </div>
                 </div>
               </button>
@@ -238,4 +238,3 @@ export default function AdminNutrition() {
     </div>
   );
 }
-

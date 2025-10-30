@@ -190,18 +190,18 @@ export default function AdminClientAnalytics() {
   };
 
   const getEngagementLevel = (stats) => {
-    if (stats.daysSinceLastWorkout === null) return { label: 'Never Started', color: 'gray', bgColor: 'bg-gray-100' };
-    if (stats.daysSinceLastWorkout === 0) return { label: 'Active Today', color: 'green', bgColor: 'bg-green-100' };
-    if (stats.daysSinceLastWorkout <= 3) return { label: 'Active', color: 'green', bgColor: 'bg-green-100' };
-    if (stats.daysSinceLastWorkout <= 7) return { label: 'Recent', color: 'yellow', bgColor: 'bg-yellow-100' };
-    if (stats.daysSinceLastWorkout <= 14) return { label: 'At Risk', color: 'orange', bgColor: 'bg-orange-100' };
-    return { label: 'Inactive', color: 'red', bgColor: 'bg-red-100' };
+    if (stats.daysSinceLastWorkout === null) return { label: 'Never Started', color: 'gray', bgColor: 'bg-gray-100 dark:bg-gray-800' };
+    if (stats.daysSinceLastWorkout === 0) return { label: 'Active Today', color: 'green', bgColor: 'bg-green-100 dark:bg-green-900' };
+    if (stats.daysSinceLastWorkout <= 3) return { label: 'Active', color: 'green', bgColor: 'bg-green-100 dark:bg-green-900' };
+    if (stats.daysSinceLastWorkout <= 7) return { label: 'Recent', color: 'yellow', bgColor: 'bg-yellow-100 dark:bg-yellow-900' };
+    if (stats.daysSinceLastWorkout <= 14) return { label: 'At Risk', color: 'orange', bgColor: 'bg-orange-100 dark:bg-orange-900' };
+    return { label: 'Inactive', color: 'red', bgColor: 'bg-red-100 dark:bg-red-900' };
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-gray-600">Loading analytics...</div>
+        <div className="text-gray-600 dark:text-gray-300">Loading analytics...</div>
       </div>
     );
   }
@@ -220,7 +220,7 @@ export default function AdminClientAnalytics() {
       <div className="space-y-6 pb-6">
         <button
           onClick={() => setSelectedClient(null)}
-          className="text-emerald-600 hover:text-emerald-700 font-medium"
+          className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium"
         >
           ← Back to All Clients
         </button>
@@ -232,29 +232,29 @@ export default function AdminClientAnalytics() {
 
         {/* Client Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="text-sm text-gray-600 mb-1">Total Workouts</div>
-            <div className="text-3xl font-bold text-gray-900">{stats.totalWorkouts}</div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Total Workouts</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalWorkouts}</div>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="text-sm text-gray-600 mb-1">Current Streak</div>
-            <div className="text-3xl font-bold text-orange-600">{stats.streak} 🔥</div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Current Streak</div>
+            <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{stats.streak} 🔥</div>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-            <div className="text-sm text-gray-600 mb-1">Avg Completion</div>
-            <div className="text-3xl font-bold text-emerald-600">{stats.avgCompletion}%</div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Avg Completion</div>
+            <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{stats.avgCompletion}%</div>
           </div>
-          <div className={`rounded-xl p-4 shadow-sm border-2 ${engagement.bgColor} border-${engagement.color}-300`}>
-            <div className="text-sm text-gray-600 mb-1">Status</div>
-            <div className={`text-lg font-bold text-${engagement.color}-700`}>{engagement.label}</div>
+          <div className={`rounded-xl p-4 shadow-sm border-2 ${engagement.bgColor} border-${engagement.color}-300 dark:border-${engagement.color}-700`}>
+            <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Status</div>
+            <div className={`text-lg font-bold text-${engagement.color}-700 dark:text-${engagement.color}-400`}>{engagement.label}</div>
           </div>
         </div>
 
         {/* Recent Activity */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Workouts</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Workouts</h3>
           {clientLogs.length === 0 ? (
-            <p className="text-gray-600 text-center py-8">No workouts completed yet</p>
+            <p className="text-gray-600 dark:text-gray-300 text-center py-8">No workouts completed yet</p>
           ) : (
             <div className="space-y-3">
               {clientLogs.slice(0, 10).map(log => {
@@ -264,20 +264,20 @@ export default function AdminClientAnalytics() {
                   : 0;
                 
                 return (
-                  <div key={log.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                  <div key={log.id} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div>
-                      <div className="font-medium text-gray-900">{log.workoutName}</div>
-                      <div className="text-sm text-gray-600">
+                      <div className="font-medium text-gray-900 dark:text-white">{log.workoutName}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
                         {new Date(log.completedAt).toLocaleDateString()} • {Math.floor((log.duration || 0) / 60)} min
                       </div>
                     </div>
                     <div className="text-right">
                       <div className={`text-lg font-bold ${
-                        completionRate === 100 ? 'text-green-600' : 'text-gray-600'
+                        completionRate === 100 ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'
                       }`}>
                         {Math.round(completionRate)}%
                       </div>
-                      {completionRate === 100 && <div className="text-xs text-green-600">Perfect!</div>}
+                      {completionRate === 100 && <div className="text-xs text-green-600 dark:text-green-400">Perfect!</div>}
                     </div>
                   </div>
                 );
@@ -288,20 +288,20 @@ export default function AdminClientAnalytics() {
 
         {/* Additional Stats */}
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h4 className="font-bold text-gray-900 mb-3">Performance Metrics</h4>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+            <h4 className="font-bold text-gray-900 dark:text-white mb-3">Performance Metrics</h4>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-gray-600">Avg Duration</span>
-                <span className="font-semibold">{stats.avgDuration} min</span>
+                <span className="text-gray-600 dark:text-gray-300">Avg Duration</span>
+                <span className="font-semibold dark:text-white">{stats.avgDuration} min</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Total Volume</span>
-                <span className="font-semibold">{Math.round(stats.totalVolume / 1000)}k lbs</span>
+                <span className="text-gray-600 dark:text-gray-300">Total Volume</span>
+                <span className="font-semibold dark:text-white">{Math.round(stats.totalVolume / 1000)}k lbs</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Last Workout</span>
-                <span className="font-semibold">
+                <span className="text-gray-600 dark:text-gray-300">Last Workout</span>
+                <span className="font-semibold dark:text-white">
                   {stats.lastWorkout 
                     ? `${stats.daysSinceLastWorkout} day${stats.daysSinceLastWorkout !== 1 ? 's' : ''} ago`
                     : 'Never'
@@ -311,14 +311,14 @@ export default function AdminClientAnalytics() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h4 className="font-bold text-gray-900 mb-3">Assignments</h4>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+            <h4 className="font-bold text-gray-900 dark:text-white mb-3">Assignments</h4>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Workouts Assigned</span>
-                <span className="font-semibold">{stats.assignedDays} days/week</span>
+                <span className="text-gray-600 dark:text-gray-300">Workouts Assigned</span>
+                <span className="font-semibold dark:text-white">{stats.assignedDays} days/week</span>
               </div>
-              <div className="text-sm text-gray-500 mt-2">
+              <div className="text-sm text-gray-500 dark:text-gray-300 mt-2">
                 {stats.assignedDays > 0 
                   ? 'Check Workout Builder to modify assignments'
                   : 'No workouts assigned yet'
@@ -339,15 +339,15 @@ export default function AdminClientAnalytics() {
       </div>
 
       {/* Timeframe Filter */}
-      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Timeframe</label>
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Timeframe</label>
         <div className="flex gap-2">
           <button
             onClick={() => setTimeframe('week')}
             className={`flex-1 py-2 rounded-lg font-medium transition ${
               timeframe === 'week'
                 ? 'bg-emerald-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
           >
             This Week
@@ -357,7 +357,7 @@ export default function AdminClientAnalytics() {
             className={`flex-1 py-2 rounded-lg font-medium transition ${
               timeframe === 'month'
                 ? 'bg-emerald-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
           >
             This Month
@@ -367,7 +367,7 @@ export default function AdminClientAnalytics() {
             className={`flex-1 py-2 rounded-lg font-medium transition ${
               timeframe === 'all'
                 ? 'bg-emerald-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
           >
             All Time
@@ -377,34 +377,34 @@ export default function AdminClientAnalytics() {
 
       {/* Overall Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Total Clients</div>
-          <div className="text-3xl font-bold text-gray-900">{overallStats.totalClients}</div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Total Clients</div>
+          <div className="text-3xl font-bold text-gray-900 dark:text-white">{overallStats.totalClients}</div>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Active Clients</div>
-          <div className="text-3xl font-bold text-green-600">{overallStats.activeClients}</div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Active Clients</div>
+          <div className="text-3xl font-bold text-green-600 dark:text-green-400">{overallStats.activeClients}</div>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Total Workouts</div>
-          <div className="text-3xl font-bold text-gray-900">{overallStats.allWorkouts}</div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Total Workouts</div>
+          <div className="text-3xl font-bold text-gray-900 dark:text-white">{overallStats.allWorkouts}</div>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">This Week</div>
-          <div className="text-3xl font-bold text-emerald-600">{overallStats.thisWeek}</div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">This Week</div>
+          <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{overallStats.thisWeek}</div>
         </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-          <div className="text-sm text-gray-600 mb-1">Avg Completion</div>
-          <div className="text-3xl font-bold text-purple-600">{overallStats.avgCompletionRate}%</div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">Avg Completion</div>
+          <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{overallStats.avgCompletionRate}%</div>
         </div>
       </div>
 
       {/* Client List */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Client Performance</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Client Performance</h3>
         
         {clients.length === 0 ? (
-          <p className="text-gray-600 text-center py-8">No clients yet</p>
+          <p className="text-gray-600 dark:text-gray-300 text-center py-8">No clients yet</p>
         ) : (
           <div className="space-y-3">
             {clients
@@ -417,7 +417,7 @@ export default function AdminClientAnalytics() {
                   <button
                     key={client.id}
                     onClick={() => setSelectedClient(client.id)}
-                    className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-emerald-500 transition text-left"
+                    className="w-full p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-emerald-500 dark:hover:border-emerald-400 transition text-left"
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3">
@@ -425,31 +425,31 @@ export default function AdminClientAnalytics() {
                           {client.name.charAt(0)}
                         </div>
                         <div>
-                          <div className="font-bold text-gray-900">{client.name}</div>
-                          <div className="text-sm text-gray-600">{client.email}</div>
+                          <div className="font-bold text-gray-900 dark:text-white">{client.name}</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-300">{client.email}</div>
                         </div>
                       </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${engagement.bgColor} text-${engagement.color}-700`}>
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${engagement.bgColor} text-${engagement.color}-700 dark:text-${engagement.color}-400`}>
                         {engagement.label}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-4 gap-4 text-center">
                       <div>
-                        <div className="text-2xl font-bold text-gray-900">{stats.periodWorkouts}</div>
-                        <div className="text-xs text-gray-600">Workouts</div>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.periodWorkouts}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-300">Workouts</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-emerald-600">{stats.avgCompletion}%</div>
-                        <div className="text-xs text-gray-600">Completion</div>
+                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.avgCompletion}%</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-300">Completion</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-orange-600">{stats.streak}🔥</div>
-                        <div className="text-xs text-gray-600">Streak</div>
+                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.streak}🔥</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-300">Streak</div>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-gray-900">{stats.avgDuration}m</div>
-                        <div className="text-xs text-gray-600">Avg Time</div>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.avgDuration}m</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-300">Avg Time</div>
                       </div>
                     </div>
                   </button>

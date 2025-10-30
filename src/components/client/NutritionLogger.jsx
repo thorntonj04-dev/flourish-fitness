@@ -1,19 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { User, Dumbbell, Users, Image, Apple, LogOut, Trash2, Camera, Shield, BarChart3, Target, Menu, X, ChevronRight, Award, Heart, TrendingUp, Play, Pause, Check, Plus, Minus, Video, Calendar, Clock, Trophy, Save, Edit2 } from 'lucide-react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { ref as dbRef, get, set, push, remove, update, query as dbQuery, orderByChild, equalTo, onValue } from 'firebase/database';
-import { auth, db, storage } from '../../firebase';
-import Tesseract from 'tesseract.js';
+import { Plus, Trash2, ChevronDown, ChevronUp, Coffee, Sun, Moon, Apple } from 'lucide-react';
+import { ref as dbRef, get, set, push, remove } from 'firebase/database';
+import { db } from '../../firebase';
+import FoodSearchModal from './FoodSearchModal';
+import CreateCustomFoodModal from './CreateCustomFoodModal';
+import { getFoodById } from '../../services/foodDatabaseService';
 
 export default function NutritionLogger({ user }) {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [processing, setProcessing] = useState(false);
-  const [extractedData, setExtractedData] = useState(null);
   const [todayEntries, setTodayEntries] = useState([]);
-  const [macroGoals, setMacroGoals] = useState({ protein: 0, carbs: 0, fats: 0 });
-  const [todayTotals, setTodayTotals] = useState({ protein: 0, carbs: 0, fats: 0 });
+  const [macroGoals, setMacroGoals] = useState({ protein: 0, carbs: 0, fats: 0, calories: 0 });
+  const [todayTotals, setTodayTotals] = useState({ protein: 0, carbs: 0, fats: 0, calories: 0 });
+  const [showFoodSearch, setShowFoodSearch] = useState(false);
+  const [showCustomFoodModal, setShowCustomFoodModal] = useState(false);
+  const [selectedMeal, setSelectedMeal] = useState(null);
+  const [expandedMeals, setExpandedMeals] = useState({
+    breakfast: true,
+    lunch: true,
+    dinner: true,
+    snacks: true
+  });
+
+  const mealTypes = [
+    { id: 'breakfast', label: 'Breakfast', icon: Coffee, color: 'yellow' },
+    { id: 'lunch', label: 'Lunch', icon: Sun, color: 'orange' },
+    { id: 'dinner', label: 'Dinner', icon: Moon, color: 'purple' },
+    { id: 'snacks', label: 'Snacks', icon: Apple, color: 'green' }
+  ];
 
   useEffect(() => {
     loadUserData();
@@ -24,7 +36,10 @@ export default function NutritionLogger({ user }) {
     const userRef = dbRef(db, `users/${user.uid}`);
     const snapshot = await get(userRef);
     if (snapshot.exists() && snapshot.val().macroGoals) {
-      setMacroGoals(snapshot.val().macroGoals);
+      const goals = snapshot.val().macroGoals;
+      // Calculate calories from macros if not set
+      const calories = goals.calories || (goals.protein * 4 + goals.carbs * 4 + goals.fats * 9);
+      setMacroGoals({ ...goals, calories });
     }
   };
 
@@ -35,94 +50,86 @@ export default function NutritionLogger({ user }) {
     
     if (snapshot.exists()) {
       const allLogs = snapshot.val();
-      const entries = Object.entries(allLogs)
-        .filter(([key, log]) => log.userId === user.uid && log.date === today)
-        .map(([key, log]) => ({ id: key, ...log }))
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const entries = await Promise.all(
+        Object.entries(allLogs)
+          .filter(([key, log]) => log.userId === user.uid && log.date === today)
+          .map(async ([key, log]) => {
+            // Load food details if foodId exists
+            let foodDetails = null;
+            if (log.foodId) {
+              foodDetails = await getFoodById(log.foodId);
+            }
+            return { id: key, ...log, foodDetails };
+          })
+      );
+      
+      entries.sort((a, b) => {
+        const mealOrder = { breakfast: 0, lunch: 1, dinner: 2, snacks: 3 };
+        const orderA = mealOrder[a.mealType] ?? 999;
+        const orderB = mealOrder[b.mealType] ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
       
       setTodayEntries(entries);
       
       const totals = entries.reduce((acc, entry) => ({
         protein: acc.protein + (entry.protein || 0),
         carbs: acc.carbs + (entry.carbs || 0),
-        fats: acc.fats + (entry.fats || 0)
-      }), { protein: 0, carbs: 0, fats: 0 });
+        fats: acc.fats + (entry.fats || 0),
+        calories: acc.calories + (entry.calories || 0)
+      }), { protein: 0, carbs: 0, fats: 0, calories: 0 });
       setTodayTotals(totals);
+    } else {
+      setTodayEntries([]);
+      setTodayTotals({ protein: 0, carbs: 0, fats: 0, calories: 0 });
     }
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    }
+  const handleAddFood = (mealType) => {
+    setSelectedMeal(mealType);
+    setShowFoodSearch(true);
   };
 
-  const extractMacros = async () => {
-    if (!selectedFile) return;
-
-    setProcessing(true);
-    try {
-      const result = await Tesseract.recognize(selectedFile, 'eng');
-      const text = result.data.text;
-      const protein = extractNumber(text, ['protein', 'pro']);
-      const carbs = extractNumber(text, ['carb', 'carbohydrate']);
-      const fats = extractNumber(text, ['fat', 'fats']);
-
-      setExtractedData({
-        protein: protein || 0,
-        carbs: carbs || 0,
-        fats: fats || 0,
-        rawText: text
-      });
-    } catch (error) {
-      console.error('OCR Error:', error);
-      alert('Failed to extract text. Please try again or enter manually.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const extractNumber = (text, keywords) => {
-    const lines = text.toLowerCase().split('\n');
-    for (const keyword of keywords) {
-      for (const line of lines) {
-        if (line.includes(keyword)) {
-          const numbers = line.match(/\d+(\.\d+)?/g);
-          if (numbers && numbers.length > 0) {
-            return parseFloat(numbers[0]);
-          }
-        }
-      }
-    }
-    return 0;
-  };
-
-  const handleSaveEntry = async () => {
-    if (!extractedData) return;
-
+  const handleFoodSelected = async (food, servings = 1) => {
     try {
       const logsRef = dbRef(db, 'nutrition-logs');
       const newLogRef = push(logsRef);
-      await set(newLogRef, {
+      
+      // Calculate nutrition values based on servings
+      const nutritionData = {
         userId: user.uid,
         userName: user.email,
-        protein: extractedData.protein,
-        carbs: extractedData.carbs,
-        fats: extractedData.fats,
+        foodId: food.id,
+        foodName: food.name,
+        foodBrand: food.brand || '',
+        servings: servings,
+        servingSize: food.servingSize,
+        mealType: selectedMeal,
+        protein: (food.protein || 0) * servings,
+        carbs: (food.carbs || 0) * servings,
+        fats: (food.fats || 0) * servings,
+        calories: (food.calories || 0) * servings,
+        fiber: (food.fiber || 0) * servings,
+        sugar: (food.sugar || 0) * servings,
         date: new Date().toISOString().split('T')[0],
         createdAt: new Date().toISOString()
-      });
-
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setExtractedData(null);
+      };
+      
+      await set(newLogRef, nutritionData);
+      setShowFoodSearch(false);
+      setSelectedMeal(null);
       loadTodayEntries();
     } catch (error) {
-      console.error('Error saving entry:', error);
-      alert('Failed to save entry.');
+      console.error('Error saving food entry:', error);
+      alert('Failed to save food entry.');
     }
+  };
+
+  const handleCustomFoodCreated = (food) => {
+    setShowCustomFoodModal(false);
+    // Auto-select the newly created food
+    handleFoodSelected(food, 1);
   };
 
   const handleDeleteEntry = async (entryId) => {
@@ -135,8 +142,26 @@ export default function NutritionLogger({ user }) {
     }
   };
 
+  const toggleMeal = (mealType) => {
+    setExpandedMeals({ ...expandedMeals, [mealType]: !expandedMeals[mealType] });
+  };
+
   const getProgress = (current, goal) => {
     return goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+  };
+
+  const getMealEntries = (mealType) => {
+    return todayEntries.filter(entry => entry.mealType === mealType);
+  };
+
+  const getMealTotals = (mealType) => {
+    const entries = getMealEntries(mealType);
+    return entries.reduce((acc, entry) => ({
+      protein: acc.protein + (entry.protein || 0),
+      carbs: acc.carbs + (entry.carbs || 0),
+      fats: acc.fats + (entry.fats || 0),
+      calories: acc.calories + (entry.calories || 0)
+    }), { protein: 0, carbs: 0, fats: 0, calories: 0 });
   };
 
   return (
@@ -146,38 +171,58 @@ export default function NutritionLogger({ user }) {
         <p className="text-emerald-100">Track your daily macros and reach your goals</p>
       </div>
 
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Today's Progress</h3>
+      {/* Daily Progress Overview */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Today's Progress</h3>
+        
+        {/* Calories */}
+        <div className="mb-6">
+          <div className="flex justify-between items-baseline mb-2">
+            <div className="text-sm text-gray-600 dark:text-gray-400">Calories</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {Math.round(todayTotals.calories)}
+              <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">/ {macroGoals.calories}</span>
+            </div>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+            <div 
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-3 rounded-full transition-all"
+              style={{ width: `${getProgress(todayTotals.calories, macroGoals.calories)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Macros */}
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <div className="text-sm text-gray-600 mb-2">Protein</div>
-            <div className="text-2xl font-bold text-gray-900">{Math.round(todayTotals.protein)}g</div>
-            <div className="text-xs text-gray-500">Goal: {macroGoals.protein}g</div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Protein</div>
+            <div className="text-xl font-bold text-gray-900 dark:text-white">{Math.round(todayTotals.protein)}g</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Goal: {macroGoals.protein}g</div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
               <div 
-                className="bg-emerald-500 h-2 rounded-full transition-all"
+                className="bg-blue-500 h-2 rounded-full transition-all"
                 style={{ width: `${getProgress(todayTotals.protein, macroGoals.protein)}%` }}
               />
             </div>
           </div>
           <div>
-            <div className="text-sm text-gray-600 mb-2">Carbs</div>
-            <div className="text-2xl font-bold text-gray-900">{Math.round(todayTotals.carbs)}g</div>
-            <div className="text-xs text-gray-500">Goal: {macroGoals.carbs}g</div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Carbs</div>
+            <div className="text-xl font-bold text-gray-900 dark:text-white">{Math.round(todayTotals.carbs)}g</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Goal: {macroGoals.carbs}g</div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
               <div 
-                className="bg-blue-500 h-2 rounded-full transition-all"
+                className="bg-yellow-500 h-2 rounded-full transition-all"
                 style={{ width: `${getProgress(todayTotals.carbs, macroGoals.carbs)}%` }}
               />
             </div>
           </div>
           <div>
-            <div className="text-sm text-gray-600 mb-2">Fats</div>
-            <div className="text-2xl font-bold text-gray-900">{Math.round(todayTotals.fats)}g</div>
-            <div className="text-xs text-gray-500">Goal: {macroGoals.fats}g</div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Fats</div>
+            <div className="text-xl font-bold text-gray-900 dark:text-white">{Math.round(todayTotals.fats)}g</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Goal: {macroGoals.fats}g</div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
               <div 
-                className="bg-yellow-500 h-2 rounded-full transition-all"
+                className="bg-orange-500 h-2 rounded-full transition-all"
                 style={{ width: `${getProgress(todayTotals.fats, macroGoals.fats)}%` }}
               />
             </div>
@@ -185,138 +230,120 @@ export default function NutritionLogger({ user }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Log Food Entry</h3>
-        
-        {!extractedData ? (
-          <div className="space-y-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-              {previewUrl ? (
-                <div className="space-y-4">
-                  <img src={previewUrl} alt="Preview" className="max-h-64 mx-auto rounded-lg" />
-                  <div className="flex gap-2 justify-center">
-                    <button
-                      onClick={() => {
-                        setSelectedFile(null);
-                        setPreviewUrl(null);
-                      }}
-                      className="px-4 py-2 text-red-600 hover:text-red-700 text-sm"
-                    >
-                      Remove
-                    </button>
-                    <button
-                      onClick={extractMacros}
-                      disabled={processing}
-                      className="px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 disabled:opacity-50"
-                    >
-                      {processing ? 'Processing...' : 'Extract Macros'}
-                    </button>
+      {/* Meal Sections */}
+      <div className="space-y-4">
+        {mealTypes.map(meal => {
+          const Icon = meal.icon;
+          const entries = getMealEntries(meal.id);
+          const totals = getMealTotals(meal.id);
+          const isExpanded = expandedMeals[meal.id];
+
+          return (
+            <div key={meal.id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {/* Meal Header */}
+              <button
+                onClick={() => toggleMeal(meal.id)}
+                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg bg-${meal.color}-100 dark:bg-${meal.color}-900/30 flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 text-${meal.color}-600 dark:text-${meal.color}-400`} />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-semibold text-gray-900 dark:text-white">{meal.label}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {entries.length} {entries.length === 1 ? 'item' : 'items'} • {Math.round(totals.calories)} cal
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <label className="cursor-pointer">
-                  <Camera className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-                  <div className="text-gray-600">Upload nutrition label</div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddFood(meal.id);
+                    }}
+                    className="p-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                  {isExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                  )}
+                </div>
+              </button>
+
+              {/* Meal Entries */}
+              {isExpanded && (
+                <div className="border-t border-gray-200 dark:border-gray-700">
+                  {entries.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+                      No foods logged for {meal.label.toLowerCase()} yet
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {entries.map(entry => (
+                        <div key={entry.id} className="p-4 flex justify-between items-start hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900 dark:text-white">{entry.foodName}</div>
+                            {entry.foodBrand && (
+                              <div className="text-sm text-gray-500 dark:text-gray-400">{entry.foodBrand}</div>
+                            )}
+                            <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                              {entry.servings} × {entry.servingSize}
+                            </div>
+                            <div className="flex gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                              <span>{Math.round(entry.calories)} cal</span>
+                              <span>P: {Math.round(entry.protein)}g</span>
+                              <span>C: {Math.round(entry.carbs)}g</span>
+                              <span>F: {Math.round(entry.fats)}g</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteEntry(entry.id)}
+                            className="ml-4 p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="text-sm font-medium text-gray-700 mb-3">Extracted Macros</div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Protein (g)</label>
-                  <input
-                    type="number"
-                    value={extractedData.protein}
-                    onChange={(e) => setExtractedData({...extractedData, protein: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Carbs (g)</label>
-                  <input
-                    type="number"
-                    value={extractedData.carbs}
-                    onChange={(e) => setExtractedData({...extractedData, carbs: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Fats (g)</label>
-                  <input
-                    type="number"
-                    value={extractedData.fats}
-                    onChange={(e) => setExtractedData({...extractedData, fats: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setExtractedData(null);
-                  setSelectedFile(null);
-                  setPreviewUrl(null);
-                }}
-                className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveEntry}
-                className="flex-1 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
-              >
-                Save Entry
-              </button>
-            </div>
-          </div>
-        )}
+          );
+        })}
       </div>
 
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Today's Entries ({todayEntries.length})</h3>
-        {todayEntries.length === 0 ? (
-          <p className="text-gray-600">No entries yet today. Log your first meal!</p>
-        ) : (
-          <div className="space-y-3">
-            {todayEntries.map(entry => (
-              <div key={entry.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                <div className="flex gap-6 text-sm">
-                  <div>
-                    <span className="text-gray-600">Protein:</span>
-                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.protein)}g</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Carbs:</span>
-                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.carbs)}g</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Fats:</span>
-                    <span className="font-medium text-gray-900 ml-1">{Math.round(entry.fats)}g</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleDeleteEntry(entry.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Food Search Modal */}
+      {showFoodSearch && (
+        <FoodSearchModal
+          userId={user.uid}
+          onSelectFood={(food) => handleFoodSelected(food, 1)}
+          onClose={() => {
+            setShowFoodSearch(false);
+            setSelectedMeal(null);
+          }}
+          onCreateCustom={() => {
+            setShowFoodSearch(false);
+            setShowCustomFoodModal(true);
+          }}
+        />
+      )}
+
+      {/* Create Custom Food Modal */}
+      {showCustomFoodModal && (
+        <CreateCustomFoodModal
+          userId={user.uid}
+          onSave={handleCustomFoodCreated}
+          onClose={() => {
+            setShowCustomFoodModal(false);
+            setSelectedMeal(null);
+          }}
+        />
+      )}
     </div>
   );
 }
-
