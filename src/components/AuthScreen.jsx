@@ -35,7 +35,7 @@ export default function AuthScreen({ onBackToLanding }) {
         await set(dbRef(db, `users/${userCredential.user.uid}`), {
           email,
           name,
-          role: isFirstUser ? 'admin' : 'client',
+          role: 'client',
           createdAt: new Date().toISOString(),
           macroGoals: { protein: 150, carbs: 200, fats: 50 }
         });
