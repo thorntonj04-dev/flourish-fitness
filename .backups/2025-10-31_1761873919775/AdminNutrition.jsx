@@ -223,7 +223,7 @@ export default function AdminNutrition() {
               >
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold">
-                    {(client.firstName?.charAt(0) || client.email?.charAt(0) || "?")}
+                    {client.name.charAt(0)}
                   </div>
                   <div>
                     <div className="font-medium text-gray-900 dark:text-white">{client.name}</div>

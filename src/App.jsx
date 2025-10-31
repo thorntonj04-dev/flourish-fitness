@@ -3,8 +3,7 @@ import { Dumbbell, LogOut, Play, Heart, Database } from 'lucide-react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref as dbRef, get, set } from 'firebase/database';
 import { auth, db } from './firebase';
-
-
+import './styles/global.css';
 
 // Import all components
 import LandingPage from './components/LandingPage';
