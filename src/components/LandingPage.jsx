@@ -207,7 +207,7 @@ function LandingPage({ onLoginClick }) {
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: "url('/images/naturelong.jpg')",
-            filter: 'brightness(0.5) contrast(1.1) saturate(1.1)',
+            filter: 'brightness(0.9) contrast(1.1) saturate(1.1)',
           }}
           aria-hidden
         />
@@ -266,7 +266,7 @@ function LandingPage({ onLoginClick }) {
             className="h-[480px] md:h-[720px] bg-cover bg-center"
             style={{
               backgroundImage: "url('/images/laugh.jpg')",
-              filter: 'brightness(0.55) contrast(1.05) saturate(1.05)',
+              filter: 'brightness(0.75) contrast(1.05) saturate(1.05)',
             }}
             role="img"
             aria-label="Lindsey smiling"
@@ -328,7 +328,7 @@ function LandingPage({ onLoginClick }) {
           </div>
           <div
             className="h-[480px] md:h-[720px] bg-cover bg-center order-1 md:order-2"
-            style={{ backgroundImage: "url('/images/cherryblossoms.jpg')", filter: 'brightness(0.45) contrast(1.05) saturate(1.05)' }}
+            style={{ backgroundImage: "url('/images/cherryblossoms.jpg')", filter: 'brightness(0.75) contrast(1.05) saturate(1.05)' }}
           />
         </div>
       </motion.section>
@@ -379,7 +379,7 @@ function LandingPage({ onLoginClick }) {
           className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: "url('/images/naturetall.jpg')",
-            filter: 'brightness(0.35) contrast(1.05) saturate(1.1)',
+            filter: 'brightness(0.55) contrast(1.05) saturate(1.1)',
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[#1E3328]/80 to-[#0a0a0a]/60" />
