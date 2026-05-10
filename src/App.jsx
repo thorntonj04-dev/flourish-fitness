@@ -18,6 +18,7 @@ import WorkoutBuilder from './components/admin/WorkoutBuilder';
 import ProgramBuilder from './components/admin/ProgramBuilder';
 import ManageClients from './components/admin/ManageClients';
 import AdminDashboard from './components/admin/AdminDashboard';
+import AdminInquiries from './components/admin/AdminInquiries';
 
 // ============================================
 // CLIENT COMPONENTS
@@ -307,6 +308,9 @@ export default function App() {
 
             {/* ========== ADMIN: CLIENTS ========== */}
             {currentView === 'clients' && userRole === 'admin' && <ManageClients />}
+
+            {/* ========== ADMIN: INQUIRIES ========== */}
+            {currentView === 'inquiries' && userRole === 'admin' && <AdminInquiries />}
 
             {/* ========== CLIENT: THIS WEEK ========== */}
             {currentView === 'this-week' && userRole === 'client' && (

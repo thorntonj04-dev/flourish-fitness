@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { motion, useAnimation } from 'framer-motion';
+import InquiryModal from './InquiryModal';
 
 /**
  * Helper: triggers animation controls when element scrolls into view
@@ -63,6 +64,7 @@ const fadeIn = {
 
 function LandingPage({ onLoginClick }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showInquiry, setShowInquiry] = useState(false);
 
   // Scroll animations for sections
   const [heroRef, heroControls] = useScrollInView(0.2);
@@ -242,7 +244,7 @@ function LandingPage({ onLoginClick }) {
             className="mt-8 flex justify-center"
           >
             <button
-              onClick={onLoginClick}
+              onClick={() => setShowInquiry(true)}
               className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-semibold gold-btn"
             >
               Start Your Journey
@@ -284,7 +286,7 @@ function LandingPage({ onLoginClick }) {
                 women push past limits, stay consistent, and celebrate every win along the way.
               </p>
               <button
-                onClick={onLoginClick}
+                onClick={() => setShowInquiry(true)}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold gold-btn"
               >
                 Work with Lindsey
@@ -420,6 +422,8 @@ function LandingPage({ onLoginClick }) {
           &copy; {new Date().getFullYear()} Flourish Fitness. All rights reserved.
         </p>
       </footer>
+
+      {showInquiry && <InquiryModal onClose={() => setShowInquiry(false)} />}
     </div>
   );
 }
