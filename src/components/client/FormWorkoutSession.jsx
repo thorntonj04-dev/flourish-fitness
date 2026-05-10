@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Check, X, Trophy, Clock, Save, Plus, Minus } fr
 import { ref as dbRef, get, set, push, update } from 'firebase/database';
 import { db } from '../../firebase';
 import WorkoutComplete from './WorkoutComplete';
+import RestTimerOverlay from './RestTimerOverlay';
 
 export default function FormWorkoutSession({ workout, userId, onExit, previewMode = false }) {
   const [exercises, setExercises] = useState([]);
@@ -16,6 +17,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const [saveAsDefaultFor, setSaveAsDefaultFor] = useState({});
   const [savingDefault, setSavingDefault] = useState({});
   const [exitConfirm, setExitConfirm] = useState(false);
+  const [restTimer, setRestTimer] = useState(null); // { seconds, label, type: 'set'|'exercise', nextExIdx }
 
   useEffect(() => {
     initializeWorkout();
@@ -34,23 +36,18 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     return () => clearTimeout(t);
   }, [sessionData, sessionId]);
 
-  // Auto-advance to next incomplete exercise when current one is fully done
-  useEffect(() => {
-    if (expandedExercise === null || expandedExercise === undefined) return;
-    const exData = sessionData[expandedExercise];
-    if (!exData || exData.sets.length === 0) return;
-    const allDone = exData.sets.every(s => s.completed);
-    if (!allDone) return;
-
-    const nextIdx = Object.keys(sessionData)
+  const findNextIncompleteExercise = (afterIdx) =>
+    Object.keys(sessionData)
       .map(Number)
-      .find(i => i > expandedExercise && sessionData[i] && !sessionData[i].sets.every(s => s.completed));
+      .find(i => i > afterIdx && sessionData[i] && !sessionData[i].sets.every(s => s.completed));
 
-    if (nextIdx !== undefined) {
-      const timer = setTimeout(() => setExpandedExercise(nextIdx), 700);
-      return () => clearTimeout(timer);
+  const handleRestDone = () => {
+    const { type, nextExIdx } = restTimer || {};
+    setRestTimer(null);
+    if (type === 'exercise' && nextExIdx !== undefined) {
+      setExpandedExercise(nextExIdx);
     }
-  }, [sessionData]);
+  };
 
   const initializeWorkout = async () => {
     let exerciseList = [];
@@ -151,6 +148,37 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   };
 
   const completeSet = (exIdx, setIdx) => {
+    const currentSets = sessionData[exIdx]?.sets || [];
+    const isMarkingComplete = !currentSets[setIdx]?.completed;
+    const exercise = exercises[exIdx];
+
+    if (isMarkingComplete) {
+      const willAllBeDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
+      if (willAllBeDone) {
+        const restAfter = exercise?.restBetweenExercisesSeconds || 0;
+        const nextExIdx = findNextIncompleteExercise(exIdx);
+        if (restAfter > 0 && nextExIdx !== undefined) {
+          setTimeout(() => setRestTimer({
+            seconds: restAfter,
+            label: 'Rest before next exercise',
+            type: 'exercise',
+            nextExIdx,
+          }), 400);
+        } else if (nextExIdx !== undefined) {
+          setTimeout(() => setExpandedExercise(nextExIdx), 700);
+        }
+      } else {
+        const restSeconds = exercise?.restSeconds || 0;
+        if (restSeconds > 0) {
+          setTimeout(() => setRestTimer({
+            seconds: restSeconds,
+            label: 'Rest between sets',
+            type: 'set',
+          }), 400);
+        }
+      }
+    }
+
     setSessionData(prev => {
       const next = { ...prev };
       next[exIdx] = { ...next[exIdx] };
@@ -169,7 +197,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
           setSaveAsDefaultFor(p => ({ ...p, [exIdx]: 'pending' }));
         }
       }
-
       return next;
     });
   };
@@ -576,6 +603,16 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
           {progress === 100 ? 'Complete Workout 🎉' : `${progress}% — keep going!`}
         </button>
       </div>
+
+      {/* Rest timer overlay */}
+      {restTimer && (
+        <RestTimerOverlay
+          seconds={restTimer.seconds}
+          label={restTimer.label}
+          onSkip={handleRestDone}
+          onDone={handleRestDone}
+        />
+      )}
 
       {/* Exit confirmation */}
       {exitConfirm && (

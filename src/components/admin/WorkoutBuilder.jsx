@@ -496,46 +496,59 @@ export default function WorkoutBuilder() {
                       </label>
 
                       {exercise.useDuration ? (
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">Min</label>
-                            <input
-                              type="number"
-                              value={exercise.durationMinutes || 0}
-                              onChange={(e) => handleUpdateExercise(idx, 'durationMinutes', parseInt(e.target.value) || 0)}
-                              className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
-                              min="0" max="60"
-                            />
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">Min</label>
+                              <input
+                                type="number"
+                                value={exercise.durationMinutes || 0}
+                                onChange={(e) => handleUpdateExercise(idx, 'durationMinutes', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
+                                min="0" max="60"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">Sec</label>
+                              <input
+                                type="number"
+                                value={exercise.durationSeconds || 0}
+                                onChange={(e) => handleUpdateExercise(idx, 'durationSeconds', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
+                                min="0" max="59"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">Sec</label>
-                            <input
-                              type="number"
-                              value={exercise.durationSeconds || 0}
-                              onChange={(e) => handleUpdateExercise(idx, 'durationSeconds', parseInt(e.target.value) || 0)}
-                              className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
-                              min="0" max="59"
-                            />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">Set Rest (s)</label>
+                              <input
+                                type="number"
+                                value={exercise.restSeconds || 0}
+                                onChange={(e) => handleUpdateExercise(idx, 'restSeconds', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
+                                min="0" max="600" step="15"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">After Exercise (s)</label>
+                              <input
+                                type="number"
+                                value={exercise.restBetweenExercisesSeconds || 0}
+                                onChange={(e) => handleUpdateExercise(idx, 'restBetweenExercisesSeconds', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
+                                min="0" max="600" step="15"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">Rest (s)</label>
-                            <input
-                              type="number"
-                              value={exercise.restSeconds}
-                              onChange={(e) => handleUpdateExercise(idx, 'restSeconds', parseInt(e.target.value) || 0)}
-                              className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
-                              min="0" max="600" step="15"
-                            />
-                          </div>
-                        </div>
+                        </>
                       ) : (
                         <>
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-2 gap-3">
                             {[
                               { label: 'Sets', field: 'sets', max: 20 },
                               { label: 'Reps', field: 'reps', max: 100 },
-                              { label: 'Rest (s)', field: 'restSeconds', max: 600, step: 15 },
-                            ].map(({ label, field, max, step }) => (
+                            ].map(({ label, field, max }) => (
                               <div key={field}>
                                 <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">{label}</label>
                                 <input
@@ -543,10 +556,33 @@ export default function WorkoutBuilder() {
                                   value={exercise[field]}
                                   onChange={(e) => handleUpdateExercise(idx, field, parseInt(e.target.value) || 0)}
                                   className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
-                                  min="0" max={max} step={step || 1}
+                                  min="0" max={max}
                                 />
                               </div>
                             ))}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">Set Rest (s)</label>
+                              <input
+                                type="number"
+                                value={exercise.restSeconds || 0}
+                                onChange={(e) => handleUpdateExercise(idx, 'restSeconds', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
+                                min="0" max="600" step="15"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">After Exercise (s)</label>
+                              <input
+                                type="number"
+                                value={exercise.restBetweenExercisesSeconds || 0}
+                                onChange={(e) => handleUpdateExercise(idx, 'restBetweenExercisesSeconds', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
+                                min="0" max="600" step="15"
+                              />
+                            </div>
                           </div>
 
                           <div>

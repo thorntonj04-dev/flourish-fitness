@@ -26,6 +26,7 @@ import AppWalkthroughModal from './components/admin/AppWalkthroughModal';
 import FormWorkoutSession from './components/client/FormWorkoutSession';
 import WorkoutHistory from './components/client/WorkoutHistory';
 import ProgramDashboard from './components/client/ProgramDashboard';
+import ClientProfile from './components/client/ClientProfile';
 
 // ============================================
 // SHARED COMPONENTS
@@ -356,22 +357,7 @@ export default function App() {
 
             {/* ========== CLIENT: PROFILE ========== */}
             {currentView === 'profile' && userRole === 'client' && (
-              <div className="space-y-4">
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white">
-                  <h2 className="text-2xl font-bold">Profile</h2>
-                </div>
-                <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 border border-gray-200 dark:border-[#C6A45F]/25">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-14 h-14 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                      {user.email?.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-[#d8e7de]">{user.email}</div>
-                      <div className="text-sm text-emerald-600 dark:text-[#FFD700]">Client</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <ClientProfile user={user} />
             )}
           </div>
         </main>
