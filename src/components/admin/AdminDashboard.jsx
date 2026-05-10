@@ -123,7 +123,7 @@ export default function AdminDashboard({ user, onNavigate }) {
               { step: 3, label: 'Add Your Client', detail: "Go to Clients and tap Add Client. Enter their name and email. Send them the app link and ask them to sign up with that exact email — they'll automatically be set up as a client with the right role.", icon: <Users className="w-4 h-4" />, color: 'bg-blue-500' },
               { step: 4, label: 'Assign the Program', detail: "On their client card, tap Assign Program. Select the program, choose a start date, and set their weekly schedule — which days they'll train each week. They can always rearrange this themselves.", icon: <CalendarDays className="w-4 h-4" />, color: 'bg-purple-500' },
               { step: 5, label: 'Client Trains', detail: "Your client opens the app and sees their full week — rest days, upcoming workouts, and today's session. They tap Start and get guided set-by-set with their recommended weights and rest timers. Everything saves automatically.", icon: <Play className="w-4 h-4" />, color: 'bg-pink-500' },
-              { step: 6, label: 'Adjust as They Progress', detail: "Use the eye icon on any client card to preview exactly what they see. Reassign programs, update start dates, or build new ones from the admin tabs. Their workout history and personal records track themselves.", icon: <TrendingUp className="w-4 h-4" />, color: 'bg-orange-500' },
+              { step: 6, label: 'Adjust as They Progress', detail: "Tap the eye icon on any client card to open their full detail view — see their program progress, strength charts, body weight trend, personal records, and complete workout history including session notes. Reassign programs or build new ones from the admin tabs.", icon: <TrendingUp className="w-4 h-4" />, color: 'bg-orange-500' },
             ].map(({ step, label, detail, icon, color }) => (
               <div key={step} className="flex items-start gap-3 p-4">
                 <div className={`w-8 h-8 ${color} rounded-full flex items-center justify-center text-white flex-shrink-0 mt-0.5`}>
@@ -165,8 +165,9 @@ export default function AdminDashboard({ user, onNavigate }) {
               { icon: Play, title: 'Guided workout sessions', desc: 'Exercises are expanded one at a time. They log weight and reps for each set, with your recommended values pre-filled.' },
               { icon: Clock, title: 'Rest timers between sets', desc: 'If you set a rest period, a countdown appears automatically after each set. They can skip it if they feel ready.' },
               { icon: TrendingUp, title: 'Last session reference', desc: "They can see what weight they used last time for every exercise — no more guessing. One tap fills it in automatically." },
-              { icon: Trophy, title: 'Post-workout celebration', desc: 'Confetti, stats, and achievements appear when they finish. They rate the difficulty so you know how it felt.' },
+              { icon: Trophy, title: 'Post-workout celebration', desc: 'Confetti, stats, and achievements appear when they finish. They rate the difficulty and can leave a session note so nothing gets forgotten.' },
               { icon: SlidersHorizontal, title: 'Flexible schedule', desc: 'They can rearrange which days they train each week without changing their program — life happens.' },
+              { icon: TrendingUp, title: 'Body weight tracking', desc: 'They can log their weight right from their profile. You can see their full weight trend in the client detail view.' },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-start gap-3">
                 <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -192,17 +193,21 @@ export default function AdminDashboard({ user, onNavigate }) {
           {[
             'Workout builder',
             'Multi-phase programs',
+            'Phase auto-advancement',
             'Client management',
             'Program assignment',
             'Weekly schedule view',
             'Live workout sessions',
+            'Session notes',
             'Rest timers (set & exercise)',
             'Last session reference',
             'Workout history',
             'Strength progress charts',
+            'Body weight tracking',
             'Personal records',
             'Streak tracking',
-            'Client view preview',
+            'Client detail view',
+            'Client progress & history',
             'Workout rating',
             'Schedule adjustment',
             'Dark mode',
