@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, Edit, FileText, Star, X, Eye } from 'lucide-react';
+import { Plus, Save, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, Edit, FileText, Star, X, Eye, Dumbbell } from 'lucide-react';
 import { ref as dbRef, get, set, push, remove, update } from 'firebase/database';
 import { db, auth } from '../../firebase';
 import ExerciseLibrary from '../workout/ExerciseLibrary';
