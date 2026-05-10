@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, LogOut, Heart } from 'lucide-react';
+import { Dumbbell, LogOut, Heart, Sparkles } from 'lucide-react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref as dbRef, get, set } from 'firebase/database';
 import { auth, db } from './firebase';
@@ -18,6 +18,7 @@ import WorkoutBuilder from './components/admin/WorkoutBuilder';
 import ProgramBuilder from './components/admin/ProgramBuilder';
 import ManageClients from './components/admin/ManageClients';
 import AboutModal from './components/admin/AboutModal';
+import AppWalkthroughModal from './components/admin/AppWalkthroughModal';
 
 // ============================================
 // CLIENT COMPONENTS
@@ -50,6 +51,7 @@ export default function App() {
 
   // NEW: State for About modal
   const [showAbout, setShowAbout] = useState(false);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   
 
   // ============================================
@@ -73,13 +75,24 @@ export default function App() {
             if (role === 'client') setCurrentView('this-week');
             setNeedsSetup(false);
           } else {
+            const pendingKey = firebaseUser.email.toLowerCase().replace(/\./g, ',');
+            const pendingSnap = await get(dbRef(db, `pendingClients/${pendingKey}`));
+            let role = 'admin';
+            let name = firebaseUser.email.split('@')[0];
+            if (pendingSnap.exists()) {
+              const pending = pendingSnap.val();
+              role = pending.role || 'client';
+              name = pending.name || name;
+              await set(dbRef(db, `pendingClients/${pendingKey}`), null);
+            }
             await set(userRef, {
               email: firebaseUser.email,
-              name: firebaseUser.email.split('@')[0],
-              role: 'admin',
+              name,
+              role,
               createdAt: new Date().toISOString(),
-              });
-            setUserRole('admin');
+            });
+            setUserRole(role);
+            if (role === 'client') setCurrentView('this-week');
             setNeedsSetup(false);
           }
         } catch (error) {
@@ -307,12 +320,19 @@ export default function App() {
                 
                 <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 border border-gray-200 dark:border-[#C6A45F]/25">
                   <div className="text-sm text-gray-600 dark:text-[#d8e7de]/60 mb-2">Account</div>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-[#d8e7de] capitalize mb-4">
+                  <div className="text-2xl font-bold text-gray-900 dark:text-[#d8e7de] capitalize mb-2">
                     👑 Admin / Trainer
                   </div>
-                  <p className="text-gray-600 dark:text-[#d8e7de]/80">
+                  <p className="text-gray-600 dark:text-[#d8e7de]/80 mb-5">
                     Build programs, manage workouts, and assign training to your clients.
                   </p>
+                  <button
+                    onClick={() => setShowWalkthrough(true)}
+                    className="w-full py-3.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 min-h-[52px] active:opacity-90"
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    How to Use This App
+                  </button>
                 </div>
               </div>
             )}
@@ -385,10 +405,14 @@ export default function App() {
       {/* Only visible to admin users when showAbout is true */}
       {/* ============================================ */}
       {userRole === 'admin' && (
-        <AboutModal 
-          isOpen={showAbout} 
-          onClose={() => setShowAbout(false)} 
+        <AboutModal
+          isOpen={showAbout}
+          onClose={() => setShowAbout(false)}
         />
+      )}
+
+      {userRole === 'admin' && showWalkthrough && (
+        <AppWalkthroughModal onClose={() => setShowWalkthrough(false)} />
       )}
     </div>
   );

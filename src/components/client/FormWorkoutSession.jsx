@@ -686,18 +686,6 @@ function SetRow({ set, setIdx, onComplete, onWeightChange, onRepsChange }) {
               className="w-12 h-12 bg-gray-100 dark:bg-[#0a0a0a]/40 rounded-xl flex items-center justify-center font-bold text-xl text-gray-600 dark:text-[#d8e7de]/80 min-w-[48px]"
             >+</button>
           </div>
-          {/* Quick adjust chips */}
-          <div className="grid grid-cols-4 gap-1 mt-1.5">
-            {[-3, -1, 1, 3].map(n => (
-              <button
-                key={n}
-                onClick={() => onRepsChange(Math.max(1, set.reps + n))}
-                className="py-2 bg-gray-100 dark:bg-[#0a0a0a]/40 text-gray-600 dark:text-[#d8e7de]/60 rounded-lg text-xs font-semibold min-h-[36px]"
-              >
-                {n > 0 ? '+' : ''}{n}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </div>
