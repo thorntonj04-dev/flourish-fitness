@@ -3,7 +3,7 @@ import { ref as dbRef, get, set } from 'firebase/database';
 import { db } from '../../firebase';
 import {
   Layers, Dumbbell, UserPlus, RefreshCw, Clock,
-  Eye, X, Mail,
+  Eye, X, Mail, Users,
 } from 'lucide-react';
 import AssignProgramModal from './AssignProgramModal';
 import ClientDetailView from './ClientDetailView';
@@ -113,15 +113,23 @@ export default function ManageClients() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white">
-        <div className="flex items-start justify-between gap-3">
+      <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-600 rounded-2xl p-6 text-white relative overflow-hidden">
+        <div className="absolute -top-8 -right-8 w-44 h-44 bg-white/5 rounded-full" />
+        <div className="absolute -bottom-10 -left-4 w-32 h-32 bg-white/5 rounded-full" />
+        <div className="relative flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold">Clients</h2>
-            <p className="text-emerald-100 text-sm mt-1">Manage clients and their training programs</p>
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="w-4 h-4 text-blue-200" />
+              <span className="text-blue-100 text-sm font-medium">Your Roster</span>
+            </div>
+            <h2 className="text-2xl font-bold">Clients</h2>
+            <p className="text-blue-100 text-sm mt-0.5">
+              {clients.length} active{pendingClients.length > 0 ? ` · ${pendingClients.length} pending` : ''}
+            </p>
           </div>
           <button
             onClick={() => setShowAddClient(true)}
-            className="flex items-center gap-2 bg-white/20 active:bg-white/30 text-white rounded-xl px-4 py-2.5 font-semibold text-sm min-h-[44px] flex-shrink-0"
+            className="flex items-center gap-2 bg-white/20 active:bg-white/30 text-white rounded-xl px-4 py-2.5 font-semibold text-sm min-h-[44px] flex-shrink-0 mt-1"
           >
             <UserPlus className="w-4 h-4" />
             Add Client

@@ -1,7 +1,7 @@
 import { LayoutDashboard, Layers, Dumbbell, Users, CalendarDays, Clock, User } from 'lucide-react';
 
 export const adminNavItems = [
-  { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+  { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
   { id: 'programs', label: 'Programs', icon: Layers },
   { id: 'workout-days', label: 'Workouts', icon: Dumbbell },
   { id: 'clients', label: 'Clients', icon: Users },

@@ -318,12 +318,25 @@ export default function ProgramBuilder() {
   // LIST VIEW
   // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="space-y-5">
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white">
-        <h2 className="text-xl font-bold">Programs</h2>
-        <p className="text-emerald-100 text-sm mt-1">Build and manage multi-phase training programs</p>
+    <div className="space-y-4 pb-6">
+
+      {/* Hero banner */}
+      <div className="bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 rounded-2xl p-6 text-white relative overflow-hidden">
+        <div className="absolute -top-8 -right-8 w-44 h-44 bg-white/5 rounded-full" />
+        <div className="absolute -bottom-10 -left-4 w-32 h-32 bg-white/5 rounded-full" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <Layers className="w-4 h-4 text-emerald-200" />
+            <span className="text-emerald-100 text-sm font-medium">Multi-phase Training</span>
+          </div>
+          <h2 className="text-2xl font-bold">Programs</h2>
+          <p className="text-emerald-100 text-sm mt-0.5">
+            {programs.length} program{programs.length !== 1 ? 's' : ''} built
+          </p>
+        </div>
       </div>
 
+      {/* Create new button */}
       <button
         onClick={() => {
           setCurrentProgram({ name: '', description: '', phases: [newPhase(1)] });
@@ -331,74 +344,80 @@ export default function ProgramBuilder() {
           setEditingProgramId(null);
           setView('editor');
         }}
-        className="w-full py-3.5 bg-emerald-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-sm min-h-[52px]"
+        className="w-full bg-white dark:bg-[#1E3328] rounded-2xl border-2 border-dashed border-emerald-300 dark:border-emerald-600/40 p-4 flex items-center gap-4 active:bg-emerald-50 dark:active:bg-emerald-900/10 min-h-[72px]"
       >
-        <Plus className="w-5 h-5" />
-        Create New Program
+        <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
+          <Plus className="w-6 h-6 text-white" />
+        </div>
+        <div className="text-left">
+          <div className="font-bold text-gray-900 dark:text-[#d8e7de]">Create New Program</div>
+          <div className="text-sm text-gray-500 dark:text-[#d8e7de]/50">Combine workout days into multi-phase plans</div>
+        </div>
       </button>
 
-      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25">
-        <div className="p-5 border-b border-gray-100 dark:border-[#C6A45F]/15">
-          <h3 className="font-bold text-gray-900 dark:text-[#d8e7de]">Your Programs ({programs.length})</h3>
-        </div>
-
-        {programs.length === 0 ? (
-          <div className="p-8 text-center">
-            <Layers className="w-12 h-12 mx-auto text-gray-300 dark:text-[#d8e7de]/20 mb-3" />
-            <p className="text-gray-500 dark:text-[#d8e7de]/60 mb-1">No programs yet.</p>
-            <p className="text-sm text-gray-400 dark:text-[#d8e7de]/40">Create a program to assign to your clients.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
-            {programs.map(program => (
-              <div key={program.id} className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-gray-900 dark:text-[#d8e7de]">{program.name}</div>
-                    {program.description && (
-                      <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5 line-clamp-2">{program.description}</p>
-                    )}
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {(program.phases || []).map((phase, i) => (
-                        <span
-                          key={i}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-lg text-xs font-medium"
-                        >
-                          <Layers className="w-3 h-3" />
-                          {phase.name} · {phase.durationWeeks}w · {phase.workoutsPerWeek}x/wk
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => handleEditProgram(program)}
-                      className="px-3.5 py-2.5 bg-blue-500 text-white rounded-xl flex items-center gap-1.5 text-sm font-semibold min-h-[44px]"
-                    >
-                      <Edit className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleArchiveProgram(program)}
-                      className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      title="Archive program"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
+      {/* No workouts warning */}
       {workouts.length === 0 && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl p-4 flex gap-3">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-2xl p-4 flex gap-3">
           <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-amber-700 dark:text-amber-400">
             <span className="font-semibold">No workouts found.</span> Go to <span className="font-semibold">Workouts</span> to create some before building a program.
           </div>
+        </div>
+      )}
+
+      {/* Program cards */}
+      {programs.length === 0 ? (
+        <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-10 border border-gray-200 dark:border-[#C6A45F]/25 text-center">
+          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl mx-auto flex items-center justify-center mb-4">
+            <Layers className="w-8 h-8 text-emerald-400" />
+          </div>
+          <p className="font-bold text-gray-700 dark:text-[#d8e7de] mb-1">No programs yet</p>
+          <p className="text-sm text-gray-400 dark:text-[#d8e7de]/40">Create a program to assign to your clients.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {programs.map(program => (
+            <div key={program.id} className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
+              <div className="p-4 flex items-start gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Layers className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-gray-900 dark:text-[#d8e7de]">{program.name}</div>
+                  {program.description && (
+                    <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5 line-clamp-2">{program.description}</p>
+                  )}
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {(program.phases || []).map((phase, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-lg text-xs font-semibold"
+                      >
+                        <Layers className="w-3 h-3" />
+                        {phase.name} · {phase.durationWeeks}w · {phase.workoutsPerWeek}×/wk
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 px-4 pb-4 border-t border-gray-50 dark:border-[#C6A45F]/5 pt-3">
+                <button
+                  onClick={() => handleEditProgram(program)}
+                  className="flex-1 py-2.5 bg-blue-50 dark:bg-blue-900/15 text-blue-700 dark:text-blue-400 rounded-xl flex items-center justify-center gap-1.5 text-sm font-semibold min-h-[44px] active:bg-blue-100 dark:active:bg-blue-900/25"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Program
+                </button>
+                <button
+                  onClick={() => handleArchiveProgram(program)}
+                  className="p-2.5 text-red-400 active:bg-red-50 dark:active:bg-red-900/20 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  title="Archive program"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

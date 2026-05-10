@@ -810,91 +810,113 @@ export default function WorkoutBuilder() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white">
-        <h2 className="text-xl font-bold">Workouts</h2>
-        <p className="text-emerald-100 text-sm mt-1">Build individual workouts to use inside programs</p>
+    <div className="space-y-4 pb-6">
+
+      {/* Hero banner */}
+      <div className="bg-gradient-to-br from-yellow-400 via-orange-400 to-orange-500 rounded-2xl p-6 text-white relative overflow-hidden">
+        <div className="absolute -top-8 -right-8 w-44 h-44 bg-white/5 rounded-full" />
+        <div className="absolute -bottom-10 -left-4 w-32 h-32 bg-white/5 rounded-full" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <Dumbbell className="w-4 h-4 text-yellow-200" />
+            <span className="text-yellow-100 text-sm font-medium">Workout Days</span>
+          </div>
+          <h2 className="text-2xl font-bold">Your Workouts</h2>
+          <p className="text-orange-100 text-sm mt-0.5">
+            {workouts.length} workout{workouts.length !== 1 ? 's' : ''} saved
+          </p>
+        </div>
       </div>
 
+      {/* Create new button */}
       <button
         onClick={() => setView('create')}
-        className="w-full py-3.5 bg-emerald-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-sm min-h-[52px]"
+        className="w-full bg-white dark:bg-[#1E3328] rounded-2xl border-2 border-dashed border-orange-300 dark:border-orange-600/40 p-4 flex items-center gap-4 active:bg-orange-50 dark:active:bg-orange-900/10 min-h-[72px]"
       >
-        <Plus className="w-5 h-5" />
-        Create New Workout
+        <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
+          <Plus className="w-6 h-6 text-white" />
+        </div>
+        <div className="text-left">
+          <div className="font-bold text-gray-900 dark:text-[#d8e7de]">Create New Workout</div>
+          <div className="text-sm text-gray-500 dark:text-[#d8e7de]/50">Build a training day from your exercise library</div>
+        </div>
       </button>
 
-      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25">
-        <div className="p-5 border-b border-gray-100 dark:border-[#C6A45F]/15">
-          <h3 className="font-bold text-gray-900 dark:text-[#d8e7de]">Saved Workouts ({workouts.length})</h3>
-        </div>
-
-        {workouts.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-gray-500 dark:text-[#d8e7de]/60 mb-4">No workouts yet. Create your first one to start building programs.</p>
-            <button
-              onClick={() => setView('create')}
-              className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-semibold inline-flex items-center gap-2 min-h-[48px]"
-            >
-              <Plus className="w-5 h-5" />
-              Create First Workout
-            </button>
+      {/* Workout cards */}
+      {workouts.length === 0 ? (
+        <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-10 border border-gray-200 dark:border-[#C6A45F]/25 text-center">
+          <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/20 rounded-2xl mx-auto flex items-center justify-center mb-4">
+            <Dumbbell className="w-8 h-8 text-orange-400" />
           </div>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
-            {workouts.map(workout => {
-              const warmupCount = workout.exercises?.filter(e => e.section === 'warmup').length ?? workout.warmup?.length ?? 0;
-              const workCount = workout.exercises?.filter(e => e.section === 'work').length ?? workout.work?.length ?? 0;
-              const cooldownCount = workout.exercises?.filter(e => e.section === 'cooldown').length ?? workout.cooldown?.length ?? 0;
-              return (
-                <div key={workout.id} className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-gray-900 dark:text-[#d8e7de]">{workout.name}</div>
-                      {workout.description && (
-                        <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5 truncate">{workout.description}</p>
+          <p className="font-bold text-gray-700 dark:text-[#d8e7de] mb-1">No workouts yet</p>
+          <p className="text-sm text-gray-400 dark:text-[#d8e7de]/40">Create your first workout to start building programs.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {workouts.map(workout => {
+            const warmupCount = workout.exercises?.filter(e => e.section === 'warmup').length ?? workout.warmup?.length ?? 0;
+            const workCount = workout.exercises?.filter(e => e.section === 'work').length ?? workout.work?.length ?? 0;
+            const cooldownCount = workout.exercises?.filter(e => e.section === 'cooldown').length ?? workout.cooldown?.length ?? 0;
+            return (
+              <div key={workout.id} className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
+                <div className="p-4 flex items-start gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Dumbbell className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-gray-900 dark:text-[#d8e7de]">{workout.name}</div>
+                    {workout.description && (
+                      <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5 truncate">{workout.description}</p>
+                    )}
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {warmupCount > 0 && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-50 dark:bg-yellow-900/15 text-yellow-700 dark:text-yellow-400 rounded-lg text-xs font-semibold">
+                          🔥 {warmupCount} warmup
+                        </span>
                       )}
-                      <div className="flex gap-3 mt-2 text-xs text-gray-400 dark:text-[#d8e7de]/40">
-                        <span>🔥 {warmupCount}</span>
-                        <span>💪 {workCount}</span>
-                        <span>🧘 {cooldownCount}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => setPreviewWorkout(workout)}
-                        className="px-3.5 py-2.5 bg-amber-500 text-white rounded-xl flex items-center gap-1.5 text-sm font-semibold min-h-[44px]"
-                        title="Preview as client"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Preview
-                      </button>
-                      <button
-                        onClick={() => handleEditWorkout(workout)}
-                        className="px-3.5 py-2.5 bg-blue-500 text-white rounded-xl flex items-center gap-1.5 text-sm font-semibold min-h-[44px]"
-                      >
-                        <Edit className="w-4 h-4" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (confirm(`Delete "${workout.name}"?`)) {
-                            await remove(dbRef(db, `workouts/${workout.id}`));
-                            loadWorkouts();
-                          }
-                        }}
-                        className="p-2.5 text-red-500 active:bg-red-50 dark:active:bg-red-900/20 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-900/15 text-emerald-700 dark:text-emerald-400 rounded-lg text-xs font-semibold">
+                        💪 {workCount} exercises
+                      </span>
+                      {cooldownCount > 0 && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/15 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-semibold">
+                          🧘 {cooldownCount} cooldown
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                <div className="flex gap-2 px-4 pb-4 border-t border-gray-50 dark:border-[#C6A45F]/5 pt-3">
+                  <button
+                    onClick={() => setPreviewWorkout(workout)}
+                    className="flex-1 py-2.5 bg-amber-50 dark:bg-amber-900/15 text-amber-700 dark:text-amber-400 rounded-xl flex items-center justify-center gap-1.5 text-sm font-semibold min-h-[44px] active:bg-amber-100 dark:active:bg-amber-900/25"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Preview
+                  </button>
+                  <button
+                    onClick={() => handleEditWorkout(workout)}
+                    className="flex-1 py-2.5 bg-blue-50 dark:bg-blue-900/15 text-blue-700 dark:text-blue-400 rounded-xl flex items-center justify-center gap-1.5 text-sm font-semibold min-h-[44px] active:bg-blue-100 dark:active:bg-blue-900/25"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (confirm(`Delete "${workout.name}"?`)) {
+                        await remove(dbRef(db, `workouts/${workout.id}`));
+                        loadWorkouts();
+                      }
+                    }}
+                    className="p-2.5 text-red-400 active:bg-red-50 dark:active:bg-red-900/20 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
