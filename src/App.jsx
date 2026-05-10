@@ -39,6 +39,7 @@ export default function App() {
   // STATE MANAGEMENT
   // ============================================
   const [user, setUser] = useState(null);
+  const [userName, setUserName] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
@@ -70,6 +71,7 @@ export default function App() {
             const userData = snapshot.val();
             const role = userData.role || 'admin';
             setUserRole(role);
+            setUserName(userData.name || firebaseUser.email.split('@')[0]);
             if (role === 'client') setCurrentView('this-week');
             setNeedsSetup(false);
           } else {
@@ -89,6 +91,7 @@ export default function App() {
               role,
               createdAt: new Date().toISOString(),
             });
+            setUserName(name);
             setUserRole(role);
             if (role === 'client') setCurrentView('this-week');
             setNeedsSetup(false);
@@ -99,6 +102,7 @@ export default function App() {
         }
       } else {
         setUser(null);
+        setUserName(null);
         setUserRole(null);
         setNeedsSetup(false);
         setShowLanding(true);
@@ -249,7 +253,7 @@ export default function App() {
 </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="text-sm font-medium text-gray-900 dark:text-[#d8e7de]">{user.email}</div>
+              <div className="text-sm font-medium text-gray-900 dark:text-[#d8e7de]">{userName}</div>
               <div className="text-xs text-emerald-600 dark:text-[#FFD700] capitalize font-medium">
                 {userRole === 'admin' ? '👑 Admin' : '💪 Client'}
               </div>
