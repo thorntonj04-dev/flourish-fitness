@@ -112,12 +112,12 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
   };
 
   const getRatingEmoji = (rating) => {
-    const emojis = ['😰', '😅', '😊', '💪', '🔥'];
+    const emojis = ['😅', '🙂', '😊', '💪', '🔥'];
     return emojis[rating - 1] || '';
   };
 
   const getRatingLabel = (rating) => {
-    const labels = ['Too Easy', 'Easy', 'Just Right', 'Challenging', 'Very Hard'];
+    const labels = ['Easy', 'Light', 'Good', 'Hard', 'Brutal'];
     return labels[rating - 1] || '';
   };
 
@@ -214,22 +214,17 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
             How was this workout?
           </h3>
           {!hasRated ? (
-            <div className="space-y-3">
+            <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map(rating => (
                 <button
                   key={rating}
                   onClick={() => handleRating(rating)}
-                  className="w-full p-4 border-2 border-gray-200 dark:border-[#C6A45F]/25 rounded-xl active:border-emerald-500 active:bg-emerald-50 dark:active:bg-emerald-900/20 transition flex items-center justify-between min-h-[64px]"
+                  className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 border-gray-200 dark:border-[#C6A45F]/25 active:border-emerald-500 active:bg-emerald-50 dark:active:bg-emerald-900/20 transition min-h-[72px]"
                 >
-                  <span className="text-3xl">{getRatingEmoji(rating)}</span>
-                  <span className="text-lg font-medium text-gray-700 dark:text-[#d8e7de]/80">
+                  <span className="text-2xl">{getRatingEmoji(rating)}</span>
+                  <span className="text-xs text-gray-500 dark:text-[#d8e7de]/60 font-medium leading-tight">
                     {getRatingLabel(rating)}
                   </span>
-                  <div className="flex gap-1">
-                    {[...Array(rating)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />
-                    ))}
-                  </div>
                 </button>
               ))}
             </div>
