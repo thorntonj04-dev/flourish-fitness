@@ -39,7 +39,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const findNextIncompleteExercise = (afterIdx) =>
     Object.keys(sessionData)
       .map(Number)
-      .find(i => i > afterIdx && sessionData[i] && !sessionData[i].sets.every(s => s.completed));
+      .find(i => i > afterIdx && sessionData[i] && !(sessionData[i].sets || []).every(s => s.completed));
 
   const handleRestDone = () => {
     const { type, nextExIdx } = restTimer || {};

@@ -48,7 +48,10 @@ export default function AssignProgramModal({ client, programs, existingAssignmen
     }
   }, [selectedProgramId, programs]);
 
-  const phase0Days = selectedProgram?.phases?.[0]?.days || [];
+  const rawPhase0Days = selectedProgram?.phases?.[0]?.days;
+  const phase0Days = rawPhase0Days
+    ? (Array.isArray(rawPhase0Days) ? rawPhase0Days : Object.values(rawPhase0Days))
+    : [];
 
   const handleScheduleChange = (dayOfWeek, dayId) => {
     setSchedule(prev => ({ ...prev, [dayOfWeek]: dayId || null }));

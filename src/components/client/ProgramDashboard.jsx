@@ -158,9 +158,9 @@ export default function ProgramDashboard({ user, onStartWorkout }) {
               <Layers className="w-4 h-4 opacity-80" />
               <span className="text-sm font-semibold opacity-80 truncate">{assignment.programName}</span>
             </div>
-            <h2 className="text-xl font-bold">{phase.name}</h2>
+            <h2 className="text-xl font-bold">{phase?.name ?? 'Current Phase'}</h2>
             <p className="text-emerald-100 text-sm mt-0.5">
-              Week {weekNumber} of {phase.durationWeeks} · {workoutDaysCount}× per week
+              Week {weekNumber} of {phase?.durationWeeks ?? '?'} · {workoutDaysCount}× per week
             </p>
           </div>
           <div className="text-right flex-shrink-0">

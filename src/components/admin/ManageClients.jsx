@@ -226,7 +226,7 @@ export default function ManageClients() {
                         </div>
                         <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60 truncate">{client.email}</div>
                         <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">
-                          Joined {new Date(client.createdAt).toLocaleDateString()}
+                          Joined {client.createdAt ? new Date(client.createdAt).toLocaleDateString() : 'Recently'}
                         </div>
                       </div>
                       <button

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, LogOut, Heart, Sparkles } from 'lucide-react';
+import { Dumbbell, LogOut } from 'lucide-react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref as dbRef, get, set } from 'firebase/database';
 import { auth, db } from './firebase';
@@ -17,8 +17,7 @@ import AdminSetup from './components/AdminSetup';
 import WorkoutBuilder from './components/admin/WorkoutBuilder';
 import ProgramBuilder from './components/admin/ProgramBuilder';
 import ManageClients from './components/admin/ManageClients';
-import AboutModal from './components/admin/AboutModal';
-import AppWalkthroughModal from './components/admin/AppWalkthroughModal';
+import AdminDashboard from './components/admin/AdminDashboard';
 
 // ============================================
 // CLIENT COMPONENTS
@@ -50,9 +49,6 @@ export default function App() {
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [isInWorkout, setIsInWorkout] = useState(false);
 
-  // NEW: State for About modal
-  const [showAbout, setShowAbout] = useState(false);
-  const [showWalkthrough, setShowWalkthrough] = useState(false);
   
 
   // ============================================
@@ -299,43 +295,8 @@ export default function App() {
           <div className="max-w-4xl mx-auto">
             
             {/* ========== DASHBOARD VIEW ========== */}
-            {currentView === 'dashboard' && (
-              <div className="space-y-6">
-                {/* Header with About Button (Admin Only) */}
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-6 text-white relative">
-                  <h2 className="text-2xl font-bold">Welcome back!</h2>
-                  <p className="text-emerald-100">Your fitness journey starts here</p>
-                  
-                  {/* About Button - Only shows for admin */}
-                  {userRole === 'admin' && (
-                    <button
-                      onClick={() => setShowAbout(true)}
-                      className="absolute top-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg font-semibold transition-all border border-white/30"
-                      title="Learn about Flourish Fitness"
-                    >
-                      <Heart className="w-4 h-4" />
-                      <span className="hidden sm:inline">About</span>
-                    </button>
-                  )}
-                </div>
-                
-                <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 border border-gray-200 dark:border-[#C6A45F]/25">
-                  <div className="text-sm text-gray-600 dark:text-[#d8e7de]/60 mb-2">Account</div>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-[#d8e7de] capitalize mb-2">
-                    👑 Admin / Trainer
-                  </div>
-                  <p className="text-gray-600 dark:text-[#d8e7de]/80 mb-5">
-                    Build programs, manage workouts, and assign training to your clients.
-                  </p>
-                  <button
-                    onClick={() => setShowWalkthrough(true)}
-                    className="w-full py-3.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 min-h-[52px] active:opacity-90"
-                  >
-                    <Sparkles className="w-5 h-5" />
-                    How to Use This App
-                  </button>
-                </div>
-              </div>
+            {currentView === 'dashboard' && userRole === 'admin' && (
+              <AdminDashboard user={user} onNavigate={setCurrentView} />
             )}
 
             {/* ========== ADMIN: WORKOUT DAYS ========== */}
@@ -386,20 +347,6 @@ export default function App() {
   </div>
 </nav>
 
-      {/* ============================================ */}
-      {/* ABOUT MODAL - Shows special message about Flourish Fitness */}
-      {/* Only visible to admin users when showAbout is true */}
-      {/* ============================================ */}
-      {userRole === 'admin' && (
-        <AboutModal
-          isOpen={showAbout}
-          onClose={() => setShowAbout(false)}
-        />
-      )}
-
-      {userRole === 'admin' && showWalkthrough && (
-        <AppWalkthroughModal onClose={() => setShowWalkthrough(false)} />
-      )}
     </div>
   );
 }

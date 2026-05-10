@@ -39,7 +39,10 @@ export default function WorkoutHistory({ user }) {
   const formatDate = (ts) =>
     new Date(ts).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-  const getExerciseList = (exercises) => (exercises ? Object.values(exercises) : []);
+  const getExerciseList = (exercises) => {
+    if (!exercises) return [];
+    return Array.isArray(exercises) ? exercises : Object.values(exercises);
+  };
 
   // Build per-exercise progression data from all sessions
   const buildProgressData = () => {

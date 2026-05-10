@@ -14,9 +14,9 @@ export default function RestTimerOverlay({ seconds, label, onSkip, onDone }) {
     }
     const t = setTimeout(() => setRemaining(r => r - 1), 1000);
     return () => clearTimeout(t);
-  }, [remaining]);
+  }, [remaining, onDone]);
 
-  const progress = (seconds - remaining) / seconds;
+  const progress = seconds > 0 ? (seconds - remaining) / seconds : 1;
   const dashOffset = CIRCUMFERENCE * (1 - progress);
 
   return (

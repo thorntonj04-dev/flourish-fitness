@@ -101,7 +101,12 @@ export default function ClientProfile({ user }) {
           <div className="font-bold text-xl truncate">{user.email}</div>
           <div className="text-emerald-100 text-sm mt-0.5">
             Member since {history.length > 0
-              ? new Date(Math.min(...history.map(h => h.startTime))).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+              ? (() => {
+                  const validTimes = history.map(h => h.startTime).filter(Boolean);
+                  return validTimes.length > 0
+                    ? new Date(Math.min(...validTimes)).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                    : 'now';
+                })()
               : 'now'}
           </div>
         </div>
