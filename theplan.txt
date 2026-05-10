@@ -1,0 +1,372 @@
+================================================================================
+  FLOURISH FITNESS — REBUILD PLAN
+  Last updated: 2026-05-09
+================================================================================
+
+GOAL
+----
+Transform the app into a focused, mobile-first workout programming and delivery
+platform. Remove all food, nutrition, and measurement tracking. The entire
+experience — for both admin/trainer and clients — revolves around building
+workout programs, assigning them, and performing workouts on an iPhone saved to
+the home screen as a PWA.
+
+================================================================================
+SECTION 1: WHAT WE'RE REMOVING (Cleanup)
+================================================================================
+
+These components, imports, and nav items will be deleted entirely. They add
+clutter and complexity that conflicts with the focused UX we want.
+
+CLIENT COMPONENTS TO DELETE:
+  - src/components/client/NutritionLogger.jsx
+  - src/components/client/FoodSearchModal.jsx
+  - src/components/client/BarcodeScanner.jsx
+  - src/components/client/CreateCustomFoodModal.jsx
+  - src/components/client/WeeklyNutritionDashboard.jsx
+  - src/components/client/WeightTracking.jsx
+  - src/components/client/BodyMeasurements.jsx
+  - src/components/client/MeasurementTracking.jsx
+  - src/components/client/MeasurementDashboard.jsx
+  - src/components/client/MeasurementGoals.jsx
+  - src/components/client/MeasurementHistory.jsx
+  - src/components/client/ProgressPhotos.jsx
+  - src/components/client/PhotoUpload.jsx
+  - src/components/client/MyGoals.jsx
+  - src/components/client/WeeklyDashboard.jsx       (replace with new one)
+  - src/components/client/WorkoutCalendar.jsx       (replace with new schedule)
+  - src/components/client/MyWorkouts.jsx            (replace with program view)
+
+ADMIN COMPONENTS TO DELETE:
+  - src/components/admin/AdminNutrition.jsx
+  - src/components/admin/AdminFoodManagement.jsx
+  - src/components/admin/ClientMeasurements.jsx
+  - src/components/admin/AdminPhotos.jsx
+  - src/components/admin/Reports.jsx
+  - src/components/admin/AdminClientAnalytics.jsx
+  - src/components/admin/DebugClientList.jsx
+  - src/components/admin/DefaultTemplatePopulator.jsx
+  - src/components/admin/ExercisePopulator.jsx
+
+SERVICES TO DELETE:
+  - src/services/foodDatabaseService.js
+
+KEEP (workout-specific):
+  - src/components/admin/WorkoutBuilder.jsx         (refactor, keep)
+  - src/components/admin/ManageClients.jsx          (enhance heavily)
+  - src/components/admin/AssignUserRoles.jsx        (keep)
+  - src/components/client/WorkoutSession.jsx        (enhance)
+  - src/components/client/FormWorkoutSession.jsx    (keep or merge)
+  - src/components/client/WorkoutHistory.jsx        (keep)
+  - src/components/client/WorkoutComplete.jsx       (keep)
+  - src/components/client/PersonalRecords.jsx       (keep)
+  - src/components/client/ProgressDashboard.jsx     (repurpose for workout stats)
+  - src/components/workout/WorkoutPerformer.jsx     (keep)
+  - src/components/workout/RestTimer.jsx            (keep)
+  - src/components/workout/ExerciseLibrary.jsx      (keep)
+  - src/components/workout/ExerciseHistoryCard.jsx  (keep)
+  - src/components/workout/WorkoutSummary.jsx       (keep)
+
+
+================================================================================
+SECTION 2: DATA MODEL (Firebase Realtime Database)
+================================================================================
+
+Current paths that stay:
+  /workouts/{workoutId}         Individual workout day templates
+  /workout-logs/{logId}         Completed session logs
+  /users/{userId}               User accounts + roles
+
+New paths to add:
+
+  /programs/{programId}
+    ├── name: string
+    ├── description: string
+    ├── createdAt: ISO string
+    ├── createdBy: adminUid
+    ├── archived: boolean
+    └── phases/
+          ├── 0/
+          │   ├── name: string           ("Phase 1 - Foundation")
+          │   ├── durationWeeks: number  (4)
+          │   ├── workoutsPerWeek: number (3 | 4 | 5)
+          │   └── days/
+          │         ├── 0/ { id, label: "Day A", workoutId, workoutName }
+          │         ├── 1/ { id, label: "Day B", workoutId, workoutName }
+          │         └── 2/ { id, label: "Day C", workoutId, workoutName }
+          └── 1/
+              ├── name: string           ("Phase 2 - Progression")
+              ├── durationWeeks: number  (4)
+              ├── workoutsPerWeek: number (4)
+              └── days/
+                    ├── 0/ { id, label: "Day A", workoutId, workoutName }
+                    ├── 1/ { id, label: "Day B", workoutId, workoutName }
+                    ├── 2/ { id, label: "Day C", workoutId, workoutName }
+                    └── 3/ { id, label: "Day D", workoutId, workoutName }
+
+  /programAssignments/{userId}
+    ├── programId: string
+    ├── programName: string
+    ├── assignedAt: ISO string
+    ├── assignedBy: adminUid
+    ├── startDate: YYYY-MM-DD
+    ├── currentPhase: number    (0-based index)
+    ├── currentWeek: number     (1-based, within current phase)
+    └── weeklySchedule/
+          ├── Monday: "day-id-or-null"
+          ├── Tuesday: "day-id-or-null"
+          ├── Wednesday: "day-id-or-null"
+          ├── Thursday: "day-id-or-null"
+          ├── Friday: "day-id-or-null"
+          ├── Saturday: "day-id-or-null"
+          └── Sunday: "day-id-or-null"
+
+NOTE: The weeklySchedule maps days of the week to phase day IDs (e.g., "Day A",
+"Day B"). The client can rearrange which day of the week each workout falls on.
+Rest days are null. The admin sets a default schedule at assignment time;
+the client can override it at any time.
+
+
+================================================================================
+SECTION 3: NEW COMPONENTS TO BUILD
+================================================================================
+
+--- ADMIN SIDE ---
+
+[NEW] src/components/admin/ProgramBuilder.jsx
+  The main admin screen for creating and managing programs.
+  - List all existing programs (name, phase count, # of clients on it)
+  - Button: "Create New Program"
+  - Each program card: Edit | Archive | Duplicate buttons
+  - Opens into ProgramEditor for creation/editing
+
+[NEW] src/components/admin/ProgramEditor.jsx
+  Full program creation/editing UI.
+  - Program name + description fields
+  - Phase list (accordion or scrollable cards)
+  - "Add Phase" button at bottom
+  - Each phase rendered by ProgramPhaseCard
+
+[NEW] src/components/admin/ProgramPhaseCard.jsx
+  Manages one phase within a program.
+  - Phase name (text input)
+  - Duration in weeks (number input)
+  - Workouts per week selector: 3 | 4 | 5 (button group)
+  - Day slots appear based on workoutsPerWeek selection
+  - Each day slot has a label ("Day A", "Day B", etc.) and a
+    workout picker that opens WorkoutPickerModal
+  - Drag to reorder days (optional, can do later)
+  - Delete phase button (with confirm)
+
+[NEW] src/components/admin/WorkoutPickerModal.jsx
+  Modal to pick a workout from the existing workout library.
+  - Search/filter workouts by name
+  - Tap a workout to select it
+  - Shows workout name + exercise count as preview
+  - Confirms selection back to phase card
+
+[ENHANCE] src/components/admin/ManageClients.jsx
+  Upgrade from read-only list to full client management hub.
+  - Each client card shows: name, email, current program, phase, week
+  - "Assign Program" button → opens AssignProgramModal
+  - "Change Program" button (if already assigned)
+  - Visual indicator: which phase/week they're on
+  - View client's workout history (log count, last workout date)
+
+[NEW] src/components/admin/AssignProgramModal.jsx
+  Modal for assigning a program to a client.
+  - Dropdown: pick program from list
+  - Date picker: start date (defaults to next Monday)
+  - Weekly schedule builder: Mon-Sun grid, drag/assign workout days
+    to slots, rest days left empty
+  - Preview: shows what week 1 looks like
+  - Confirm button saves to /programAssignments/{userId}
+
+
+--- CLIENT SIDE ---
+
+[NEW] src/components/client/ProgramDashboard.jsx
+  Primary client view after login. Replaces the old dashboard content.
+  - Hero card: "Week X of Phase Y — [Program Name]"
+  - This week's schedule: Mon–Sun horizontal scroll or grid
+    - Each day shows: workout name (or "Rest")
+    - Days with a workout: START button (large, thumb-friendly)
+    - Today's workout is highlighted
+  - Completed workouts this week shown with a checkmark
+  - "Adjust My Schedule" button → opens ScheduleAdjustModal
+
+[NEW] src/components/client/ScheduleAdjustModal.jsx
+  Lets the client rearrange their weekly workout days.
+  - Shows their current weeklySchedule (Mon-Sun)
+  - Each assigned day can be moved to a different day of the week
+  - Can swap two days or move one to a rest day slot
+  - Saves back to /programAssignments/{userId}/weeklySchedule
+  - NOTE: only rearranges within the week; does not change the program
+
+[ENHANCE] src/components/client/WorkoutSession.jsx
+  Already solid — add these improvements:
+  - Before each set: inline weight/reps adjustment (+ / - buttons)
+  - Show "Last time: X lbs × Y reps" as a reference line
+  - Adjustment is saved for the session but also offers
+    "Save as my default for this exercise?" prompt
+  - On completion, show a clean summary screen with PRs
+  - Large buttons throughout (min 48px tap targets)
+
+
+================================================================================
+SECTION 4: COMPONENTS TO REFACTOR/STREAMLINE
+================================================================================
+
+src/components/admin/WorkoutBuilder.jsx
+  - Strip out any program assignment logic (moving to ProgramBuilder)
+  - Keep: create/edit individual workout day templates
+  - Rename conceptually: these are "Workout Days" that get used inside programs
+  - Clean up the UI for mobile: larger inputs, simpler layout
+  - Keep default templates, exercise library, save/load
+
+src/components/shared/Navigation.jsx
+  - Admin nav items:
+      Dashboard    | Programs | Workout Days | Clients
+  - Client nav items:
+      This Week    | History  | Profile
+  - Remove all references to food, nutrition, measurements
+
+src/App.jsx
+  - Remove all food/measurement imports and view branches
+  - Wire up new views: ProgramBuilder, ProgramDashboard
+  - Simplify state: remove food/measurement state
+  - Keep: auth flow, role detection, workout session full-screen mode
+
+index.html (PWA meta tags — add these):
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Flourish Fitness">
+  <link rel="apple-touch-icon" href="/images/fflogo.png">
+  <meta name="theme-color" content="#10b981">
+
+
+================================================================================
+SECTION 5: MOBILE / PWA UX RULES (apply throughout)
+================================================================================
+
+These are design rules to follow when building every new component:
+
+1.  TOUCH TARGETS: All buttons/tappable elements min 48px tall. No tiny icons
+    as the only interactive surface.
+
+2.  BOTTOM NAV: Already exists, keep it. It's the primary nav on mobile. The
+    sidebar (desktop) can stay but mobile users never see it.
+
+3.  THUMB ZONE: Put primary actions (Start Workout, Confirm, Save) at the
+    bottom of the screen, not top. Think of where thumbs naturally reach.
+
+4.  NO HOVER-ONLY: No tooltips, dropdowns, or state that only triggers on
+    hover. Everything must be tap-accessible.
+
+5.  LARGE TEXT INPUTS: number inputs for sets/reps/weight should be large
+    (text-xl or bigger) with big + / - stepper buttons so users don't need to
+    type during a workout.
+
+6.  FULL-SCREEN WORKOUT MODE: When a workout is active, it's full screen with
+    no nav clutter. This already exists, preserve it.
+
+7.  LOADING STATES: Show skeleton cards (pulsing gray boxes) instead of
+    spinners for list loads. Spinners only for action confirmations.
+
+8.  PREVENT ACCIDENTAL EXITS: When in an active workout, "back" or nav taps
+    should trigger a "Leave workout? Progress may be lost" confirmation.
+
+9.  PWA: The index.html must include all apple-mobile-web-app meta tags so it
+    looks native when saved to the iPhone home screen (no browser chrome,
+    proper icon, proper status bar).
+
+10. DARK MODE: Already implemented, keep it. Default to system preference.
+
+
+================================================================================
+SECTION 6: IMPLEMENTATION ORDER (step-by-step work plan)
+================================================================================
+
+Work through these in order. Each step should be independently testable.
+
+  STEP 1 — CLEANUP
+    [ ] Delete all food/measurement/photo components listed in Section 1
+    [ ] Remove dead imports from App.jsx
+    [ ] Update Navigation.jsx to new nav items (admin + client)
+    [ ] Update App.jsx view routing to match new nav
+    [ ] Verify app loads without errors after cleanup
+
+  STEP 2 — PWA FOUNDATION
+    [ ] Update index.html with all apple-mobile-web-app meta tags
+    [ ] Verify fflogo.png works as apple-touch-icon
+    [ ] Add theme-color meta tag
+    [ ] Test "Add to Home Screen" on iPhone or iOS simulator
+
+  STEP 3 — WORKOUT DAY BUILDER (refactor WorkoutBuilder)
+    [ ] Strip program-assignment logic out of WorkoutBuilder.jsx
+    [ ] Rename section header to "Workout Day Templates"
+    [ ] Improve mobile layout: larger inputs, cleaner exercise list
+    [ ] Ensure saving to /workouts/{id} still works correctly
+
+  STEP 4 — PROGRAM BUILDER (new admin flow)
+    [ ] Build ProgramBuilder.jsx: program list + create button
+    [ ] Build ProgramEditor.jsx: phases list + add phase
+    [ ] Build ProgramPhaseCard.jsx: phase config + day slots
+    [ ] Build WorkoutPickerModal.jsx: browse + select workout days
+    [ ] Wire all to Firebase /programs path
+    [ ] Test: create a 2-phase program with 3 workouts/week in phase 1,
+        4 workouts/week in phase 2
+
+  STEP 5 — ASSIGN PROGRAMS TO CLIENTS
+    [ ] Build AssignProgramModal.jsx: pick program + start date + schedule
+    [ ] Enhance ManageClients.jsx: show program status per client
+    [ ] Wire to Firebase /programAssignments path
+    [ ] Test: assign a program to a test client account, verify the
+        weeklySchedule is saved correctly
+
+  STEP 6 — CLIENT PROGRAM DASHBOARD
+    [ ] Build ProgramDashboard.jsx: this-week view with workout cards
+    [ ] Show current phase + week progress (e.g., "Week 2 of 4 — Phase 1")
+    [ ] Highlight today, show START buttons
+    [ ] Build ScheduleAdjustModal.jsx: rearrange days of week
+    [ ] Wire client view in App.jsx to ProgramDashboard as default view
+    [ ] Test: log in as client, see the correct week's workouts
+
+  STEP 7 — WORKOUT SESSION ENHANCEMENTS
+    [ ] Add inline weight/reps adjustments in WorkoutSession.jsx
+    [ ] Add "last time you did X" reference line per exercise
+    [ ] Add "save as default" option for adjusted weights
+    [ ] Confirm PRs still work correctly
+    [ ] Test: perform a workout as a client, adjust weights, complete it
+
+  STEP 8 — POLISH + MOBILE QA
+    [ ] Review all new components against Mobile UX Rules (Section 5)
+    [ ] Fix any touch targets under 48px
+    [ ] Test the full flow on a real iPhone (or Chrome DevTools iPhone sim)
+    [ ] Confirm "Add to Home Screen" works and app looks native
+    [ ] Final pass: remove any remaining console.errors, dead code
+
+
+================================================================================
+SECTION 7: WHAT SUCCESS LOOKS LIKE
+================================================================================
+
+ADMIN (on iPhone, saved to home screen):
+  - Logs in → sees overview with clients + their program status
+  - Navigates to Programs → sees list of all programs
+  - Creates a new program: adds phases, sets duration, picks workout days
+  - Goes to Clients → assigns the new program to a client with a start date
+  - Sets the client's weekly schedule (e.g., Mon/Wed/Fri for a 3x/week plan)
+  - Can come back and reassign or switch program for any client at any time
+
+CLIENT (on iPhone, saved to home screen):
+  - Logs in → immediately sees "This Week" with Mon-Sun schedule
+  - Sees which days have workouts and which are rest days
+  - Taps START on today's workout → enters full-screen workout mode
+  - During the workout, can tap + / - to adjust weight or reps for any set
+  - Finishes → sees summary, any PRs, returns to week view
+  - Can tap "Adjust Schedule" to move Wednesday's workout to Thursday
+
+================================================================================
+END OF PLAN
+================================================================================
