@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Dumbbell, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Calendar, Dumbbell, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { ref as dbRef, get } from 'firebase/database';
 import { db } from '../../firebase';
 
@@ -7,7 +7,7 @@ export default function WorkoutHistory({ user }) {
   const [sessions, setSessions] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('sessions'); // 'sessions' | 'progress'
+  const [tab, setTab] = useState('sessions');
 
   useEffect(() => { loadHistory(); }, [user]);
 
@@ -31,20 +31,14 @@ export default function WorkoutHistory({ user }) {
 
   const formatDuration = (secs) => {
     if (!secs) return null;
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return s > 0 ? `${m}m ${s}s` : `${m}m`;
+    return `${Math.floor(secs / 60)}m`;
   };
-
-  const formatDate = (ts) =>
-    new Date(ts).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
   const getExerciseList = (exercises) => {
     if (!exercises) return [];
     return Array.isArray(exercises) ? exercises : Object.values(exercises);
   };
 
-  // Build per-exercise progression data from all sessions
   const buildProgressData = () => {
     const exerciseMap = {};
     [...sessions].reverse().forEach(session => {
@@ -63,19 +57,36 @@ export default function WorkoutHistory({ user }) {
         });
       });
     });
-    // Return exercises with 2+ data points, sorted by most recent
     return Object.entries(exerciseMap)
       .filter(([, data]) => data.length >= 2)
       .sort(([, a], [, b]) => b[b.length - 1].date - a[a.length - 1].date)
       .slice(0, 10);
   };
 
+  const formatVolume = (lbs) => {
+    if (lbs >= 1000000) return `${(lbs / 1000000).toFixed(1)}M`;
+    if (lbs >= 1000) return `${Math.round(lbs / 1000)}K`;
+    return lbs.toLocaleString();
+  };
+
+  const totalVolumeAll = sessions.reduce((sum, session) => {
+    const exList = getExerciseList(session.exercises);
+    return sum + exList.reduce((s2, ex) =>
+      s2 + (ex.sets || []).filter(s => s.completed).reduce((s3, s) => s3 + (s.weight || 0) * (s.reps || 0), 0), 0);
+  }, 0);
+
+  const durSessions = sessions.filter(s => s.duration);
+  const avgDuration = durSessions.length > 0
+    ? Math.round(durSessions.reduce((sum, s) => sum + s.duration, 0) / durSessions.length / 60)
+    : 0;
+
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 animate-pulse h-20" />
+        <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl animate-pulse h-40" />
+        <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 animate-pulse h-14" />
         {[1, 2, 3].map(i => (
-          <div key={i} className="bg-white dark:bg-[#1E3328] rounded-2xl p-4 border border-gray-200 dark:border-[#C6A45F]/25 animate-pulse h-24" />
+          <div key={i} className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 animate-pulse h-28" />
         ))}
       </div>
     );
@@ -85,34 +96,55 @@ export default function WorkoutHistory({ user }) {
 
   return (
     <div className="space-y-4 pb-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white">
-        <h2 className="text-xl font-bold">Workout History</h2>
-        <p className="text-emerald-100 text-sm mt-1">
-          {sessions.length} completed session{sessions.length !== 1 ? 's' : ''}
-        </p>
+
+      {/* Hero header */}
+      <div className="bg-gradient-to-br from-teal-500 via-emerald-500 to-teal-600 rounded-2xl p-6 text-white relative overflow-hidden">
+        <div className="absolute -top-8 -right-8 w-44 h-44 bg-white/5 rounded-full" />
+        <div className="absolute -bottom-10 -left-4 w-32 h-32 bg-white/5 rounded-full" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-1">
+            <Calendar className="w-4 h-4 text-teal-200" />
+            <span className="text-teal-100 text-sm font-medium">All time</span>
+          </div>
+          <h2 className="text-2xl font-bold">Workout History</h2>
+          <p className="text-teal-100 text-sm mt-0.5">
+            {sessions.length} completed session{sessions.length !== 1 ? 's' : ''}
+          </p>
+          <div className="flex gap-2 mt-4 flex-wrap">
+            {avgDuration > 0 && (
+              <div className="bg-white/15 rounded-full px-3 py-1 text-xs font-semibold">
+                ⏱ {avgDuration}m avg session
+              </div>
+            )}
+            {totalVolumeAll > 0 && (
+              <div className="bg-white/15 rounded-full px-3 py-1 text-xs font-semibold">
+                🏋️ {formatVolume(totalVolumeAll)} lbs total
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Tab switcher */}
       {sessions.length > 0 && (
         <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-1.5 border border-gray-200 dark:border-[#C6A45F]/25 flex gap-1">
           <TabButton active={tab === 'sessions'} onClick={() => setTab('sessions')}>Sessions</TabButton>
-          <TabButton active={tab === 'progress'} onClick={() => setTab('progress')}>
-            Strength Progress
-          </TabButton>
+          <TabButton active={tab === 'progress'} onClick={() => setTab('progress')}>Strength Progress</TabButton>
         </div>
       )}
 
       {/* Empty state */}
       {sessions.length === 0 && (
         <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-10 border border-gray-200 dark:border-[#C6A45F]/25 text-center">
-          <Dumbbell className="w-14 h-14 text-gray-300 dark:text-[#d8e7de]/20 mx-auto mb-4" />
-          <p className="font-semibold text-gray-600 dark:text-[#d8e7de]/70 mb-1">No workouts yet</p>
+          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl mx-auto flex items-center justify-center mb-4">
+            <Dumbbell className="w-8 h-8 text-emerald-400" />
+          </div>
+          <p className="font-bold text-gray-700 dark:text-[#d8e7de] mb-1">No sessions yet</p>
           <p className="text-sm text-gray-400 dark:text-[#d8e7de]/40">Complete your first workout to see it here.</p>
         </div>
       )}
 
-      {/* ── Sessions tab ─────────────────────────────────────────── */}
+      {/* Sessions tab */}
       {tab === 'sessions' && sessions.length > 0 && (
         <div className="space-y-3">
           {sessions.map(session => {
@@ -122,8 +154,18 @@ export default function WorkoutHistory({ user }) {
             const doneSets = exerciseList.reduce((sum, ex) => sum + (ex.sets || []).filter(s => s.completed).length, 0);
             const duration = formatDuration(session.duration);
             const totalVolume = exerciseList.reduce((sum, ex) =>
-              sum + (ex.sets || []).filter(s => s.completed).reduce((s2, s) => s2 + (s.weight || 0) * (s.reps || 0), 0), 0
-            );
+              sum + (ex.sets || []).filter(s => s.completed).reduce((s2, s) => s2 + (s.weight || 0) * (s.reps || 0), 0), 0);
+
+            const date = new Date(session.startTime);
+            const todayStr = new Date().toDateString();
+            const yesterdayStr = new Date(Date.now() - 86400000).toDateString();
+            const dateLabel = date.toDateString() === todayStr
+              ? 'Today'
+              : date.toDateString() === yesterdayStr
+              ? 'Yesterday'
+              : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+            const ratingEmoji = { 1: '😴', 2: '😐', 3: '💪', 4: '🔥', 5: '⚡' };
 
             return (
               <div key={session.id} className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
@@ -131,80 +173,109 @@ export default function WorkoutHistory({ user }) {
                   onClick={() => setExpandedId(isExpanded ? null : session.id)}
                   className="w-full p-4 text-left active:bg-gray-50 dark:active:bg-[#0a0a0a]/20"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Dumbbell className="w-6 h-6 text-white" />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-gray-900 dark:text-[#d8e7de] truncate">{session.workoutName}</div>
-                      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                        <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-[#d8e7de]/50">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {formatDate(session.startTime)}
-                        </span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-bold text-gray-900 dark:text-[#d8e7de] leading-tight truncate">
+                          {session.workoutName}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {session.difficulty && (
+                            <span className="text-base leading-none">{ratingEmoji[session.difficulty]}</span>
+                          )}
+                          {isExpanded
+                            ? <ChevronDown className="w-4 h-4 text-gray-400" />
+                            : <ChevronRight className="w-4 h-4 text-gray-400" />
+                          }
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <span className="text-xs text-gray-400 dark:text-[#d8e7de]/50">{dateLabel}</span>
                         {duration && (
-                          <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-[#d8e7de]/50">
-                            <Clock className="w-3.5 h-3.5" />
-                            {duration}
-                          </span>
+                          <>
+                            <span className="text-gray-200 dark:text-[#d8e7de]/20">·</span>
+                            <span className="text-xs text-gray-400 dark:text-[#d8e7de]/50">{duration}</span>
+                          </>
                         )}
                         {totalVolume > 0 && (
-                          <span className="text-xs text-gray-400 dark:text-[#d8e7de]/50">
-                            {totalVolume.toLocaleString()} lbs total
-                          </span>
+                          <>
+                            <span className="text-gray-200 dark:text-[#d8e7de]/20">·</span>
+                            <span className="text-xs text-gray-400 dark:text-[#d8e7de]/50">{totalVolume.toLocaleString()} lbs</span>
+                          </>
                         )}
                       </div>
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#0a0a0a]/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-emerald-500"
+                            style={{ width: `${totalSets > 0 ? (doneSets / totalSets) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40 flex-shrink-0">
+                          {doneSets}/{totalSets} sets
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-shrink-0 flex items-center gap-2">
-                      {isExpanded
-                        ? <ChevronDown className="w-5 h-5 text-gray-400" />
-                        : <ChevronRight className="w-5 h-5 text-gray-400" />
-                      }
-                    </div>
-                  </div>
-
-                  {/* Thin progress bar */}
-                  <div className="mt-3 w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1">
-                    <div
-                      className="h-1 rounded-full bg-emerald-500"
-                      style={{ width: `${totalSets > 0 ? (doneSets / totalSets) * 100 : 0}%` }}
-                    />
-                  </div>
-                  <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-1">
-                    {exerciseList.length} exercises · {doneSets}/{totalSets} sets
                   </div>
                 </button>
 
                 {isExpanded && (
-                  <div className="border-t border-gray-100 dark:border-[#C6A45F]/10 bg-gray-50 dark:bg-[#0a0a0a]/30 divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
+                  <div className="border-t border-gray-100 dark:border-[#C6A45F]/10">
                     {exerciseList.map((exData, i) => {
-                      const completedSets = (exData.sets || []).filter(s => s.completed);
                       const allSets = exData.sets || [];
+                      const completedCount = allSets.filter(s => s.completed).length;
                       return (
-                        <div key={i} className="p-4">
-                          <div className="font-semibold text-gray-800 dark:text-[#d8e7de] text-sm mb-2">
-                            {exData.exerciseName}
+                        <div
+                          key={i}
+                          className={`px-4 py-3.5 ${i < exerciseList.length - 1 ? 'border-b border-gray-50 dark:border-[#C6A45F]/5' : ''}`}
+                        >
+                          <div className="flex items-center justify-between mb-2.5">
+                            <div className="font-semibold text-gray-800 dark:text-[#d8e7de] text-sm">
+                              {exData.exerciseName}
+                            </div>
+                            <div className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                              {completedCount}/{allSets.length} sets
+                            </div>
                           </div>
                           {allSets.length > 0 ? (
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                               {allSets.map((s, si) => (
-                                <div key={si} className={`flex items-center gap-3 text-sm ${s.completed ? '' : 'opacity-40'}`}>
-                                  <span className="w-12 text-xs text-gray-400 dark:text-[#d8e7de]/40">Set {si + 1}</span>
-                                  {(s.weight || 0) > 0
-                                    ? <span className="font-semibold text-gray-700 dark:text-[#d8e7de]/80">{s.weight} lbs × {s.reps} reps</span>
-                                    : <span className="text-gray-500 dark:text-[#d8e7de]/60">{s.reps} reps</span>
-                                  }
-                                  {s.completed && <span className="text-emerald-500 text-xs ml-auto">✓</span>}
+                                <div
+                                  key={si}
+                                  className={`flex items-center gap-2.5 ${!s.completed ? 'opacity-35' : ''}`}
+                                >
+                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${s.completed ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-gray-100 dark:bg-[#0a0a0a]/30'}`}>
+                                    {s.completed && <div className="w-2 h-2 rounded-full bg-emerald-500" />}
+                                  </div>
+                                  <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40 w-9 flex-shrink-0">
+                                    Set {si + 1}
+                                  </span>
+                                  <span className="text-sm font-semibold text-gray-700 dark:text-[#d8e7de]/80">
+                                    {(s.weight || 0) > 0
+                                      ? `${s.weight} lbs × ${s.reps} reps`
+                                      : `${s.reps} reps`
+                                    }
+                                  </span>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <div className="text-xs text-gray-400">No set data recorded</div>
+                            <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40">No data recorded</div>
                           )}
                         </div>
                       );
                     })}
                     {session.note && (
-                      <div className="px-4 py-3">
-                        <div className="text-xs font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide mb-1">Session Note</div>
-                        <p className="text-sm text-gray-600 dark:text-[#d8e7de]/70 italic">{session.note}</p>
+                      <div className="mx-4 mb-4 mt-1 bg-amber-50 dark:bg-amber-900/15 rounded-xl px-4 py-3 border border-amber-100 dark:border-amber-700/20">
+                        <div className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">
+                          Session Note
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-[#d8e7de]/70 italic leading-relaxed">
+                          {session.note}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -215,14 +286,17 @@ export default function WorkoutHistory({ user }) {
         </div>
       )}
 
-      {/* ── Progress tab ──────────────────────────────────────────── */}
+      {/* Progress tab */}
       {tab === 'progress' && (
         <div className="space-y-3">
           {progressData.length === 0 ? (
             <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-8 border border-gray-200 dark:border-[#C6A45F]/25 text-center">
-              <TrendingUp className="w-12 h-12 mx-auto text-gray-300 dark:text-[#d8e7de]/20 mb-3" />
-              <p className="text-gray-500 dark:text-[#d8e7de]/60">
-                Complete the same workout at least twice to see your progress here.
+              <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl mx-auto flex items-center justify-center mb-3">
+                <TrendingUp className="w-7 h-7 text-emerald-400" />
+              </div>
+              <p className="font-semibold text-gray-700 dark:text-[#d8e7de] mb-1">Building your data</p>
+              <p className="text-sm text-gray-400 dark:text-[#d8e7de]/40">
+                Do the same exercises at least twice to start seeing your strength progress here.
               </p>
             </div>
           ) : (
@@ -230,10 +304,10 @@ export default function WorkoutHistory({ user }) {
               const first = data[0].weight;
               const last = data[data.length - 1].weight;
               const diff = last - first;
-              const recent = data.slice(-5);
+              const recent = data.slice(-8);
               return (
-                <div key={name} className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 p-4">
-                  <div className="flex items-start justify-between gap-3 mb-3">
+                <div key={name} className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
+                  <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-gray-900 dark:text-[#d8e7de] truncate">{name}</div>
                       <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">
@@ -242,35 +316,19 @@ export default function WorkoutHistory({ user }) {
                     </div>
                     <TrendBadge diff={diff} />
                   </div>
-
-                  {/* Weight progression dots */}
-                  <div className="flex items-end gap-1.5 h-12 mb-2">
-                    {recent.map((point, i) => {
-                      const maxW = Math.max(...recent.map(p => p.weight));
-                      const minW = Math.min(...recent.map(p => p.weight));
-                      const range = maxW - minW || 1;
-                      const heightPct = 30 + ((point.weight - minW) / range) * 70;
-                      return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                          <div
-                            className="w-full bg-emerald-400 dark:bg-emerald-500 rounded-sm"
-                            style={{ height: `${heightPct}%` }}
-                          />
-                        </div>
-                      );
-                    })}
+                  <div className="px-5 pb-3">
+                    <StrengthChart data={recent} />
                   </div>
-
-                  {/* Labels under bars */}
-                  <div className="flex items-center gap-1.5">
-                    {recent.map((point, i) => (
-                      <div key={i} className="flex-1 text-center">
-                        <div className="text-xs font-bold text-gray-700 dark:text-[#d8e7de]/80">{point.weight}</div>
-                        <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">
-                          {new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="px-5 py-3 bg-gray-50 dark:bg-[#0a0a0a]/20 border-t border-gray-100 dark:border-[#C6A45F]/10 flex items-center">
+                    <div className="text-center flex-shrink-0">
+                      <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40">Started</div>
+                      <div className="font-bold text-gray-600 dark:text-[#d8e7de]/70 text-sm mt-0.5">{first} lbs</div>
+                    </div>
+                    <div className="flex-1 mx-4 h-px bg-gray-200 dark:bg-[#C6A45F]/15" />
+                    <div className="text-center flex-shrink-0">
+                      <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40">Current</div>
+                      <div className="font-bold text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">{last} lbs</div>
+                    </div>
                   </div>
                 </div>
               );
@@ -278,6 +336,63 @@ export default function WorkoutHistory({ user }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function StrengthChart({ data }) {
+  const W = 340, H = 80;
+  const pad = { t: 10, r: 10, b: 8, l: 10 };
+  const innerW = W - pad.l - pad.r;
+  const innerH = H - pad.t - pad.b;
+  const weights = data.map(d => d.weight);
+  const minW = Math.min(...weights);
+  const maxW = Math.max(...weights);
+  const range = maxW - minW || 0.5;
+
+  const toX = (i) => pad.l + (i / (data.length - 1)) * innerW;
+  const toY = (w) => pad.t + ((maxW - w) / range) * innerH;
+
+  const points = data.map((d, i) => ({ x: toX(i), y: toY(d.weight) }));
+  const polyline = points.map(p => `${p.x},${p.y}`).join(' ');
+  const areaPath = `M ${points[0].x},${H - pad.b} L ${points.map(p => `${p.x},${p.y}`).join(' L ')} L ${points[points.length - 1].x},${H - pad.b} Z`;
+
+  return (
+    <div className="rounded-xl overflow-hidden bg-emerald-50 dark:bg-emerald-900/10 px-2 pt-2 pb-1">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 80 }}>
+        <defs>
+          <linearGradient id="sGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#sGrad)" />
+        <polyline
+          points={polyline}
+          fill="none"
+          stroke="#10b981"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {points.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={i === points.length - 1 ? 5 : 3}
+            fill={i === points.length - 1 ? '#059669' : '#10b981'}
+          />
+        ))}
+      </svg>
+      <div className="flex justify-between px-1 pb-1">
+        <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
+          {new Date(data[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </div>
+        <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
+          {new Date(data[data.length - 1].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </div>
+      </div>
     </div>
   );
 }
