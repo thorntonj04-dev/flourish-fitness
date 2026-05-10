@@ -71,7 +71,12 @@ export default function App() {
             const userData = snapshot.val();
             const role = userData.role || 'admin';
             setUserRole(role);
-            setUserName(userData.name || firebaseUser.email.split('@')[0]);
+            let resolvedName = userData.name || firebaseUser.email.split('@')[0];
+            if (resolvedName === 'jlthornton07') {
+              resolvedName = 'Lindsey';
+              await set(dbRef(db, `users/${firebaseUser.uid}/name`), 'Lindsey');
+            }
+            setUserName(resolvedName);
             if (role === 'client') setCurrentView('this-week');
             setNeedsSetup(false);
           } else {
