@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { ref as dbRef, get } from 'firebase/database';
+import { ref as dbRef, get, set, push } from 'firebase/database';
 import { db } from '../../firebase';
-import { Flame, Dumbbell, Trophy, TrendingUp, Calendar, Award } from 'lucide-react';
+import { Flame, Dumbbell, Trophy, TrendingUp, Calendar, Award, Scale, Plus } from 'lucide-react';
 
 export default function ClientProfile({ user }) {
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState([]);
+  const [metrics, setMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [newWeight, setNewWeight] = useState('');
+  const [savingMetric, setSavingMetric] = useState(false);
 
   useEffect(() => { loadData(); }, [user]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [statsSnap, historySnap] = await Promise.all([
+      const [statsSnap, historySnap, metricsSnap] = await Promise.all([
         get(dbRef(db, `user-stats/${user.uid}`)),
         get(dbRef(db, `workout-history/${user.uid}`)),
+        get(dbRef(db, `body-metrics/${user.uid}`)),
       ]);
       if (statsSnap.exists()) setStats(statsSnap.val());
       if (historySnap.exists()) {
@@ -23,6 +27,12 @@ export default function ClientProfile({ user }) {
           .filter(s => s.completed)
           .sort((a, b) => b.startTime - a.startTime);
         setHistory(sessions);
+      }
+      if (metricsSnap.exists()) {
+        const list = Object.entries(metricsSnap.val())
+          .map(([id, m]) => ({ id, ...m }))
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+        setMetrics(list);
       }
     } catch (err) {
       console.error('Error loading profile:', err);
@@ -70,9 +80,27 @@ export default function ClientProfile({ user }) {
     return lbs.toLocaleString();
   };
 
+  const handleLogWeight = async () => {
+    const w = parseFloat(newWeight);
+    if (!w || w <= 0) return;
+    setSavingMetric(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const newRef = push(dbRef(db, `body-metrics/${user.uid}`));
+      await set(newRef, { date: today, weight: w, unit: 'lbs', loggedAt: Date.now() });
+      setNewWeight('');
+      loadData();
+    } catch (err) {
+      console.error('Error logging weight:', err);
+    } finally {
+      setSavingMetric(false);
+    }
+  };
+
   const personalRecords = getPersonalRecords();
   const totalVolume = getTotalVolume();
   const recentWorkouts = history.slice(0, 8);
+  const recentMetrics = metrics.slice(-8);
 
   if (loading) {
     return (
@@ -181,6 +209,75 @@ export default function ClientProfile({ user }) {
           </div>
         </div>
       )}
+
+      {/* Body weight log */}
+      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-[#C6A45F]/15 flex items-center gap-2">
+          <Scale className="w-5 h-5 text-blue-500" />
+          <h3 className="font-bold text-gray-900 dark:text-[#d8e7de]">Body Weight</h3>
+          {recentMetrics.length > 0 && (
+            <span className="ml-auto text-sm font-bold text-gray-700 dark:text-[#d8e7de]/80">
+              {recentMetrics[recentMetrics.length - 1].weight} lbs
+            </span>
+          )}
+        </div>
+
+        {recentMetrics.length >= 2 && (
+          <div className="px-5 pt-4">
+            <div className="flex items-end gap-1.5 h-14 mb-2">
+              {recentMetrics.map((m, i) => {
+                const maxW = Math.max(...recentMetrics.map(x => x.weight));
+                const minW = Math.min(...recentMetrics.map(x => x.weight));
+                const range = maxW - minW || 1;
+                const pct = 30 + ((m.weight - minW) / range) * 70;
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center">
+                    <div className="w-full bg-blue-400 dark:bg-blue-500 rounded-sm" style={{ height: `${pct}%` }} />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-1.5 mb-4">
+              {recentMetrics.map((m, i) => (
+                <div key={i} className="flex-1 text-center">
+                  <div className="text-xs font-bold text-gray-700 dark:text-[#d8e7de]/80">{m.weight}</div>
+                  <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
+                    {new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="px-5 pb-5">
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="Today's weight (lbs)"
+              value={newWeight}
+              onChange={e => setNewWeight(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLogWeight()}
+              className="flex-1 px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de] text-base"
+              step="0.1"
+              min="0"
+            />
+            <button
+              onClick={handleLogWeight}
+              disabled={savingMetric || !newWeight}
+              className="px-5 py-3 bg-blue-500 text-white rounded-xl font-semibold active:bg-blue-600 disabled:opacity-50 min-h-[52px] flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              Log
+            </button>
+          </div>
+          {recentMetrics.length === 0 && (
+            <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-2">
+              Log your weight regularly to see your trend over time.
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* Recent activity */}
       {recentWorkouts.length > 0 && (

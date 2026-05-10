@@ -10,12 +10,27 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
   const [stats, setStats] = useState(null);
   const [achievements, setAchievements] = useState([]);
   const [hasRated, setHasRated] = useState(false);
+  const [sessionNote, setSessionNote] = useState('');
+  const [noteSaved, setNoteSaved] = useState(false);
 
   useEffect(() => {
     loadStats();
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 5000);
   }, []);
+
+  useEffect(() => {
+    if (!sessionId || !sessionNote.trim()) return;
+    const t = setTimeout(async () => {
+      try {
+        await update(dbRef(db, `workout-history/${userId}/${sessionId}`), { note: sessionNote.trim() });
+        setNoteSaved(true);
+      } catch (err) {
+        console.error('Error saving note:', err);
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [sessionNote, sessionId]);
 
   const loadStats = async () => {
     try {
@@ -239,6 +254,19 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
               </div>
             </div>
           )}
+        </div>
+
+        {/* Session Notes */}
+        <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 mb-6 border border-gray-200 dark:border-[#C6A45F]/25">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-[#d8e7de] mb-3">Session Notes</h3>
+          <textarea
+            value={sessionNote}
+            onChange={e => { setSessionNote(e.target.value); setNoteSaved(false); }}
+            placeholder="How did it feel? Any notes for next time..."
+            rows={3}
+            className="w-full px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de] resize-none text-base"
+          />
+          {noteSaved && <p className="text-xs text-emerald-500 mt-1.5">Saved</p>}
         </div>
 
         {/* Motivational Message */}

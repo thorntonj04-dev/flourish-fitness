@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ref as dbRef, get } from 'firebase/database';
+import { ref as dbRef, get, update } from 'firebase/database';
 import { db } from '../../firebase';
 import { Play, CheckCircle, Layers, CalendarDays, ChevronRight, SlidersHorizontal, Dumbbell } from 'lucide-react';
 import ScheduleAdjustModal from './ScheduleAdjustModal';
@@ -33,7 +33,7 @@ function computeWeekNumber(startDate, durationWeeks) {
   return Math.min(Math.max(1, Math.floor(daysElapsed / 7) + 1), durationWeeks);
 }
 
-export default function ProgramDashboard({ user, onStartWorkout }) {
+export default function ProgramDashboard({ user, onStartWorkout, readOnly = false }) {
   const [assignment, setAssignment] = useState(null);
   const [program, setProgram] = useState(null);
   const [workoutHistory, setWorkoutHistory] = useState([]);
@@ -51,15 +51,40 @@ export default function ProgramDashboard({ user, onStartWorkout }) {
       const assignSnap = await get(dbRef(db, `programAssignments/${user.uid}`));
       if (!assignSnap.exists()) { setLoading(false); return; }
 
-      const assign = assignSnap.val();
-      setAssignment(assign);
-      setWeeklySchedule(assign.weeklySchedule || {});
+      let assign = assignSnap.val();
 
       const [programSnap, historySnap] = await Promise.all([
         get(dbRef(db, `programs/${assign.programId}`)),
         get(dbRef(db, `workout-history/${user.uid}`)),
       ]);
 
+      // Phase auto-advancement (skip when admin is previewing)
+      if (!readOnly && programSnap.exists()) {
+        const prog = programSnap.val();
+        const phases = prog.phases
+          ? (Array.isArray(prog.phases) ? prog.phases : Object.values(prog.phases))
+          : [];
+        const currentPhaseIdx = assign.currentPhase ?? 0;
+        const currentPhaseData = phases[currentPhaseIdx];
+        if (currentPhaseData && assign.startDate) {
+          const start = new Date(assign.startDate);
+          start.setHours(0, 0, 0, 0);
+          const daysElapsed = Math.floor((Date.now() - start.getTime()) / 86400000);
+          const rawWeek = Math.max(1, Math.floor(daysElapsed / 7) + 1);
+          if (rawWeek > (currentPhaseData.durationWeeks || 1) && currentPhaseIdx + 1 < phases.length) {
+            const today = new Date().toISOString().split('T')[0];
+            await update(dbRef(db, `programAssignments/${user.uid}`), {
+              currentPhase: currentPhaseIdx + 1,
+              startDate: today,
+              weeklySchedule: {},
+            });
+            assign = { ...assign, currentPhase: currentPhaseIdx + 1, startDate: today, weeklySchedule: {} };
+          }
+        }
+      }
+
+      setAssignment(assign);
+      setWeeklySchedule(assign.weeklySchedule || {});
       if (programSnap.exists()) setProgram(programSnap.val());
 
       if (historySnap.exists()) {
@@ -185,7 +210,7 @@ export default function ProgramDashboard({ user, onStartWorkout }) {
       </div>
 
       {/* Today's quick-start (if there's a workout today and it's not done) */}
-      {todayDay && !todayDay.isRest && !todayDay.isCompleted && (
+      {todayDay && !todayDay.isRest && !todayDay.isCompleted && !readOnly && (
         <button
           onClick={() => onStartWorkout(todayDay.workoutId)}
           className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-4 text-white flex items-center justify-between shadow-md active:opacity-90 min-h-[72px]"
@@ -210,13 +235,15 @@ export default function ProgramDashboard({ user, onStartWorkout }) {
             <CalendarDays className="w-4 h-4 text-emerald-500" />
             This Week
           </h3>
-          <button
-            onClick={() => setShowAdjust(true)}
-            className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 py-2 px-3 rounded-lg active:bg-emerald-50 dark:active:bg-emerald-900/20 min-h-[44px]"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Adjust
-          </button>
+          {!readOnly && (
+            <button
+              onClick={() => setShowAdjust(true)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400 py-2 px-3 rounded-lg active:bg-emerald-50 dark:active:bg-emerald-900/20 min-h-[44px]"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Adjust
+            </button>
+          )}
         </div>
 
         <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
@@ -225,6 +252,7 @@ export default function ProgramDashboard({ user, onStartWorkout }) {
               key={day.name}
               day={day}
               onStart={() => onStartWorkout(day.workoutId)}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -249,7 +277,7 @@ export default function ProgramDashboard({ user, onStartWorkout }) {
 
 // ─── Day row sub-component ────────────────────────────────────────────────────
 
-function DayRow({ day, onStart }) {
+function DayRow({ day, onStart, readOnly = false }) {
   const dayAbbr = day.name.slice(0, 3).toUpperCase();
 
   // Today + workout available
@@ -286,13 +314,17 @@ function DayRow({ day, onStart }) {
           <div className="font-bold text-emerald-700 dark:text-emerald-300 truncate">{day.workoutName}</div>
           <div className="text-xs text-emerald-500 dark:text-emerald-500/80">{day.dayLabel} · Today</div>
         </div>
-        <button
-          onClick={onStart}
-          className="flex-shrink-0 px-4 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm flex items-center gap-1.5 min-h-[44px]"
-        >
-          <Play className="w-4 h-4" />
-          Start
-        </button>
+        {readOnly ? (
+          <span className="text-xs text-violet-400 font-semibold flex-shrink-0">Preview</span>
+        ) : (
+          <button
+            onClick={onStart}
+            className="flex-shrink-0 px-4 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm flex items-center gap-1.5 min-h-[44px]"
+          >
+            <Play className="w-4 h-4" />
+            Start
+          </button>
+        )}
       </div>
     );
   }
@@ -347,7 +379,7 @@ function DayRow({ day, onStart }) {
         </div>
         <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40">{day.dayLabel}</div>
       </div>
-      {isFuture && (
+      {isFuture && !readOnly && (
         <button
           onClick={onStart}
           className="flex-shrink-0 px-3.5 py-2 border border-gray-200 dark:border-[#C6A45F]/25 text-gray-600 dark:text-[#d8e7de]/70 rounded-xl font-semibold text-sm min-h-[44px]"

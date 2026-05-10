@@ -3,10 +3,10 @@ import { ref as dbRef, get, set } from 'firebase/database';
 import { db } from '../../firebase';
 import {
   Layers, Dumbbell, UserPlus, RefreshCw, Clock,
-  Eye, X, Mail, User, ChevronLeft,
+  Eye, X, Mail,
 } from 'lucide-react';
 import AssignProgramModal from './AssignProgramModal';
-import ProgramDashboard from '../client/ProgramDashboard';
+import ClientDetailView from './ClientDetailView';
 
 export default function ManageClients() {
   const [clients, setClients] = useState([]);
@@ -16,7 +16,7 @@ export default function ManageClients() {
   const [loading, setLoading] = useState(true);
   const [selectedClient, setSelectedClient] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [previewingClient, setPreviewingClient] = useState(null);
+  const [detailClient, setDetailClient] = useState(null);
   const [showAddClient, setShowAddClient] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
@@ -104,35 +104,9 @@ export default function ManageClients() {
     return `${phase.name} · Week ${assignment.currentWeek}/${phase.durationWeeks}`;
   };
 
-  // ─── Client view preview overlay ──────────────────────────────────────────
-  if (previewingClient) {
-    return (
-      <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-[#0a0a0a] flex flex-col">
-        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2 text-white">
-            <Eye className="w-4 h-4" />
-            <span className="font-semibold text-sm">
-              Viewing as {previewingClient.name || previewingClient.email}
-            </span>
-          </div>
-          <button
-            onClick={() => setPreviewingClient(null)}
-            className="flex items-center gap-1.5 bg-white/20 active:bg-white/30 text-white rounded-xl px-3 py-2 text-sm font-bold min-h-[40px]"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Exit
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          <ProgramDashboard
-            user={{ uid: previewingClient.id }}
-            onStartWorkout={() =>
-              alert("You're in client view — the client can tap this to start their workout on their device.")
-            }
-          />
-        </div>
-      </div>
-    );
+  // ─── Client detail view ────────────────────────────────────────────────────
+  if (detailClient) {
+    return <ClientDetailView client={detailClient} onBack={() => setDetailClient(null)} />;
   }
 
   // ─── Main view ─────────────────────────────────────────────────────────────
@@ -230,7 +204,7 @@ export default function ManageClients() {
                         </div>
                       </div>
                       <button
-                        onClick={() => setPreviewingClient(client)}
+                        onClick={() => setDetailClient(client)}
                         className="flex-shrink-0 p-2.5 rounded-xl border border-gray-200 dark:border-[#C6A45F]/25 text-gray-500 dark:text-[#d8e7de]/60 active:bg-gray-100 dark:active:bg-[#0a0a0a]/30 min-w-[44px] min-h-[44px] flex items-center justify-center"
                         title="View as client"
                       >

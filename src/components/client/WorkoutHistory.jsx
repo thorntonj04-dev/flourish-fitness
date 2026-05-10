@@ -201,6 +201,12 @@ export default function WorkoutHistory({ user }) {
                         </div>
                       );
                     })}
+                    {session.note && (
+                      <div className="px-4 py-3">
+                        <div className="text-xs font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide mb-1">Session Note</div>
+                        <p className="text-sm text-gray-600 dark:text-[#d8e7de]/70 italic">{session.note}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

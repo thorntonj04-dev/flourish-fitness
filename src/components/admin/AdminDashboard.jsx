@@ -1,8 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dumbbell, Layers, Users, Heart, ChevronRight, Play, CalendarDays, Trophy, SlidersHorizontal, TrendingUp, Clock, Sparkles, Check } from 'lucide-react';
+import { ref as dbRef, get } from 'firebase/database';
+import { db } from '../../firebase';
 
 export default function AdminDashboard({ user, onNavigate }) {
   const [expandedSection, setExpandedSection] = useState(null);
+  const [clientStats, setClientStats] = useState(null);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const [usersSnap, statsSnap] = await Promise.all([
+          get(dbRef(db, 'users')),
+          get(dbRef(db, 'user-stats')),
+        ]);
+        const clients = usersSnap.exists()
+          ? Object.entries(usersSnap.val()).filter(([, u]) => u.role === 'client')
+          : [];
+        const allStats = statsSnap.exists() ? statsSnap.val() : {};
+        const sevenDaysAgo = Date.now() - 7 * 86400000;
+        const trainedRecently = clients.filter(([uid]) => {
+          const lwd = allStats[uid]?.lastWorkoutDate;
+          return lwd && new Date(lwd).getTime() > sevenDaysAgo;
+        }).length;
+        setClientStats({ total: clients.length, trainedRecently, needAttention: clients.length - trainedRecently });
+      } catch (err) {
+        console.error('Error loading admin stats:', err);
+      }
+    };
+    loadStats();
+  }, []);
 
   return (
     <div className="space-y-5 pb-20">
@@ -21,6 +48,25 @@ export default function AdminDashboard({ user, onNavigate }) {
             Everything you need to run your coaching business — built just for you.
           </p>
         </div>
+      </div>
+
+      {/* Client overview stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <OverviewChip
+          value={clientStats ? clientStats.total : '—'}
+          label="Total Clients"
+          color="blue"
+        />
+        <OverviewChip
+          value={clientStats ? clientStats.trainedRecently : '—'}
+          label="Active (7 days)"
+          color="emerald"
+        />
+        <OverviewChip
+          value={clientStats ? clientStats.needAttention : '—'}
+          label="Need Attention"
+          color={clientStats?.needAttention > 0 ? 'amber' : 'emerald'}
+        />
       </div>
 
       {/* Navigation cards */}
@@ -192,6 +238,20 @@ export default function AdminDashboard({ user, onNavigate }) {
           <Heart className="w-8 h-8 text-pink-200/60" />
         </div>
       </div>
+    </div>
+  );
+}
+
+function OverviewChip({ value, label, color }) {
+  const textColors = {
+    blue: 'text-blue-600 dark:text-blue-400',
+    emerald: 'text-emerald-600 dark:text-emerald-400',
+    amber: 'text-amber-600 dark:text-amber-400',
+  };
+  return (
+    <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-3 text-center border border-gray-200 dark:border-[#C6A45F]/25">
+      <div className={`text-2xl font-bold ${textColors[color] || textColors.blue}`}>{value}</div>
+      <div className="text-xs text-gray-500 dark:text-[#d8e7de]/60 mt-0.5 leading-tight">{label}</div>
     </div>
   );
 }
