@@ -247,7 +247,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
         </div>
 
         <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
-          {weekDays.map(day => (
+          {weekDays.filter(d => !d.isRest).map(day => (
             <DayRow
               key={day.name}
               day={day}
