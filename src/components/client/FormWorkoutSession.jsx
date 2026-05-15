@@ -18,6 +18,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const [savingDefault, setSavingDefault] = useState({});
   const [exitConfirm, setExitConfirm] = useState(false);
   const [restTimer, setRestTimer] = useState(null); // { seconds, label, type: 'set'|'exercise', nextExIdx }
+  const [restSettings, setRestSettings] = useState({}); // { [exIdx]: { betweenSets: N, betweenExercises: N } }
 
   useEffect(() => {
     initializeWorkout();
@@ -35,6 +36,13 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     const t = setTimeout(() => saveProgress(), 10000);
     return () => clearTimeout(t);
   }, [sessionData, sessionId]);
+
+  const adjustRest = (exIdx, type, delta) => {
+    setRestSettings(prev => {
+      const curr = prev[exIdx] || { betweenSets: 0, betweenExercises: 0 };
+      return { ...prev, [exIdx]: { ...curr, [type]: Math.max(0, (curr[type] || 0) + delta) } };
+    });
+  };
 
   const findNextIncompleteExercise = (afterIdx) =>
     Object.keys(sessionData)
@@ -61,6 +69,15 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       ];
     }
     setExercises(exerciseList);
+
+    const initRest = {};
+    exerciseList.forEach((ex, idx) => {
+      initRest[idx] = {
+        betweenSets: ex.restSeconds ?? 0,
+        betweenExercises: ex.restBetweenExercisesSeconds ?? 0,
+      };
+    });
+    setRestSettings(initRest);
 
     const initialData = {};
     exerciseList.forEach((ex, idx) => {
@@ -153,28 +170,59 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     const exercise = exercises[exIdx];
 
     if (isMarkingComplete) {
-      const willAllBeDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
-      if (willAllBeDone) {
-        const restAfter = exercise?.restBetweenExercisesSeconds || 0;
-        const nextExIdx = findNextIncompleteExercise(exIdx);
-        if (restAfter > 0 && nextExIdx !== undefined) {
-          setTimeout(() => setRestTimer({
-            seconds: restAfter,
-            label: 'Rest before next exercise',
-            type: 'exercise',
-            nextExIdx,
-          }), 400);
-        } else if (nextExIdx !== undefined) {
-          setTimeout(() => setExpandedExercise(nextExIdx), 700);
+      const supersetGroupId = exercise?.supersetGroupId;
+      const partnerIdx = supersetGroupId
+        ? exercises.findIndex((ex, i) => i !== exIdx && ex.supersetGroupId === supersetGroupId)
+        : -1;
+
+      if (partnerIdx !== -1) {
+        // ── SUPERSET LOGIC ──────────────────────────────────────
+        const partnerSets = sessionData[partnerIdx]?.sets || [];
+        const partnerSetDone = partnerSets[setIdx]?.completed;
+
+        if (!partnerSetDone) {
+          // Partner hasn't done this round yet — move to partner immediately
+          setTimeout(() => setExpandedExercise(partnerIdx), 400);
+        } else {
+          // Both have completed round setIdx — check what's next
+          const willAllThisDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
+          const allPartnerDone = partnerSets.every(s => s.completed);
+          if (willAllThisDone && allPartnerDone) {
+            // Entire superset complete — rest then next exercise
+            const restAfter = restSettings[exIdx]?.betweenExercises ?? exercise?.restBetweenExercisesSeconds ?? 0;
+            const nextExIdx = findNextIncompleteExercise(Math.max(exIdx, partnerIdx));
+            if (restAfter > 0 && nextExIdx !== undefined) {
+              setTimeout(() => setRestTimer({ seconds: restAfter, label: 'Rest after superset', type: 'exercise', nextExIdx }), 400);
+            } else if (nextExIdx !== undefined) {
+              setTimeout(() => setExpandedExercise(nextExIdx), 700);
+            }
+          } else {
+            // More rounds to go — rest then return to first exercise in pair
+            const firstExIdx = Math.min(exIdx, partnerIdx);
+            const restSeconds = restSettings[exIdx]?.betweenSets ?? exercise?.restSeconds ?? 0;
+            if (restSeconds > 0) {
+              setTimeout(() => setRestTimer({ seconds: restSeconds, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx }), 400);
+            } else {
+              setTimeout(() => setExpandedExercise(firstExIdx), 400);
+            }
+          }
         }
       } else {
-        const restSeconds = exercise?.restSeconds || 0;
-        if (restSeconds > 0) {
-          setTimeout(() => setRestTimer({
-            seconds: restSeconds,
-            label: 'Rest between sets',
-            type: 'set',
-          }), 400);
+        // ── REGULAR EXERCISE LOGIC ──────────────────────────────
+        const willAllBeDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
+        if (willAllBeDone) {
+          const restAfter = restSettings[exIdx]?.betweenExercises ?? exercise?.restBetweenExercisesSeconds ?? 0;
+          const nextExIdx = findNextIncompleteExercise(exIdx);
+          if (restAfter > 0 && nextExIdx !== undefined) {
+            setTimeout(() => setRestTimer({ seconds: restAfter, label: 'Rest before next exercise', type: 'exercise', nextExIdx }), 400);
+          } else if (nextExIdx !== undefined) {
+            setTimeout(() => setExpandedExercise(nextExIdx), 700);
+          }
+        } else {
+          const restSeconds = restSettings[exIdx]?.betweenSets ?? exercise?.restSeconds ?? 0;
+          if (restSeconds > 0) {
+            setTimeout(() => setRestTimer({ seconds: restSeconds, label: 'Rest between sets', type: 'set' }), 400);
+          }
         }
       }
     }
@@ -360,7 +408,17 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         </div>
       );
     }
-    return <WorkoutComplete workout={workout} onClose={onExit} userId={userId} sessionId={sessionId} />;
+    return (
+      <WorkoutComplete
+        workout={workout}
+        onClose={onExit}
+        userId={userId}
+        sessionId={sessionId}
+        sessionData={sessionData}
+        exercises={exercises}
+        duration={elapsedTime}
+      />
+    );
   }
 
   return (
@@ -438,7 +496,12 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                       </span>
                       {isAllDone && <Check className="w-4 h-4 text-emerald-500" />}
                     </div>
-                    <div className="font-bold text-gray-900 dark:text-[#d8e7de] truncate">{exercise.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900 dark:text-[#d8e7de] truncate">{exercise.name}</span>
+                      {exercise.supersetGroupId && (
+                        <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">SS</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-sm text-gray-500 dark:text-[#d8e7de]/60">
                         {completedSets}/{totalSets} sets
@@ -447,7 +510,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                         <>
                           <span className="text-gray-300 dark:text-[#d8e7de]/20">·</span>
                           <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
-                            Last: {last.weight} lbs × {last.reps}
+                            Last: {last.weight}{exercise.dumbbells === 2 ? ' ea.' : ' lbs'} × {last.reps}
                           </span>
                           {!isAllDone && (
                             <button
@@ -517,7 +580,9 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                     {/* Column headers */}
                     <div className="flex items-center gap-2 px-2 pb-1">
                       <span className="w-7 flex-shrink-0" />
-                      <span className="flex-1 text-center text-xs font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide">lbs</span>
+                      <span className="flex-1 text-center text-xs font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide">
+                        {exercise.dumbbells === 2 ? 'lbs ea.' : 'lbs'}
+                      </span>
                       <span className="w-5 flex-shrink-0" />
                       <span className="w-16 text-center text-xs font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide">reps</span>
                       <span className="w-11 flex-shrink-0" />
@@ -530,6 +595,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                         onComplete={() => completeSet(exIdx, setIdx)}
                         onWeightChange={v => updateSet(exIdx, setIdx, 'weight', v)}
                         onRepsChange={v => updateSet(exIdx, setIdx, 'reps', v)}
+                        dumbbells={exercise.dumbbells}
                       />
                     ))}
 
@@ -551,6 +617,22 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                       )}
                     </div>
                   </div>
+
+                  {/* Rest time settings */}
+                  {restSettings[exIdx] !== undefined && (
+                    <div className="px-4 pb-3 flex gap-2">
+                      <RestControl
+                        label="Rest/set"
+                        value={restSettings[exIdx].betweenSets}
+                        onAdjust={delta => adjustRest(exIdx, 'betweenSets', delta)}
+                      />
+                      <RestControl
+                        label="Rest after"
+                        value={restSettings[exIdx].betweenExercises}
+                        onAdjust={delta => adjustRest(exIdx, 'betweenExercises', delta)}
+                      />
+                    </div>
+                  )}
 
                   {/* Save as default prompt */}
                   {defaultStatus === 'pending' && (
@@ -641,9 +723,36 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   );
 }
 
+// ─── Rest time control ────────────────────────────────────────────────────────
+
+function RestControl({ label, value, onAdjust }) {
+  return (
+    <div className="flex-1 bg-gray-50 dark:bg-[#0a0a0a]/40 rounded-xl px-3 py-2">
+      <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mb-1.5">{label}</div>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          onClick={() => onAdjust(-15)}
+          className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-[#d8e7de]/70 font-bold flex items-center justify-center text-sm active:bg-gray-300"
+        >
+          −
+        </button>
+        <span className="text-sm font-bold text-gray-800 dark:text-[#d8e7de] tabular-nums">
+          {value > 0 ? `${value}s` : 'off'}
+        </span>
+        <button
+          onClick={() => onAdjust(+15)}
+          className="w-7 h-7 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-[#d8e7de]/70 font-bold flex items-center justify-center text-sm active:bg-gray-300"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Compact set row ──────────────────────────────────────────────────────────
 
-function SetRow({ set, onComplete, onWeightChange, onRepsChange }) {
+function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells }) {
   return (
     <div className={`flex items-center gap-2 rounded-xl px-2 py-2 transition ${
       set.completed ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''
@@ -656,21 +765,28 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange }) {
       </span>
 
       {/* Weight input */}
-      <input
-        type="number"
-        inputMode="decimal"
-        value={set.weight}
-        onChange={e => onWeightChange(Math.max(0, parseFloat(e.target.value) || 0))}
-        onClick={e => e.target.select()}
-        disabled={set.completed}
-        className={`flex-1 py-2.5 text-center text-lg font-bold rounded-xl border-2 transition min-w-0 ${
-          set.completed
-            ? 'border-transparent bg-transparent text-emerald-600 dark:text-emerald-400'
-            : 'border-gray-200 dark:border-[#C6A45F]/25 dark:bg-[#0a0a0a] dark:text-[#d8e7de] focus:border-emerald-500 focus:outline-none'
-        }`}
-        min="0"
-        step="5"
-      />
+      <div className="flex-1 min-w-0 relative">
+        <input
+          type="number"
+          inputMode="decimal"
+          value={set.weight}
+          onChange={e => onWeightChange(Math.max(0, parseFloat(e.target.value) || 0))}
+          onClick={e => e.target.select()}
+          disabled={set.completed}
+          className={`w-full py-2.5 text-center text-lg font-bold rounded-xl border-2 transition ${
+            set.completed
+              ? 'border-transparent bg-transparent text-emerald-600 dark:text-emerald-400'
+              : 'border-gray-200 dark:border-[#C6A45F]/25 dark:bg-[#0a0a0a] dark:text-[#d8e7de] focus:border-emerald-500 focus:outline-none'
+          }`}
+          min="0"
+          step="5"
+        />
+        {dumbbells && !set.completed && (
+          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-blue-400 dark:text-blue-400 pointer-events-none">
+            {dumbbells === 2 ? '×2' : '×1'}
+          </span>
+        )}
+      </div>
 
       {/* × separator */}
       <span className={`text-sm font-bold flex-shrink-0 w-5 text-center ${

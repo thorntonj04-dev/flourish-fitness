@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, TrendingUp, Flame, Star, X } from 'lucide-react';
+import { Trophy, TrendingUp, Flame, Star, X, Copy, Check } from 'lucide-react';
 import { ref as dbRef, get, update } from 'firebase/database';
 import { db } from '../../firebase';
 import Confetti from 'react-confetti';
 
-export default function WorkoutComplete({ workout, onClose, userId, sessionId }) {
+export default function WorkoutComplete({ workout, onClose, userId, sessionId, sessionData = {}, exercises = [], duration = 0 }) {
   const [showConfetti, setShowConfetti] = useState(true);
   const [difficultyRating, setDifficultyRating] = useState(0);
   const [stats, setStats] = useState(null);
@@ -12,6 +12,7 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
   const [hasRated, setHasRated] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -136,6 +137,62 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
     return labels[rating - 1] || '';
   };
 
+  const formatDuration = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return m > 0 ? `${m}m ${s > 0 ? `${s}s` : ''}`.trim() : `${s}s`;
+  };
+
+  const buildSummaryText = () => {
+    const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const lines = [
+      `💪 ${workout.name}`,
+      `📅 ${date}${duration > 0 ? ` · ⏱ ${formatDuration(duration)}` : ''}`,
+      '',
+    ];
+
+    let totalVolume = 0;
+    const hasSections = exercises.some(ex => ex.section);
+
+    const renderExercise = (ex, idx) => {
+      const data = sessionData[idx];
+      if (!data) return;
+      const completedSets = (data.sets || []).filter(s => s.completed);
+      if (completedSets.length === 0) return;
+      const dbLabel = ex.dumbbells === 2 ? ' ea.' : '';
+      const setsStr = completedSets.map(s => `${s.weight}${dbLabel}×${s.reps}`).join(' | ');
+      const dbMult = ex.dumbbells === 2 ? 2 : 1;
+      lines.push(`  ${ex.name}: ${setsStr}`);
+      completedSets.forEach(s => { totalVolume += (s.weight || 0) * dbMult * (s.reps || 0); });
+    };
+
+    if (hasSections) {
+      const sectionOrder = ['warmup', 'work', 'cooldown'];
+      const sectionLabels = { warmup: '🔥 WARMUP', work: '💪 WORK', cooldown: '🧘 COOLDOWN' };
+      sectionOrder.forEach(section => {
+        const items = exercises.map((ex, idx) => ({ ex, idx })).filter(({ ex }) => ex.section === section);
+        if (items.length === 0) return;
+        lines.push(sectionLabels[section]);
+        items.forEach(({ ex, idx }) => renderExercise(ex, idx));
+        lines.push('');
+      });
+    } else {
+      exercises.forEach((ex, idx) => renderExercise(ex, idx));
+      lines.push('');
+    }
+
+    if (totalVolume > 0) lines.push(`🏋️ Total volume: ${totalVolume.toLocaleString()} lbs`);
+    lines.push('— Flourish Fitness');
+    return lines.join('\n');
+  };
+
+  const handleCopySummary = () => {
+    navigator.clipboard.writeText(buildSummaryText()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-[#0a0a0a] dark:to-[#1E3328] relative overflow-hidden">
       {showConfetti && (
@@ -255,6 +312,29 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId })
             </div>
           )}
         </div>
+
+        {/* Workout Summary */}
+        {Object.keys(sessionData).length > 0 && (
+          <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 mb-6 border border-gray-200 dark:border-[#C6A45F]/25">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-[#d8e7de]">Workout Summary</h3>
+              <button
+                onClick={handleCopySummary}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-95 ${
+                  copied
+                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-emerald-500 text-white active:bg-emerald-600'
+                }`}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+            <div className="bg-gray-50 dark:bg-[#0a0a0a]/40 rounded-xl p-4 text-sm text-gray-700 dark:text-[#d8e7de]/80 whitespace-pre-wrap font-mono leading-relaxed">
+              {buildSummaryText()}
+            </div>
+          </div>
+        )}
 
         {/* Session Notes */}
         <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 mb-6 border border-gray-200 dark:border-[#C6A45F]/25">

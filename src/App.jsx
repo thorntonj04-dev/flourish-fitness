@@ -301,7 +301,7 @@ export default function App() {
         {/* This is where different "views" are rendered */}
         {/* based on the currentView state */}
         {/* ============================================ */}
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 p-4 pb-24 md:p-6 md:pb-6">
           <div className="max-w-4xl mx-auto">
             
             {/* ========== DASHBOARD VIEW ========== */}

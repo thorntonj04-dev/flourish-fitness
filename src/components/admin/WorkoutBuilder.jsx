@@ -219,6 +219,23 @@ export default function WorkoutBuilder() {
     setView('create');
   };
 
+  const pairAsSuperset = (idxA, idxB) => {
+    const groupId = `ss_${Date.now()}`;
+    const updated = currentWorkout.exercises.map((ex, i) =>
+      i === idxA || i === idxB ? { ...ex, supersetGroupId: groupId } : ex
+    );
+    setCurrentWorkout({ ...currentWorkout, exercises: updated });
+  };
+
+  const unpairSuperset = (idx) => {
+    const groupId = currentWorkout.exercises[idx]?.supersetGroupId;
+    if (!groupId) return;
+    const updated = currentWorkout.exercises.map(ex =>
+      ex.supersetGroupId === groupId ? { ...ex, supersetGroupId: undefined } : ex
+    );
+    setCurrentWorkout({ ...currentWorkout, exercises: updated });
+  };
+
   const handleDuplicateExercise = (index) => {
     const newExercises = [...currentWorkout.exercises];
     newExercises.splice(index + 1, 0, { ...currentWorkout.exercises[index], tempId: Date.now() });
@@ -428,7 +445,17 @@ export default function WorkoutBuilder() {
                           <span>{getSectionIcon(exercise.section)}</span>
                           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{exercise.section}</span>
                         </div>
-                        <div className="font-bold text-gray-900 dark:text-[#d8e7de] truncate">{exercise.name}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 dark:text-[#d8e7de] truncate">{exercise.name}</span>
+                          {exercise.supersetGroupId && (
+                            <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">SS</span>
+                          )}
+                          {exercise.dumbbells && (
+                            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">
+                              DB{exercise.dumbbells === 2 ? '×2' : '×1'}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5">
                           {exercise.useDuration
                             ? `${exercise.durationMinutes > 0 ? exercise.durationMinutes + 'm ' : ''}${exercise.durationSeconds}s`
@@ -596,6 +623,33 @@ export default function WorkoutBuilder() {
                               min="0" step="5"
                             />
                           </div>
+
+                          {/* Dumbbell picker */}
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-600 dark:text-[#d8e7de]/80 mb-2">Equipment</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {[
+                                { val: null, label: 'Barbell / Machine' },
+                                { val: 1, label: '1 Dumbbell' },
+                                { val: 2, label: '2 Dumbbells' },
+                              ].map(({ val, label }) => (
+                                <button
+                                  key={String(val)}
+                                  onClick={() => handleUpdateExercise(idx, 'dumbbells', val)}
+                                  className={`py-2.5 rounded-xl text-xs font-semibold min-h-[44px] transition ${
+                                    (exercise.dumbbells ?? null) === val
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-gray-100 dark:bg-[#0a0a0a]/40 text-gray-700 dark:text-[#d8e7de]/80'
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                            {exercise.dumbbells === 2 && (
+                              <p className="text-xs text-blue-500 dark:text-blue-400 mt-1.5">Weight entered per dumbbell — total volume calculated ×2.</p>
+                            )}
+                          </div>
                         </>
                       )}
 
@@ -642,6 +696,55 @@ export default function WorkoutBuilder() {
                           className="w-full px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
                           rows="2"
                         />
+                      </div>
+
+                      {/* Superset pairing */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-600 dark:text-[#d8e7de]/80 mb-2">Superset</label>
+                        {exercise.supersetGroupId ? (
+                          (() => {
+                            const partnerIdx = currentWorkout.exercises.findIndex((ex, i) => i !== idx && ex.supersetGroupId === exercise.supersetGroupId);
+                            const partner = partnerIdx !== -1 ? currentWorkout.exercises[partnerIdx] : null;
+                            return (
+                              <div>
+                                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-xl">
+                                  <div>
+                                    <div className="text-xs font-bold text-purple-500 uppercase tracking-wide mb-0.5">Paired with</div>
+                                    <div className="text-sm font-semibold text-purple-900 dark:text-purple-200">{partner?.name || 'Unknown'}</div>
+                                  </div>
+                                  <button
+                                    onClick={() => unpairSuperset(idx)}
+                                    className="text-xs text-red-500 font-bold px-3 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg min-h-[36px]"
+                                  >
+                                    Unlink
+                                  </button>
+                                </div>
+                                <p className="text-xs text-purple-500 dark:text-purple-400 mt-1.5">Both exercises must have the same number of sets.</p>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          (() => {
+                            const available = currentWorkout.exercises
+                              .map((ex, i) => ({ ex, i }))
+                              .filter(({ ex, i }) => i !== idx && !ex.supersetGroupId);
+                            if (available.length === 0) {
+                              return <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 italic">No available exercises to pair with.</p>;
+                            }
+                            return (
+                              <select
+                                value=""
+                                onChange={(e) => { const pIdx = parseInt(e.target.value); if (!isNaN(pIdx)) pairAsSuperset(idx, pIdx); }}
+                                className="w-full px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-sm dark:bg-[#0a0a0a] dark:text-[#d8e7de] bg-white"
+                              >
+                                <option value="">↔ Pair with another exercise...</option>
+                                {available.map(({ ex, i }) => (
+                                  <option key={i} value={i}>{ex.name}</option>
+                                ))}
+                              </select>
+                            );
+                          })()
+                        )}
                       </div>
                     </div>
                   )}

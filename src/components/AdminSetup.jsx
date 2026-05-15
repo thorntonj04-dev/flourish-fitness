@@ -103,6 +103,12 @@ export default function AdminSetup({ user }) {
                   <p className="text-sm text-yellow-800 mb-2">
                     <strong>👤 Current Role:</strong> {debugInfo.role}
                   </p>
+                  {debugInfo.error && (
+                    <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded">
+                      <p className="text-xs text-red-800 font-bold mb-1">⚠️ Error Detail:</p>
+                      <p className="text-xs text-red-700 break-all">{debugInfo.error}</p>
+                    </div>
+                  )}
                 </>
               )}
             </div>
