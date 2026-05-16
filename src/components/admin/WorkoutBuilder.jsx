@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Save, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, Edit, FileText, Star, X, Eye, Dumbbell } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus, Save, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, Edit, FileText, Star, X, Eye, Dumbbell, Search } from 'lucide-react';
 import { ref as dbRef, get, set, push, remove, update } from 'firebase/database';
 import { db, auth } from '../../firebase';
 import ExerciseLibrary from '../workout/ExerciseLibrary';
 import FormWorkoutSession from '../client/FormWorkoutSession';
+import { EXERCISE_LIBRARY } from '../../data/exerciseLibrary';
 
 const DEFAULT_WORKOUT_TEMPLATES = [
   {
@@ -109,11 +110,50 @@ export default function WorkoutBuilder() {
   const [templateDescription, setTemplateDescription] = useState('');
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [previewWorkout, setPreviewWorkout] = useState(null);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddSearch, setQuickAddSearch] = useState('');
+  const [quickAddMuscle, setQuickAddMuscle] = useState('all');
+  const quickAddSearchRef = useRef(null);
 
   useEffect(() => {
     loadWorkouts();
     loadCustomTemplates();
   }, []);
+
+  useEffect(() => {
+    if (showQuickAdd) {
+      setTimeout(() => quickAddSearchRef.current?.focus(), 150);
+    }
+  }, [showQuickAdd]);
+
+  const filteredLibrary = useMemo(() => {
+    let list = EXERCISE_LIBRARY;
+    if (quickAddMuscle !== 'all') list = list.filter(ex => ex.group === quickAddMuscle);
+    if (quickAddSearch.trim()) {
+      const q = quickAddSearch.toLowerCase();
+      list = list.filter(ex => ex.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [quickAddSearch, quickAddMuscle]);
+
+  const handleAddFromLibrary = (name, group) => {
+    const newExercise = {
+      name,
+      muscleGroup: group,
+      section: 'work',
+      sets: 3,
+      reps: 10,
+      restSeconds: 60,
+      recommendedWeight: 0,
+      notes: '',
+      useDuration: false,
+      durationMinutes: 0,
+      durationSeconds: 30,
+      tempId: Date.now() + Math.random(),
+    };
+    setCurrentWorkout(prev => ({ ...prev, exercises: [...prev.exercises, newExercise] }));
+    setQuickAddSearch('');
+  };
 
   const loadWorkouts = async () => {
     try {
@@ -393,15 +433,109 @@ export default function WorkoutBuilder() {
               Exercises ({currentWorkout.exercises.length})
             </h3>
             <button
-              onClick={() => setShowExerciseLibrary(true)}
-              className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl flex items-center gap-2 font-medium min-h-[44px]"
+              onClick={() => { setShowQuickAdd(p => !p); setQuickAddSearch(''); setQuickAddMuscle('all'); }}
+              className={`px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium min-h-[44px] transition ${
+                showQuickAdd
+                  ? 'bg-gray-200 dark:bg-[#0a0a0a]/60 text-gray-700 dark:text-[#d8e7de]/80'
+                  : 'bg-emerald-500 text-white'
+              }`}
             >
-              <Plus className="w-5 h-5" />
-              Add
+              {showQuickAdd ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+              {showQuickAdd ? 'Close' : 'Add'}
             </button>
           </div>
 
-          {currentWorkout.exercises.length === 0 ? (
+          {/* ── Quick Add Panel ─────────────────────────────────── */}
+          {showQuickAdd && (
+            <div className="mb-4 p-4 bg-gray-50 dark:bg-[#0a0a0a]/40 rounded-2xl border border-gray-200 dark:border-[#C6A45F]/20 space-y-3">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  ref={quickAddSearchRef}
+                  type="text"
+                  placeholder="Search 500+ exercises…"
+                  value={quickAddSearch}
+                  onChange={e => setQuickAddSearch(e.target.value)}
+                  className="w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl dark:bg-[#0a0a0a] dark:text-[#d8e7de] dark:placeholder-[#d8e7de]/30 text-base focus:ring-2 focus:ring-emerald-500"
+                />
+                {quickAddSearch && (
+                  <button onClick={() => setQuickAddSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Muscle group chips */}
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+                {['all', 'chest', 'back', 'shoulders', 'arms', 'legs', 'core', 'cardio', 'mobility'].map(g => (
+                  <button
+                    key={g}
+                    onClick={() => setQuickAddMuscle(g)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition min-h-[32px] ${
+                      quickAddMuscle === g
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-white dark:bg-[#1E3328] text-gray-600 dark:text-[#d8e7de]/60 border border-gray-200 dark:border-[#C6A45F]/25'
+                    }`}
+                  >
+                    {g === 'all' ? 'All' : g.charAt(0).toUpperCase() + g.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Results */}
+              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                {filteredLibrary.length === 0 ? (
+                  quickAddSearch.trim() ? (
+                    <button
+                      onClick={() => handleAddFromLibrary(quickAddSearch.trim(), quickAddMuscle !== 'all' ? quickAddMuscle : 'core')}
+                      className="w-full p-3 border-2 border-dashed border-emerald-300 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-semibold text-left active:bg-emerald-50 dark:active:bg-emerald-900/20"
+                    >
+                      <Plus className="w-4 h-4 inline mr-2" />
+                      Add "{quickAddSearch.trim()}" as custom exercise
+                    </button>
+                  ) : (
+                    <p className="text-center text-xs text-gray-400 dark:text-[#d8e7de]/40 py-4">No exercises found</p>
+                  )
+                ) : (
+                  <>
+                    {filteredLibrary.slice(0, 25).map((ex, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleAddFromLibrary(ex.name, ex.group)}
+                        className="w-full flex items-center gap-3 p-3 bg-white dark:bg-[#1E3328] border border-gray-200 dark:border-[#C6A45F]/20 rounded-xl active:bg-emerald-50 dark:active:bg-emerald-900/20 text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-gray-900 dark:text-[#d8e7de] text-sm truncate">{ex.name}</div>
+                          <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 capitalize mt-0.5">{ex.group}</div>
+                        </div>
+                        <Plus className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      </button>
+                    ))}
+                    {quickAddSearch.trim() && !filteredLibrary.some(ex => ex.name.toLowerCase() === quickAddSearch.toLowerCase()) && (
+                      <button
+                        onClick={() => handleAddFromLibrary(quickAddSearch.trim(), quickAddMuscle !== 'all' ? quickAddMuscle : 'core')}
+                        className="w-full p-3 border border-dashed border-emerald-300 dark:border-emerald-700/50 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-semibold text-left active:bg-emerald-50 dark:active:bg-emerald-900/10"
+                      >
+                        <Plus className="w-3.5 h-3.5 inline mr-1.5" />
+                        Add "{quickAddSearch.trim()}" as custom
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Secondary: open full library */}
+              <button
+                onClick={() => setShowExerciseLibrary(true)}
+                className="w-full py-2 text-xs text-gray-400 dark:text-[#d8e7de]/40 font-medium underline underline-offset-2 text-center active:text-gray-600"
+              >
+                Browse saved library / add with video
+              </button>
+            </div>
+          )}
+
+          {currentWorkout.exercises.length === 0 && !showQuickAdd ? (
             <div className="text-center py-10 border-2 border-dashed border-gray-300 dark:border-[#C6A45F]/30 rounded-xl">
               <p className="text-gray-500 dark:text-[#d8e7de]/60 mb-4 text-sm">No exercises yet</p>
               <div className="flex gap-3 justify-center flex-wrap">
@@ -413,7 +547,7 @@ export default function WorkoutBuilder() {
                   Start from Template
                 </button>
                 <button
-                  onClick={() => setShowExerciseLibrary(true)}
+                  onClick={() => { setShowQuickAdd(true); setQuickAddSearch(''); setQuickAddMuscle('all'); }}
                   className="px-5 py-3 bg-emerald-500 text-white rounded-xl inline-flex items-center gap-2 font-medium min-h-[48px]"
                 >
                   <Plus className="w-4 h-4" />
@@ -571,6 +705,37 @@ export default function WorkoutBuilder() {
                         </>
                       ) : (
                         <>
+                          {/* Quick scheme presets */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-2 uppercase tracking-wide">Quick Scheme</label>
+                            <div className="flex gap-2 flex-wrap">
+                              {[
+                                { label: '3×8', sets: 3, reps: 8 },
+                                { label: '3×10', sets: 3, reps: 10 },
+                                { label: '4×8', sets: 4, reps: 8 },
+                                { label: '5×5', sets: 5, reps: 5 },
+                                { label: '3×12', sets: 3, reps: 12 },
+                                { label: '4×12', sets: 4, reps: 12 },
+                              ].map(({ label, sets, reps }) => (
+                                <button
+                                  key={label}
+                                  onClick={() => {
+                                    const updated = [...currentWorkout.exercises];
+                                    updated[idx] = { ...updated[idx], sets, reps };
+                                    setCurrentWorkout({ ...currentWorkout, exercises: updated });
+                                  }}
+                                  className={`px-3.5 py-2 rounded-xl text-sm font-bold min-h-[40px] transition ${
+                                    exercise.sets === sets && exercise.reps === reps
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 active:bg-emerald-100 dark:active:bg-emerald-900/30'
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
                           <div className="grid grid-cols-2 gap-3">
                             {[
                               { label: 'Sets', field: 'sets', max: 20 },
