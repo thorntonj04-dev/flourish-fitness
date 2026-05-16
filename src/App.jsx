@@ -331,7 +331,7 @@ export default function App() {
 
             {/* ========== CLIENT: PROFILE ========== */}
             {currentView === 'profile' && userRole === 'client' && (
-              <ClientProfile user={user} />
+              <ClientProfile user={user} onProfileUpdate={name => setUserName(name)} />
             )}
           </div>
         </main>

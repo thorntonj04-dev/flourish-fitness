@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ref as dbRef, get, set, push } from 'firebase/database';
-import { db } from '../../firebase';
-import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Share } from 'lucide-react';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { updateProfile } from 'firebase/auth';
+import { db, storage, auth } from '../../firebase';
+import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check } from 'lucide-react';
 
 const LEVELS = [
   { min: 0,   max: 4,        name: 'Rookie',   emoji: '🌱', color: 'from-slate-400 to-slate-500',      bar: 'bg-slate-400' },
@@ -31,7 +33,17 @@ function getVolumeEquivalent(lbs) {
   return { count: Math.round(lbs / 30000), thing: 'school buses' };
 }
 
-export default function ClientProfile({ user }) {
+const APP_FEATURES = [
+  { icon: '📅', title: 'Your Program', desc: 'Structured, multi-phase programs built specifically for your goals by your trainer. Each phase adapts as you progress.' },
+  { icon: '💪', title: 'Guided Workouts', desc: 'Step-by-step sessions with set, rep, and weight tracking. Rest timers and superset support built right in.' },
+  { icon: '📊', title: 'Workout History', desc: 'Every completed session is saved. Review past workouts, total volume, and see exactly how far you have come.' },
+  { icon: '🏆', title: 'Personal Records', desc: 'Your heaviest lift per exercise is automatically tracked and displayed on a podium — gold, silver, and bronze.' },
+  { icon: '⚖️', title: 'Body Weight Log', desc: 'Log your weight anytime and watch your trend over time with a visual chart.' },
+  { icon: '🔥', title: 'Streak & Levels', desc: 'Build consecutive-day streaks and level up from Rookie all the way to Legend as your workout count grows.' },
+  { icon: '📱', title: 'Home Screen App', desc: 'Add Flourish Fitness to your iPhone home screen for a full-screen experience — no browser chrome, just the app.' },
+];
+
+export default function ClientProfile({ user, onProfileUpdate }) {
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState([]);
   const [metrics, setMetrics] = useState([]);
@@ -43,6 +55,20 @@ export default function ClientProfile({ user }) {
   );
   const [installExpanded, setInstallExpanded] = useState(false);
 
+  // Info panel
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
+
+  // Editable name
+  const [loadedName, setLoadedName] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [savingName, setSavingName] = useState(false);
+
+  // Profile photo
+  const [photoURL, setPhotoURL] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
+
   const dismissInstallBanner = () => {
     localStorage.setItem('pwa-banner-dismissed', 'true');
     setShowInstallBanner(false);
@@ -53,11 +79,17 @@ export default function ClientProfile({ user }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [statsSnap, historySnap, metricsSnap] = await Promise.all([
+      const [userSnap, statsSnap, historySnap, metricsSnap] = await Promise.all([
+        get(dbRef(db, `users/${user.uid}`)),
         get(dbRef(db, `user-stats/${user.uid}`)),
         get(dbRef(db, `workout-history/${user.uid}`)),
         get(dbRef(db, `body-metrics/${user.uid}`)),
       ]);
+      if (userSnap.exists()) {
+        const userData = userSnap.val();
+        if (userData.name) setLoadedName(userData.name);
+        if (userData.photoURL) setPhotoURL(userData.photoURL);
+      }
       if (statsSnap.exists()) setStats(statsSnap.val());
       if (historySnap.exists()) {
         const sessions = Object.values(historySnap.val())
@@ -75,6 +107,46 @@ export default function ClientProfile({ user }) {
       console.error('Error loading profile:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveName = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    setSavingName(true);
+    try {
+      await set(dbRef(db, `users/${user.uid}/name`), trimmed);
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: trimmed });
+      }
+      setLoadedName(trimmed);
+      setEditingName(false);
+      onProfileUpdate?.(trimmed);
+    } catch (err) {
+      console.error('Error saving name:', err);
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const sRef = storageRef(storage, `profile-photos/${user.uid}`);
+      await uploadBytes(sRef, file);
+      const url = await getDownloadURL(sRef);
+      await set(dbRef(db, `users/${user.uid}/photoURL`), url);
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { photoURL: url });
+      }
+      setPhotoURL(url);
+    } catch (err) {
+      console.error('Error uploading photo:', err);
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -157,7 +229,7 @@ export default function ClientProfile({ user }) {
   const chartMetrics = metrics.slice(-10);
   const latestWeight = metrics.length > 0 ? metrics[metrics.length - 1] : null;
   const weightDelta = metrics.length > 1 ? metrics[metrics.length - 1].weight - metrics[0].weight : null;
-  const displayName = user.displayName || user.email?.split('@')[0] || 'Athlete';
+  const displayName = loadedName || user.displayName || user.email?.split('@')[0] || 'Athlete';
   const memberSince = (() => {
     const validTimes = history.map(h => h.startTime).filter(Boolean);
     return validTimes.length > 0
@@ -178,7 +250,6 @@ export default function ClientProfile({ user }) {
   if (loading) {
     return (
       <div className="space-y-4">
-        {/* Hero skeleton */}
         <div className="bg-gradient-to-br from-emerald-600/20 to-teal-600/20 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-2xl p-4">
           <div className="flex items-center gap-4 mb-5">
             <div className="w-16 h-16 rounded-2xl skeleton flex-shrink-0" />
@@ -193,11 +264,9 @@ export default function ClientProfile({ user }) {
             {Array.from({ length: 14 }).map((_, i) => <div key={i} className="aspect-square skeleton rounded-sm" />)}
           </div>
         </div>
-        {/* Stat cards skeleton */}
         <div className="grid grid-cols-3 gap-3">
           {[1, 2, 3].map(i => <div key={i} className="rounded-2xl skeleton h-24" />)}
         </div>
-        {/* Card skeletons */}
         {[1, 2].map(i => (
           <div key={i} className="rounded-2xl skeleton h-32" />
         ))}
@@ -264,14 +333,99 @@ export default function ClientProfile({ user }) {
         <div className="absolute -top-10 -right-10 w-52 h-52 bg-white/5 rounded-full" />
         <div className="absolute -bottom-14 -left-6 w-40 h-40 bg-white/5 rounded-full" />
 
-        {/* Name + level badge */}
+        {/* Info button */}
+        <button
+          onClick={() => setShowInfoPanel(true)}
+          className="absolute top-3 right-3 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center active:bg-white/35 z-10"
+          aria-label="About this app"
+        >
+          <Info className="w-4 h-4 text-white/80" />
+        </button>
+
+        {/* Hidden file input for photo upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePhotoUpload}
+        />
+
+        {/* Avatar + name */}
         <div className="relative flex items-start gap-4 mb-5">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-2xl font-black flex-shrink-0 border-2 border-white/30">
-            {displayName.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
+          {/* Avatar — tap to upload */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingPhoto}
+            className="relative w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden border-2 border-white/30 active:opacity-80"
+            aria-label="Change profile photo"
+          >
+            {photoURL ? (
+              <img src={photoURL} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-white/20 flex items-center justify-center text-2xl font-black">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            {/* Camera badge */}
+            <div className="absolute bottom-0 right-0 w-5 h-5 bg-white/30 backdrop-blur-sm flex items-center justify-center rounded-tl-lg">
+              {uploadingPhoto ? (
+                <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Camera className="w-3 h-3 text-white" />
+              )}
+            </div>
+          </button>
+
+          <div className="flex-1 min-w-0 pr-8">
             <div className="text-emerald-200 text-xs font-semibold uppercase tracking-wide mb-0.5 truncate">Your Profile</div>
-            <div className="text-2xl font-bold capitalize truncate">{displayName}</div>
+
+            {/* Editable name */}
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={nameInput}
+                  onChange={e => setNameInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleSaveName();
+                    if (e.key === 'Escape') setEditingName(false);
+                  }}
+                  className="flex-1 min-w-0 bg-white/20 text-white placeholder-white/50 rounded-lg px-2.5 py-1 text-lg font-bold border border-white/40 focus:outline-none focus:border-white/70"
+                  maxLength={30}
+                  placeholder="Your name"
+                />
+                <button
+                  onClick={handleSaveName}
+                  disabled={savingName}
+                  className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 active:bg-white/35 disabled:opacity-50"
+                >
+                  {savingName ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 text-white" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setEditingName(false)}
+                  className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center flex-shrink-0 active:bg-white/25"
+                >
+                  <X className="w-4 h-4 text-white/80" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="text-2xl font-bold capitalize truncate">{displayName}</div>
+                <button
+                  onClick={() => { setNameInput(displayName); setEditingName(true); }}
+                  className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 active:bg-white/35"
+                  aria-label="Edit name"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-white/80" />
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 mt-1.5">
               <span className={`bg-gradient-to-r ${lvl.color} text-white text-xs font-black px-2.5 py-1 rounded-full`}>
                 {lvl.emoji} {lvl.name}
@@ -371,10 +525,8 @@ export default function ClientProfile({ user }) {
             <span className="ml-auto text-xs text-gray-400 dark:text-[#d8e7de]/40">{personalRecords.length} lifts</span>
           </div>
 
-          {/* Top 3 podium */}
           {personalRecords.length >= 1 && (
             <div className="p-4 grid grid-cols-3 gap-2 border-b border-gray-100 dark:border-[#C6A45F]/10">
-              {/* Silver — 2nd */}
               {personalRecords[1] ? (
                 <div className="flex flex-col items-center pt-3">
                   <div className="text-lg mb-1">🥈</div>
@@ -386,7 +538,6 @@ export default function ClientProfile({ user }) {
                 </div>
               ) : <div />}
 
-              {/* Gold — 1st */}
               <div className="flex flex-col items-center bg-gradient-to-b from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/15 rounded-2xl pt-2 pb-3 border border-yellow-200 dark:border-yellow-700/30">
                 <div className="text-2xl mb-1">🥇</div>
                 <div className="text-center px-2">
@@ -396,7 +547,6 @@ export default function ClientProfile({ user }) {
                 </div>
               </div>
 
-              {/* Bronze — 3rd */}
               {personalRecords[2] ? (
                 <div className="flex flex-col items-center pt-3">
                   <div className="text-lg mb-1">🥉</div>
@@ -410,7 +560,6 @@ export default function ClientProfile({ user }) {
             </div>
           )}
 
-          {/* Remaining PRs */}
           {personalRecords.length > 3 && (
             <div className="divide-y divide-gray-50 dark:divide-[#C6A45F]/5">
               {personalRecords.slice(3).map(([name, record], i) => (
@@ -475,7 +624,7 @@ export default function ClientProfile({ user }) {
               const delta = older != null ? m.weight - older.weight : null;
               return (
                 <div key={m.id} className={`flex items-center gap-3 px-5 py-3 ${i < arr.length - 1 ? 'border-b border-gray-50 dark:border-[#C6A45F]/5' : ''}`}>
-                  <div className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
                   <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60 flex-1">
                     {new Date(m.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                   </div>
@@ -525,6 +674,56 @@ export default function ClientProfile({ user }) {
           <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60">
             Complete your first workout to unlock your stats and start building your fitness story.
           </p>
+        </div>
+      )}
+
+      {/* ── App Features Info Panel ───────────────────────── */}
+      {showInfoPanel && (
+        <div
+          className="fixed inset-0 z-50 flex items-end"
+          onClick={() => setShowInfoPanel(false)}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative w-full bg-white dark:bg-[#0d1a12] rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto scrollbar-hide"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-4 pb-2">
+              <div className="w-10 h-1 bg-gray-300 dark:bg-white/20 rounded-full" />
+            </div>
+
+            <div className="px-6 pb-10">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 rounded-2xl flex items-center justify-center">
+                  <span className="text-xl">✨</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-gray-900 dark:text-[#d8e7de]">What's in your app</h2>
+                  <p className="text-xs text-gray-400 dark:text-[#d8e7de]/50 mt-0.5">Everything available to you</p>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                {APP_FEATURES.map(f => (
+                  <div key={f.title} className="flex gap-4">
+                    <div className="text-2xl leading-none mt-0.5 flex-shrink-0">{f.icon}</div>
+                    <div>
+                      <div className="font-bold text-gray-900 dark:text-[#d8e7de] mb-0.5">{f.title}</div>
+                      <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60 leading-snug">{f.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setShowInfoPanel(false)}
+                className="w-full py-4 bg-emerald-500 text-white font-bold rounded-2xl mt-8 active:bg-emerald-600"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
