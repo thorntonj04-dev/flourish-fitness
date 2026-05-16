@@ -9,7 +9,7 @@ export const adminNavItems = [
 ];
 
 export const clientNavItems = [
-  { id: 'this-week', label: 'This Week', icon: CalendarDays },
+  { id: 'this-week', label: 'Today', icon: CalendarDays },
   { id: 'history', label: 'History', icon: Clock },
   { id: 'profile', label: 'Profile', icon: User },
 ];
