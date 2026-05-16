@@ -85,6 +85,7 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   // Profile photo
   const [photoURL, setPhotoURL] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
   const fileInputRef = useRef(null);
 
   const dismissInstallBanner = () => {
@@ -150,7 +151,12 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('Photo must be under 10 MB.');
+      return;
+    }
     setUploadingPhoto(true);
+    setUploadError(null);
     try {
       const sRef = storageRef(storage, `profile-photos/${user.uid}`);
       await uploadBytes(sRef, file);
@@ -161,7 +167,17 @@ export default function ClientProfile({ user, onProfileUpdate }) {
       }
       setPhotoURL(url);
     } catch (err) {
-      console.error('Error uploading photo:', err);
+      console.error('Photo upload error:', err);
+      const code = err?.code || '';
+      if (code === 'storage/unauthorized') {
+        setUploadError('Storage permission denied — Firebase Storage rules need to be published.');
+      } else if (code === 'storage/unauthenticated') {
+        setUploadError('Not signed in. Please sign out and back in, then try again.');
+      } else if (code.startsWith('storage/')) {
+        setUploadError(`Upload failed: ${code}`);
+      } else {
+        setUploadError(`Upload failed: ${err?.message || 'unknown error'}`);
+      }
     } finally {
       setUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -371,6 +387,13 @@ export default function ClientProfile({ user, onProfileUpdate }) {
           className="hidden"
           onChange={handlePhotoUpload}
         />
+
+        {/* Upload error */}
+        {uploadError && (
+          <div className="relative mb-3 px-3 py-2 bg-red-500/20 border border-red-400/40 rounded-xl text-xs text-red-100 font-medium">
+            {uploadError}
+          </div>
+        )}
 
         {/* Avatar + name */}
         <div className="relative flex items-start gap-4 mb-5">
