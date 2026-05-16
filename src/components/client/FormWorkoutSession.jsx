@@ -542,10 +542,10 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                   )}
 
                   {/* ── Set table ─────────────────────────────────────────── */}
-                  <div className="px-4 pt-4 pb-3 space-y-2">
+                  <div className="px-3 pt-4 pb-3 space-y-2">
 
                     {/* Column labels */}
-                    <div className="flex items-center gap-3 px-1 pb-1">
+                    <div className="flex items-center gap-2 px-1 pb-1">
                       <span className="w-8 flex-shrink-0" />
                       <span className="w-24 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">
                         {exercise.dumbbells === 2 ? 'lbs ea.' : 'lbs'}
@@ -729,7 +729,7 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells }) {
   };
 
   return (
-    <div className={`flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors ${
+    <div className={`flex items-center gap-2 rounded-xl px-2 py-2.5 transition-colors ${
       set.completed ? 'bg-emerald-50 dark:bg-emerald-900/15' : 'bg-gray-50/50 dark:bg-white/[0.02]'
     }`}>
 

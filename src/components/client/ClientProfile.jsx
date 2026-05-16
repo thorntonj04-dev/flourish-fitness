@@ -237,14 +237,14 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   };
 
   const totalWorkouts = stats?.totalWorkouts || 0;
-  const animWorkouts = useCountUp(totalWorkouts);
-  const animStreak   = useCountUp(stats?.currentStreak || 0, 600);
-  const animVolume   = useCountUp(totalVolume, 900);
   const lvl = getLevel(totalWorkouts);
   const lvlProgress = getLevelProgress(totalWorkouts);
   const nextAt = getNextLevelAt(totalWorkouts);
   const personalRecords = getPersonalRecords();
   const totalVolume = getTotalVolume();
+  const animWorkouts = useCountUp(totalWorkouts);
+  const animStreak   = useCountUp(stats?.currentStreak || 0, 600);
+  const animVolume   = useCountUp(totalVolume, 900);
   const volEquiv = getVolumeEquivalent(totalVolume);
   const calendar = build14DayCalendar();
   const chartMetrics = metrics.slice(-10);
