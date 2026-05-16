@@ -69,6 +69,101 @@ export default function AdminDashboard({ user, onNavigate }) {
         />
       </div>
 
+      {/* Updates since you last saw this */}
+      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
+        <button
+          onClick={() => setExpandedSection(expandedSection === 'updates' ? null : 'updates')}
+          className="w-full px-5 py-4 flex items-center justify-between text-left active:bg-gray-50 dark:active:bg-[#0a0a0a]/20 min-h-[56px]"
+        >
+          <div>
+            <div className="font-bold text-gray-900 dark:text-[#d8e7de] flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-500" />
+              Updates Since You Last Saw This
+              <span className="text-[10px] font-black bg-purple-500 text-white px-2 py-0.5 rounded-full">NEW</span>
+            </div>
+            <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">Recent additions and improvements</div>
+          </div>
+          <ChevronRight className={`w-5 h-5 text-gray-400 transition-transform ${expandedSection === 'updates' ? 'rotate-90' : ''}`} />
+        </button>
+
+        {expandedSection === 'updates' && (
+          <div className="border-t border-gray-100 dark:border-[#C6A45F]/10 p-4 space-y-5">
+
+            {[
+              {
+                date: 'May 2025',
+                label: 'Client Profile Upgrades',
+                color: 'bg-emerald-500',
+                items: [
+                  'Clients can upload a profile photo — tap their avatar in the Profile tab',
+                  'Clients can edit their display name inline — the change reflects in the app header immediately',
+                  'New ⓘ info button on the profile hero card opens a "What\'s in your app" features panel',
+                ]
+              },
+              {
+                date: 'May 2025',
+                label: 'Workout Session Redesign',
+                color: 'bg-teal-500',
+                items: [
+                  'Weight and reps fields are now correctly sized — weight is fixed-width, reps is larger',
+                  'Rest controls replaced with Off / 30s / 60s / 90s preset buttons — one tap to set',
+                  'Colored section chips (amber warmup, emerald work, teal cooldown) visible on every exercise card',
+                  'Circular progress ring on each exercise card shows set completion at a glance',
+                  'Frosted glass sticky header with live timer and overall progress percentage',
+                ]
+              },
+              {
+                date: 'May 2025',
+                label: 'Workout Builder Power Tools',
+                color: 'bg-orange-500',
+                items: [
+                  '500+ exercise autocomplete — tap Add, search by name or filter by muscle group',
+                  'Quick scheme presets: tap 3×8, 5×5, 4×12, etc. to fill sets and reps instantly',
+                  'Superset pairing — expand any exercise and use the Superset dropdown to link it with another',
+                  'Equipment picker per exercise: Barbell/Machine, 1 Dumbbell, 2 Dumbbells (auto-calculates ×2 volume)',
+                ]
+              },
+              {
+                date: 'May 2025',
+                label: 'Inquiries Panel',
+                color: 'bg-blue-500',
+                items: [
+                  'Contact form on the public landing page captures name, email, and message',
+                  'New Inquiries tab in your admin panel — view, manage, and mark leads as reviewed',
+                ]
+              },
+              {
+                date: 'May 2025',
+                label: 'Visual & UX Polish',
+                color: 'bg-purple-500',
+                items: [
+                  'Floating pill navigation bar — active tab highlighted with emerald gradient',
+                  'Press animations on every button — subtle scale-down on tap for native app feel',
+                  'Shimmer loading skeletons on all data-heavy screens',
+                  'Card shadows, gradient header text, and color palette unified across the app',
+                ]
+              },
+            ].map(({ date, label, color, items }) => (
+              <div key={label}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-2 h-2 rounded-full ${color} flex-shrink-0`} />
+                  <span className="text-xs font-bold text-gray-900 dark:text-[#d8e7de]">{label}</span>
+                  <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40 ml-auto">{date}</span>
+                </div>
+                <ul className="space-y-1.5 pl-4">
+                  {items.map((item, i) => (
+                    <li key={i} className="text-xs text-gray-600 dark:text-[#d8e7de]/65 leading-snug flex gap-2">
+                      <span className="text-gray-300 dark:text-[#d8e7de]/25 flex-shrink-0 mt-0.5">—</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Navigation cards */}
       <div>
         <div className="text-xs font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide px-1 mb-2">
@@ -168,6 +263,8 @@ export default function AdminDashboard({ user, onNavigate }) {
               { icon: Trophy, title: 'Post-workout celebration', desc: 'Confetti, stats, and achievements appear when they finish. They rate the difficulty and can leave a session note so nothing gets forgotten.' },
               { icon: SlidersHorizontal, title: 'Flexible schedule', desc: 'They can rearrange which days they train each week without changing their program — life happens.' },
               { icon: TrendingUp, title: 'Body weight tracking', desc: 'They can log their weight right from their profile. You can see their full weight trend in the client detail view.' },
+              { icon: Users, title: 'Editable profile & photo', desc: 'They can tap their avatar to upload a profile photo and edit their display name — changes reflect everywhere in the app instantly.' },
+              { icon: Sparkles, title: 'App features panel', desc: 'A small ⓘ button on their profile opens a full list of everything the app offers, so they always know what tools are available to them.' },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-start gap-3">
                 <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -192,24 +289,37 @@ export default function AdminDashboard({ user, onNavigate }) {
         <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
           {[
             'Workout builder',
+            '500+ exercise autocomplete',
+            'Muscle group filter chips',
+            'Quick set/rep scheme presets',
+            'Superset pairing',
+            'Equipment picker (barbell / dumbbells)',
             'Multi-phase programs',
             'Phase auto-advancement',
             'Client management',
             'Program assignment',
             'Weekly schedule view',
+            'Rest preset buttons (Off/30/60/90s)',
             'Live workout sessions',
+            'Colored section chips (warmup/work/cooldown)',
+            'Per-exercise progress ring',
             'Session notes',
-            'Rest timers (set & exercise)',
             'Last session reference',
             'Workout history',
             'Strength progress charts',
             'Body weight tracking',
-            'Personal records',
+            'Personal records podium',
             'Streak tracking',
             'Client detail view',
             'Client progress & history',
             'Workout rating',
             'Schedule adjustment',
+            'Profile photo upload',
+            'Editable display name',
+            'App features info panel (clients)',
+            'Inquiry form + admin panel',
+            'Floating pill navigation',
+            'Shimmer loading skeletons',
             'Dark mode',
           ].map(item => (
             <div key={item} className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-[#d8e7de]/70">
