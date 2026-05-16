@@ -18,7 +18,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const [savingDefault, setSavingDefault] = useState({});
   const [exitConfirm, setExitConfirm] = useState(false);
   const [restTimer, setRestTimer] = useState(null);
-  const [restSettings, setRestSettings] = useState({});
 
   useEffect(() => {
     initializeWorkout();
@@ -35,13 +34,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     const t = setTimeout(() => saveProgress(), 10000);
     return () => clearTimeout(t);
   }, [sessionData, sessionId]);
-
-  const setRestValue = (exIdx, type, value) => {
-    setRestSettings(prev => {
-      const curr = prev[exIdx] || { betweenSets: 0, betweenExercises: 0 };
-      return { ...prev, [exIdx]: { ...curr, [type]: value } };
-    });
-  };
 
   const findNextIncompleteExercise = (afterIdx) =>
     Object.keys(sessionData)
@@ -66,15 +58,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       ];
     }
     setExercises(exerciseList);
-
-    const initRest = {};
-    exerciseList.forEach((ex, idx) => {
-      initRest[idx] = {
-        betweenSets: ex.restSeconds ?? 0,
-        betweenExercises: ex.restBetweenExercisesSeconds ?? 0,
-      };
-    });
-    setRestSettings(initRest);
 
     const initialData = {};
     exerciseList.forEach((ex, idx) => {
@@ -168,38 +151,24 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
           const willAllThisDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
           const allPartnerDone = partnerSets.every(s => s.completed);
           if (willAllThisDone && allPartnerDone) {
-            const restAfter = restSettings[exIdx]?.betweenExercises ?? exercise?.restBetweenExercisesSeconds ?? 0;
             const nextExIdx = findNextIncompleteExercise(Math.max(exIdx, partnerIdx));
-            if (restAfter > 0 && nextExIdx !== undefined) {
-              setTimeout(() => setRestTimer({ seconds: restAfter, label: 'Rest after superset', type: 'exercise', nextExIdx }), 400);
-            } else if (nextExIdx !== undefined) {
+            if (nextExIdx !== undefined) {
               setTimeout(() => setExpandedExercise(nextExIdx), 700);
             }
           } else {
             const firstExIdx = Math.min(exIdx, partnerIdx);
-            const restSeconds = restSettings[exIdx]?.betweenSets ?? exercise?.restSeconds ?? 0;
-            if (restSeconds > 0) {
-              setTimeout(() => setRestTimer({ seconds: restSeconds, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx }), 400);
-            } else {
-              setTimeout(() => setExpandedExercise(firstExIdx), 400);
-            }
+            setTimeout(() => setRestTimer({ seconds: 30, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx }), 400);
           }
         }
       } else {
         const willAllBeDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
         if (willAllBeDone) {
-          const restAfter = restSettings[exIdx]?.betweenExercises ?? exercise?.restBetweenExercisesSeconds ?? 0;
           const nextExIdx = findNextIncompleteExercise(exIdx);
-          if (restAfter > 0 && nextExIdx !== undefined) {
-            setTimeout(() => setRestTimer({ seconds: restAfter, label: 'Rest before next exercise', type: 'exercise', nextExIdx }), 400);
-          } else if (nextExIdx !== undefined) {
+          if (nextExIdx !== undefined) {
             setTimeout(() => setExpandedExercise(nextExIdx), 700);
           }
         } else {
-          const restSeconds = restSettings[exIdx]?.betweenSets ?? exercise?.restSeconds ?? 0;
-          if (restSeconds > 0) {
-            setTimeout(() => setRestTimer({ seconds: restSeconds, label: 'Rest between sets', type: 'set' }), 400);
-          }
+          setTimeout(() => setRestTimer({ seconds: 30, label: 'Rest between sets', type: 'set' }), 400);
         }
       }
     }
@@ -586,22 +555,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                     </div>
                   </div>
 
-                  {/* ── Rest presets ─────────────────────────────────────── */}
-                  {restSettings[exIdx] !== undefined && (
-                    <div className="px-4 pb-4 space-y-3 border-t border-gray-100 dark:border-[#C6A45F]/10 pt-3">
-                      <RestPresets
-                        label="Rest between sets"
-                        value={restSettings[exIdx].betweenSets}
-                        onChange={v => setRestValue(exIdx, 'betweenSets', v)}
-                      />
-                      <RestPresets
-                        label="Rest after exercise"
-                        value={restSettings[exIdx].betweenExercises}
-                        onChange={v => setRestValue(exIdx, 'betweenExercises', v)}
-                      />
-                    </div>
-                  )}
-
                   {/* Save as default */}
                   {defaultStatus === 'pending' && (
                     <div className="mx-4 mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 flex items-center justify-between gap-3">
@@ -687,31 +640,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Rest presets ─────────────────────────────────────────────────────────────
-
-function RestPresets({ label, value, onChange }) {
-  return (
-    <div>
-      <div className="text-xs font-semibold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider mb-2">{label}</div>
-      <div className="flex gap-2">
-        {[0, 30, 60, 90].map(s => (
-          <button
-            key={s}
-            onClick={() => onChange(s)}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-bold min-h-[42px] transition-all ${
-              value === s
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25'
-                : 'bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-500 dark:text-[#d8e7de]/50'
-            }`}
-          >
-            {s === 0 ? 'Off' : `${s}s`}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }

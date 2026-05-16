@@ -3,14 +3,15 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const PRESETS = [30, 60, 90, 120];
 
-export default function RestTimerOverlay({ seconds, label, onSkip, onDone }) {
+export default function RestTimerOverlay({ seconds = 30, label, onSkip, onDone }) {
+  const [totalSeconds, setTotalSeconds] = useState(seconds);
   const [remaining, setRemaining] = useState(seconds);
   const [minimized, setMinimized] = useState(false);
   const [flashing, setFlashing] = useState(false);
   const [flashBright, setFlashBright] = useState(false);
 
-  // Flash animation when timer expires
   useEffect(() => {
     if (!flashing) return;
     setFlashBright(true);
@@ -26,7 +27,6 @@ export default function RestTimerOverlay({ seconds, label, onSkip, onDone }) {
     return () => clearInterval(id);
   }, [flashing]);
 
-  // Countdown
   useEffect(() => {
     if (remaining <= 0) {
       if (navigator.vibrate) navigator.vibrate([150, 75, 150]);
@@ -37,7 +37,13 @@ export default function RestTimerOverlay({ seconds, label, onSkip, onDone }) {
     return () => clearTimeout(t);
   }, [remaining]);
 
-  const progress = seconds > 0 ? (seconds - remaining) / seconds : 1;
+  const handlePreset = (sec) => {
+    setTotalSeconds(sec);
+    setRemaining(sec);
+    setFlashing(false);
+  };
+
+  const progress = totalSeconds > 0 ? (totalSeconds - remaining) / totalSeconds : 1;
   const dashOffset = CIRCUMFERENCE * (1 - progress);
 
   if (flashing) {
@@ -119,9 +125,26 @@ export default function RestTimerOverlay({ seconds, label, onSkip, onDone }) {
         </div>
       </div>
 
+      {/* Duration preset buttons */}
+      <div className="flex gap-2 w-full mb-4">
+        {PRESETS.map(sec => (
+          <button
+            key={sec}
+            onClick={() => handlePreset(sec)}
+            className={`flex-1 py-3 rounded-xl text-sm font-bold min-h-[44px] transition-all active:scale-95 ${
+              totalSeconds === sec
+                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25'
+                : 'bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-500 dark:text-[#d8e7de]/50'
+            }`}
+          >
+            {sec}s
+          </button>
+        ))}
+      </div>
+
       <button
         onClick={onSkip}
-        className="px-10 py-3.5 bg-gray-100 dark:bg-[#0a0a0a]/40 text-gray-600 dark:text-[#d8e7de]/70 rounded-2xl font-semibold text-base min-h-[52px] active:bg-gray-200 dark:active:bg-[#0a0a0a]/60"
+        className="w-full px-10 py-3.5 bg-gray-100 dark:bg-[#0a0a0a]/40 text-gray-600 dark:text-[#d8e7de]/70 rounded-2xl font-semibold text-base min-h-[52px] active:bg-gray-200 dark:active:bg-[#0a0a0a]/60"
       >
         Skip Rest
       </button>
