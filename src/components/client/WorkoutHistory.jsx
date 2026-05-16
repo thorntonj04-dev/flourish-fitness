@@ -137,10 +137,10 @@ export default function WorkoutHistory({ user }) {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl animate-pulse h-44" />
-        <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 animate-pulse h-14" />
+        <div className="rounded-2xl skeleton h-44" />
+        <div className="rounded-2xl skeleton h-14" />
         {[1, 2, 3].map(i => (
-          <div key={i} className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 animate-pulse h-28" />
+          <div key={i} className="rounded-2xl skeleton h-28" />
         ))}
       </div>
     );
@@ -155,7 +155,7 @@ export default function WorkoutHistory({ user }) {
     <div className="space-y-4 pb-6">
 
       {/* ── Hero ─────────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-teal-600 via-emerald-500 to-teal-700 rounded-2xl p-6 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-br from-teal-600 via-emerald-500 to-teal-700 rounded-2xl p-6 text-white relative overflow-hidden shadow-xl shadow-emerald-900/30">
         <div className="absolute -top-8 -right-8 w-44 h-44 bg-white/5 rounded-full" />
         <div className="absolute -bottom-10 -left-4 w-32 h-32 bg-white/5 rounded-full" />
         <div className="relative">
@@ -183,7 +183,7 @@ export default function WorkoutHistory({ user }) {
 
       {/* ── Tab switcher ──────────────────────────────────── */}
       {sessions.length > 0 && (
-        <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-1.5 border border-gray-200 dark:border-[#C6A45F]/25 flex gap-1">
+        <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-1.5 border border-gray-200 dark:border-[#C6A45F]/25 flex gap-1 shadow-sm shadow-black/5 dark:shadow-black/20">
           <TabButton active={tab === 'sessions'} onClick={() => setTab('sessions')}>Sessions</TabButton>
           <TabButton active={tab === 'progress'} onClick={() => setTab('progress')}>Strength Progress</TabButton>
         </div>
@@ -242,7 +242,7 @@ export default function WorkoutHistory({ user }) {
                     .slice(0, 3);
 
                   return (
-                    <div key={session.id} className={`bg-white dark:bg-[#1E3328] rounded-2xl border-2 overflow-hidden transition ${
+                    <div key={session.id} className={`bg-white dark:bg-[#1E3328] rounded-2xl border-2 overflow-hidden transition shadow-sm shadow-black/5 dark:shadow-black/20 ${
                       isPRSession ? 'border-yellow-300 dark:border-yellow-600/50' : 'border-gray-100 dark:border-[#C6A45F]/15'
                     }`}>
                       <button

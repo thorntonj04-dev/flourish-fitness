@@ -937,7 +937,7 @@ export default function WorkoutBuilder() {
         )}
 
         {/* Fixed save button */}
-        <div className="fixed bottom-16 left-0 right-0 p-4 bg-white dark:bg-[#1E3328] border-t border-gray-200 dark:border-[#C6A45F]/25 md:relative md:bottom-auto md:border-0 md:bg-transparent md:dark:bg-transparent md:p-0">
+        <div className="fixed bottom-24 left-0 right-0 p-4 bg-white dark:bg-[#1E3328] border-t border-gray-200 dark:border-[#C6A45F]/25 md:relative md:bottom-auto md:border-0 md:bg-transparent md:dark:bg-transparent md:p-0">
           <button
             onClick={handleSaveWorkout}
             className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg min-h-[56px]"

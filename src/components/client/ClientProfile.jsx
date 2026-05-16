@@ -178,12 +178,28 @@ export default function ClientProfile({ user }) {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl animate-pulse h-52" />
-        <div className="grid grid-cols-3 gap-3">
-          {[1, 2, 3].map(i => <div key={i} className="rounded-2xl animate-pulse h-28 bg-gray-200 dark:bg-[#1E3328]" />)}
+        {/* Hero skeleton */}
+        <div className="bg-gradient-to-br from-emerald-600/20 to-teal-600/20 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-2xl p-4">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="w-16 h-16 rounded-2xl skeleton flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-2.5 skeleton rounded-full w-20" />
+              <div className="h-5 skeleton rounded-full w-36" />
+              <div className="h-3 skeleton rounded-full w-28" />
+            </div>
+          </div>
+          <div className="h-2 skeleton rounded-full mb-5" />
+          <div className="grid gap-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(14, 1fr)', gap: '3px' }}>
+            {Array.from({ length: 14 }).map((_, i) => <div key={i} className="aspect-square skeleton rounded-sm" />)}
+          </div>
         </div>
+        {/* Stat cards skeleton */}
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map(i => <div key={i} className="rounded-2xl skeleton h-24" />)}
+        </div>
+        {/* Card skeletons */}
         {[1, 2].map(i => (
-          <div key={i} className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 animate-pulse h-36" />
+          <div key={i} className="rounded-2xl skeleton h-32" />
         ))}
       </div>
     );
@@ -194,7 +210,7 @@ export default function ClientProfile({ user }) {
 
       {/* ── iOS Install banner ────────────────────────────── */}
       {showInstallBanner && (
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl overflow-hidden text-white shadow-lg">
+        <div className="bg-gradient-to-r from-gray-900 to-[#1a2e1a] rounded-2xl overflow-hidden text-white shadow-xl shadow-black/20 dark:shadow-black/40 border border-[#C6A45F]/30">
           <button
             onClick={() => setInstallExpanded(p => !p)}
             className="w-full p-4 text-left active:opacity-80"
@@ -205,7 +221,7 @@ export default function ClientProfile({ user }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-sm">Add to your Home Screen</div>
-                <div className="text-indigo-200 text-xs mt-0.5">
+                <div className="text-[#C6A45F]/80 text-xs mt-0.5">
                   {installExpanded ? 'Tap anywhere to collapse' : 'Get the full app experience — tap to see how'}
                 </div>
               </div>
@@ -222,7 +238,7 @@ export default function ClientProfile({ user }) {
           {installExpanded && (
             <div className="px-4 pb-5 space-y-3">
               <div className="h-px bg-white/20" />
-              <p className="text-sm text-indigo-100 font-medium">Follow these steps in Safari on your iPhone:</p>
+              <p className="text-sm text-[#C6A45F] font-medium">Follow these steps in Safari on your iPhone:</p>
               <div className="space-y-2.5">
                 {[
                   { step: '1', text: 'Tap the Share button at the bottom of your browser', icon: '⬆️' },
@@ -233,18 +249,18 @@ export default function ClientProfile({ user }) {
                     <div className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0">
                       {step}
                     </div>
-                    <div className="flex-1 text-sm text-indigo-100 leading-snug">{icon} {text}</div>
+                    <div className="flex-1 text-sm text-gray-300 leading-snug">{icon} {text}</div>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-indigo-300 text-center">The app will open full-screen with no browser chrome — just like a native app.</p>
+              <p className="text-xs text-[#C6A45F]/60 text-center">The app will open full-screen with no browser chrome — just like a native app.</p>
             </div>
           )}
         </div>
       )}
 
       {/* ── Hero card ─────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 rounded-2xl p-4 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 rounded-2xl p-4 text-white relative overflow-hidden shadow-xl shadow-emerald-900/30">
         <div className="absolute -top-10 -right-10 w-52 h-52 bg-white/5 rounded-full" />
         <div className="absolute -bottom-14 -left-6 w-40 h-40 bg-white/5 rounded-full" />
 
@@ -348,7 +364,7 @@ export default function ClientProfile({ user }) {
 
       {/* ── Personal Records ──────────────────────────────── */}
       {personalRecords.length > 0 && (
-        <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
+        <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
           <div className="px-5 py-4 border-b border-gray-100 dark:border-[#C6A45F]/15 flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-500" />
             <h3 className="font-bold text-gray-900 dark:text-[#d8e7de]">Personal Records</h3>
@@ -417,11 +433,11 @@ export default function ClientProfile({ user }) {
       )}
 
       {/* ── Body weight tracker ───────────────────────────── */}
-      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
+      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
         <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-2 min-w-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Scale className="w-5 h-5 text-blue-500" />
+            <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Scale className="w-5 h-5 text-emerald-500" />
             </div>
             <div>
               <div className="font-bold text-gray-900 dark:text-[#d8e7de]">Body Weight</div>
@@ -486,13 +502,13 @@ export default function ClientProfile({ user }) {
               value={newWeight}
               onChange={e => setNewWeight(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleLogWeight()}
-              className="flex-1 px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de] dark:placeholder-[#d8e7de]/30 text-base"
+              className="flex-1 px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de] dark:placeholder-[#d8e7de]/30 text-base"
               step="0.1" min="0"
             />
             <button
               onClick={handleLogWeight}
               disabled={savingMetric || !newWeight}
-              className="px-5 py-3 bg-blue-500 text-white rounded-xl font-semibold active:bg-blue-600 disabled:opacity-50 min-h-[52px] flex items-center gap-1.5 flex-shrink-0"
+              className="px-5 py-3 bg-emerald-500 text-white rounded-xl font-semibold active:bg-emerald-600 disabled:opacity-50 min-h-[52px] flex items-center gap-1.5 flex-shrink-0"
             >
               <Plus className="w-4 h-4" />
               Log
@@ -517,7 +533,7 @@ export default function ClientProfile({ user }) {
 
 function StatCard({ gradient, top, value, label, sub }) {
   return (
-    <div className={`bg-gradient-to-br ${gradient} rounded-2xl p-4 text-center shadow-sm`}>
+    <div className={`bg-gradient-to-br ${gradient} rounded-2xl p-4 text-center shadow-lg shadow-black/15`}>
       <div className="flex justify-center mb-1.5 opacity-80">{top}</div>
       <div className="text-2xl font-black text-white leading-tight">{value}</div>
       <div className="text-xs text-white/70 mt-0.5 font-medium">{label}</div>
@@ -542,18 +558,18 @@ function WeightChart({ metrics }) {
   const areaPath = `M ${points[0].x},${H - pad.b} L ${points.map(p => `${p.x},${p.y}`).join(' L ')} L ${points[points.length - 1].x},${H - pad.b} Z`;
 
   return (
-    <div className="rounded-xl overflow-hidden bg-blue-50 dark:bg-blue-900/10 px-2 pt-2 pb-1">
+    <div className="rounded-xl overflow-hidden bg-emerald-50 dark:bg-emerald-900/10 px-2 pt-2 pb-1">
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
         <defs>
           <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
           </linearGradient>
         </defs>
         <path d={areaPath} fill="url(#wGrad)" />
-        <polyline points={polyline} fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={polyline} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         {points.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 5 : 3} fill={i === points.length - 1 ? '#2563eb' : '#3b82f6'} />
+          <circle key={i} cx={p.x} cy={p.y} r={i === points.length - 1 ? 5 : 3} fill={i === points.length - 1 ? '#059669' : '#10b981'} />
         ))}
       </svg>
       <div className="flex justify-between px-1 pb-1">

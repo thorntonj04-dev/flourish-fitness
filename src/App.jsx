@@ -254,7 +254,7 @@ export default function App() {
     alt="Flourish Fitness"
     className="w-10 h-10 object-contain rounded-md"
   />
-  <span className="font-bold text-gray-900 dark:text-[#d8e7de]">Flourish Fitness</span>
+  <span className="font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">Flourish Fitness</span>
 </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
@@ -301,7 +301,7 @@ export default function App() {
         {/* This is where different "views" are rendered */}
         {/* based on the currentView state */}
         {/* ============================================ */}
-        <main className="flex-1 p-4 pb-24 md:p-6 md:pb-6">
+        <main className="flex-1 p-4 pb-32 md:p-6 md:pb-6">
           <div className="max-w-4xl mx-auto">
             
             {/* ========== DASHBOARD VIEW ========== */}
@@ -337,23 +337,26 @@ export default function App() {
         </main>
       </div>
 
-{/* MOBILE BOTTOM NAVIGATION */}
-<nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1E3328] border-t border-gray-200 dark:border-[#C6A45F]/25 z-40">
-  <div className="flex justify-around px-2 py-2">
+{/* MOBILE FLOATING PILL NAVIGATION */}
+<nav className="md:hidden fixed bottom-5 left-0 right-0 flex justify-center z-40 pointer-events-none">
+  <div className="flex items-center gap-1 bg-white/85 dark:bg-[#142219]/90 backdrop-blur-2xl rounded-full px-1.5 py-1.5 shadow-2xl shadow-black/20 dark:shadow-black/60 border border-white/70 dark:border-[#C6A45F]/20 pointer-events-auto">
     {navItems.map(item => {
       const Icon = item.icon;
+      const isActive = currentView === item.id;
       return (
         <button
           key={item.id}
           onClick={() => setCurrentView(item.id)}
-          className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg ${
-            currentView === item.id
-              ? 'text-emerald-500 dark:text-[#FFD700]'
-              : 'text-gray-600 dark:text-[#d8e7de]/80'
+          className={`flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-full transition-all duration-200 min-w-[60px] ${
+            isActive
+              ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/40'
+              : 'text-gray-400 dark:text-[#d8e7de]/50'
           }`}
         >
-          <Icon className="w-6 h-6" />
-          <span className="text-xs">{item.label.split(' ')[0]}</span>
+          <Icon className={`w-5 h-5 ${isActive ? 'drop-shadow-sm' : ''}`} />
+          <span className="text-[10px] font-semibold leading-none tracking-wide">
+            {item.label.split(' ')[0]}
+          </span>
         </button>
       );
     })}

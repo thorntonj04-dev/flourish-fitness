@@ -144,9 +144,9 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 animate-pulse h-28" />
+        <div className="rounded-2xl skeleton h-28" />
         {[1, 2, 3].map(i => (
-          <div key={i} className="bg-white dark:bg-[#1E3328] rounded-2xl p-4 border border-gray-200 dark:border-[#C6A45F]/25 animate-pulse h-20" />
+          <div key={i} className="rounded-2xl skeleton h-20" />
         ))}
       </div>
     );
@@ -176,7 +176,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
     <div className="space-y-4 pb-6">
 
       {/* Program header / progress card */}
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-emerald-700/30">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -229,7 +229,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
       )}
 
       {/* Week schedule */}
-      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
+      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
         <div className="px-4 py-3 border-b border-gray-100 dark:border-[#C6A45F]/15 flex items-center justify-between">
           <h3 className="font-bold text-gray-900 dark:text-[#d8e7de] flex items-center gap-2">
             <CalendarDays className="w-4 h-4 text-emerald-500" />
