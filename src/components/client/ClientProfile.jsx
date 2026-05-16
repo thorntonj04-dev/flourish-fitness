@@ -190,7 +190,7 @@ export default function ClientProfile({ user }) {
   }
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4 pb-6 max-w-full overflow-x-hidden">
 
       {/* ── iOS Install banner ────────────────────────────── */}
       {showInstallBanner && (
@@ -244,7 +244,7 @@ export default function ClientProfile({ user }) {
       )}
 
       {/* ── Hero card ─────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 rounded-2xl p-6 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 rounded-2xl p-4 text-white relative overflow-hidden">
         <div className="absolute -top-10 -right-10 w-52 h-52 bg-white/5 rounded-full" />
         <div className="absolute -bottom-14 -left-6 w-40 h-40 bg-white/5 rounded-full" />
 
@@ -254,7 +254,7 @@ export default function ClientProfile({ user }) {
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-emerald-200 text-xs font-semibold uppercase tracking-widest mb-0.5">Your Profile</div>
+            <div className="text-emerald-200 text-xs font-semibold uppercase tracking-wide mb-0.5 truncate">Your Profile</div>
             <div className="text-2xl font-bold capitalize truncate">{displayName}</div>
             <div className="flex items-center gap-2 mt-1.5">
               <span className={`bg-gradient-to-r ${lvl.color} text-white text-xs font-black px-2.5 py-1 rounded-full`}>
@@ -418,7 +418,7 @@ export default function ClientProfile({ user }) {
 
       {/* ── Body weight tracker ───────────────────────────── */}
       <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
-        <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-2">
+        <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-2 min-w-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center flex-shrink-0">
               <Scale className="w-5 h-5 text-blue-500" />
@@ -447,7 +447,7 @@ export default function ClientProfile({ user }) {
         </div>
 
         {chartMetrics.length >= 2 && (
-          <div className="px-5 pb-3">
+          <div className="px-4 pb-3">
             <WeightChart metrics={chartMetrics} />
           </div>
         )}
@@ -473,7 +473,7 @@ export default function ClientProfile({ user }) {
           </div>
         )}
 
-        <div className="px-5 py-4 bg-gray-50 dark:bg-[#0a0a0a]/30 border-t border-gray-100 dark:border-[#C6A45F]/10">
+        <div className="px-4 py-4 bg-gray-50 dark:bg-[#0a0a0a]/30 border-t border-gray-100 dark:border-[#C6A45F]/10">
           {metrics.length === 0 && (
             <p className="text-xs text-center text-gray-400 dark:text-[#d8e7de]/40 mb-3">
               Start logging your weight to see your trend over time.
@@ -543,7 +543,7 @@ function WeightChart({ metrics }) {
 
   return (
     <div className="rounded-xl overflow-hidden bg-blue-50 dark:bg-blue-900/10 px-2 pt-2 pb-1">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 90 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
         <defs>
           <linearGradient id="wGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
