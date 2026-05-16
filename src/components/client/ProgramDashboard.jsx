@@ -156,7 +156,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
   if (!assignment || !program) {
     return (
       <div className="space-y-5">
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white">
+        <div className="hero-gradient rounded-2xl p-5 text-white">
           <h2 className="text-xl font-bold">This Week</h2>
           <p className="text-emerald-100 text-sm mt-1">Your weekly workouts will appear here</p>
         </div>
@@ -173,10 +173,10 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
 
   // ─── Main view ─────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4 pb-6 content-enter">
 
       {/* Program header / progress card */}
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-emerald-700/30">
+      <div className="hero-gradient rounded-2xl p-5 text-white shadow-lg shadow-emerald-900/30">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">

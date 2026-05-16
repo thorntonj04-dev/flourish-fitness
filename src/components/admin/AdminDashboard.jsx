@@ -35,7 +35,7 @@ export default function AdminDashboard({ user, onNavigate }) {
     <div className="space-y-5 pb-20">
 
       {/* Welcome banner */}
-      <div className="bg-gradient-to-br from-emerald-500 via-teal-500 to-emerald-600 rounded-2xl p-6 text-white relative overflow-hidden">
+      <div className="hero-gradient rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/5 rounded-full" />
         <div className="absolute -bottom-8 -right-2 w-24 h-24 bg-white/5 rounded-full" />
         <div className="relative">

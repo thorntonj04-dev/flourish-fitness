@@ -719,6 +719,15 @@ function RestPresets({ label, value, onChange }) {
 // ─── Set row ──────────────────────────────────────────────────────────────────
 
 function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells }) {
+  const [rippleKey, setRippleKey] = React.useState(null);
+
+  const handleCheck = () => {
+    if (!set.completed) {
+      setRippleKey(Date.now());
+    }
+    onComplete();
+  };
+
   return (
     <div className={`flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors ${
       set.completed ? 'bg-emerald-50 dark:bg-emerald-900/15' : 'bg-gray-50/50 dark:bg-white/[0.02]'
@@ -781,13 +790,19 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells }) {
 
       {/* Check button */}
       <button
-        onClick={onComplete}
-        className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
+        onClick={handleCheck}
+        className={`relative w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all overflow-visible ${
           set.completed
             ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-105'
             : 'border-2 border-gray-200 dark:border-[#C6A45F]/25 text-gray-300 dark:text-[#d8e7de]/20 active:border-emerald-400 active:text-emerald-400'
         }`}
       >
+        {rippleKey && (
+          <span
+            key={rippleKey}
+            className="absolute inset-0 rounded-full border-2 border-emerald-400 animate-ripple"
+          />
+        )}
         <Check className="w-5 h-5" />
       </button>
     </div>

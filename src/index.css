@@ -52,3 +52,46 @@
   background-size: 800px 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
+
+/* ── Tab slide transitions ─────────────────────────────── */
+@keyframes slideForward {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideBack {
+  from { opacity: 0; transform: translateX(-28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.slide-forward { animation: slideForward 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+.slide-back    { animation: slideBack    0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ── Set completion ripple ─────────────────────────────── */
+@keyframes rippleOut {
+  from { transform: scale(1);   opacity: 0.65; }
+  to   { transform: scale(2.5); opacity: 0; }
+}
+.animate-ripple {
+  animation: rippleOut 0.5s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Animated hero gradient ────────────────────────────── */
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.hero-gradient {
+  background: linear-gradient(-45deg, #059669, #0d9488, #047857, #0f766e, #065f46, #0e7490);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
+}
+
+/* ── Content fade-in on data load ──────────────────────── */
+@keyframes contentFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.content-enter {
+  animation: contentFadeIn 0.3s ease-out;
+}

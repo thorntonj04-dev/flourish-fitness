@@ -5,6 +5,24 @@ import { updateProfile } from 'firebase/auth';
 import { db, storage, auth } from '../../firebase';
 import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check } from 'lucide-react';
 
+function useCountUp(target, duration = 750) {
+  const [value, setValue] = React.useState(0);
+  React.useEffect(() => {
+    if (!target) { setValue(0); return; }
+    let raf;
+    const start = performance.now();
+    const tick = (now) => {
+      const pct = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - pct, 3);
+      setValue(Math.round(target * eased));
+      if (pct < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return value;
+}
+
 const LEVELS = [
   { min: 0,   max: 4,        name: 'Rookie',   emoji: '🌱', color: 'from-slate-400 to-slate-500',      bar: 'bg-slate-400' },
   { min: 5,   max: 19,       name: 'Athlete',  emoji: '💪', color: 'from-blue-400 to-blue-600',        bar: 'bg-blue-400' },
@@ -219,6 +237,9 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   };
 
   const totalWorkouts = stats?.totalWorkouts || 0;
+  const animWorkouts = useCountUp(totalWorkouts);
+  const animStreak   = useCountUp(stats?.currentStreak || 0, 600);
+  const animVolume   = useCountUp(totalVolume, 900);
   const lvl = getLevel(totalWorkouts);
   const lvlProgress = getLevelProgress(totalWorkouts);
   const nextAt = getNextLevelAt(totalWorkouts);
@@ -275,7 +296,7 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   }
 
   return (
-    <div className="space-y-4 pb-6 max-w-full overflow-x-hidden">
+    <div className="space-y-4 pb-6 max-w-full overflow-x-hidden content-enter">
 
       {/* ── iOS Install banner ────────────────────────────── */}
       {showInstallBanner && (
@@ -329,7 +350,7 @@ export default function ClientProfile({ user, onProfileUpdate }) {
       )}
 
       {/* ── Hero card ─────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 rounded-2xl p-4 text-white relative overflow-hidden shadow-xl shadow-emerald-900/30">
+      <div className="hero-gradient rounded-2xl p-4 text-white relative overflow-hidden shadow-xl shadow-emerald-900/30">
         <div className="absolute -top-10 -right-10 w-52 h-52 bg-white/5 rounded-full" />
         <div className="absolute -bottom-14 -left-6 w-40 h-40 bg-white/5 rounded-full" />
 
@@ -482,20 +503,20 @@ export default function ClientProfile({ user, onProfileUpdate }) {
         <StatCard
           gradient="from-emerald-400 to-emerald-600"
           top={<Dumbbell className="w-4 h-4 text-white/80" />}
-          value={totalWorkouts}
+          value={animWorkouts}
           label="Workouts"
         />
         <StatCard
           gradient="from-orange-400 to-orange-600"
           top={<Flame className="w-4 h-4 text-white/80" />}
-          value={stats?.currentStreak || 0}
+          value={animStreak}
           label="Day Streak"
           sub={stats?.longestStreak ? `Best ${stats.longestStreak}` : null}
         />
         <StatCard
           gradient="from-violet-400 to-violet-600"
           top={<TrendingUp className="w-4 h-4 text-white/80" />}
-          value={formatVolume(totalVolume)}
+          value={formatVolume(animVolume)}
           label="lbs Lifted"
           sub={volEquiv ? `≈ ${volEquiv.count} ${volEquiv.thing}` : null}
         />

@@ -152,10 +152,10 @@ export default function WorkoutHistory({ user }) {
   const ratingEmoji = { 1: '😅', 2: '🙂', 3: '💪', 4: '🔥', 5: '⚡' };
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4 pb-6 content-enter">
 
       {/* ── Hero ─────────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-teal-600 via-emerald-500 to-teal-700 rounded-2xl p-6 text-white relative overflow-hidden shadow-xl shadow-emerald-900/30">
+      <div className="hero-gradient rounded-2xl p-6 text-white relative overflow-hidden shadow-xl shadow-emerald-900/30">
         <div className="absolute -top-8 -right-8 w-44 h-44 bg-white/5 rounded-full" />
         <div className="absolute -bottom-10 -left-4 w-32 h-32 bg-white/5 rounded-full" />
         <div className="relative">

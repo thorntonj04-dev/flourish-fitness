@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dumbbell, LogOut } from 'lucide-react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref as dbRef, get, set } from 'firebase/database';
@@ -50,6 +50,22 @@ export default function App() {
   // NEW: State for workout session
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [isInWorkout, setIsInWorkout] = useState(false);
+
+  // Tab slide direction tracking
+  const [slideDir, setSlideDir] = useState('forward');
+  const prevViewRef = useRef('dashboard');
+
+  const CLIENT_NAV = ['this-week', 'history', 'profile'];
+  const ADMIN_NAV  = ['dashboard', 'workout-days', 'programs', 'clients', 'inquiries'];
+
+  const navigateTo = (viewId) => {
+    const order = userRole === 'client' ? CLIENT_NAV : ADMIN_NAV;
+    const prevIdx = order.indexOf(prevViewRef.current);
+    const nextIdx = order.indexOf(viewId);
+    setSlideDir(nextIdx >= prevIdx ? 'forward' : 'back');
+    prevViewRef.current = viewId;
+    setCurrentView(viewId);
+  };
 
   
 
@@ -281,7 +297,7 @@ export default function App() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setCurrentView(item.id)}
+                  onClick={() => navigateTo(item.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
                     currentView === item.id 
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white' 
@@ -303,10 +319,11 @@ export default function App() {
         {/* ============================================ */}
         <main className="flex-1 p-4 pb-32 md:p-6 md:pb-6">
           <div className="max-w-4xl mx-auto">
-            
+            <div key={currentView} className={slideDir === 'forward' ? 'slide-forward' : 'slide-back'}>
+
             {/* ========== DASHBOARD VIEW ========== */}
             {currentView === 'dashboard' && userRole === 'admin' && (
-              <AdminDashboard user={user} onNavigate={setCurrentView} />
+              <AdminDashboard user={user} onNavigate={navigateTo} />
             )}
 
             {/* ========== ADMIN: WORKOUT DAYS ========== */}
@@ -333,6 +350,8 @@ export default function App() {
             {currentView === 'profile' && userRole === 'client' && (
               <ClientProfile user={user} onProfileUpdate={name => setUserName(name)} />
             )}
+
+            </div>{/* end slide wrapper */}
           </div>
         </main>
       </div>
@@ -346,7 +365,7 @@ export default function App() {
       return (
         <button
           key={item.id}
-          onClick={() => setCurrentView(item.id)}
+          onClick={() => navigateTo(item.id)}
           className={`flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-full transition-all duration-200 min-w-[60px] ${
             isActive
               ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/40'
