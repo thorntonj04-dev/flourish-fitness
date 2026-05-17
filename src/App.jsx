@@ -75,6 +75,7 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        setLoading(true);
         setUser(firebaseUser);
         setShowLanding(false);
         setShowAuth(false);

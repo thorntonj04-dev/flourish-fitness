@@ -143,6 +143,44 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
     return m > 0 ? `${m}m ${s > 0 ? `${s}s` : ''}`.trim() : `${s}s`;
   };
 
+  const getVisualSummaryData = () => {
+    const hasSections = exercises.some(ex => ex.section);
+    let totalVolume = 0;
+
+    const processExercise = (ex, idx) => {
+      const data = sessionData[idx];
+      if (!data) return null;
+      const completedSets = (data.sets || []).filter(s => s.completed);
+      if (completedSets.length === 0) return null;
+      const dbLabel = ex.dumbbells === 2 ? 'ea.' : '';
+      const dbMult = ex.dumbbells === 2 ? 2 : 1;
+      completedSets.forEach(s => { totalVolume += (s.weight || 0) * dbMult * (s.reps || 0); });
+      return { name: ex.name, sets: completedSets.map(s => `${s.weight}${dbLabel}×${s.reps}`) };
+    };
+
+    const sectionMeta = {
+      warmup: { label: 'Warmup', icon: '🔥', chipClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' },
+      work: { label: 'Work', icon: '💪', chipClass: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' },
+      cooldown: { label: 'Cooldown', icon: '🧘', chipClass: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400' },
+    };
+
+    let sections = [];
+    if (hasSections) {
+      ['warmup', 'work', 'cooldown'].forEach(section => {
+        const rows = exercises.map((ex, idx) => ({ ex, idx }))
+          .filter(({ ex }) => ex.section === section)
+          .map(({ ex, idx }) => processExercise(ex, idx))
+          .filter(Boolean);
+        if (rows.length > 0) sections.push({ key: section, meta: sectionMeta[section], exercises: rows });
+      });
+    } else {
+      const rows = exercises.map((ex, idx) => processExercise(ex, idx)).filter(Boolean);
+      if (rows.length > 0) sections.push({ key: 'all', meta: null, exercises: rows });
+    }
+
+    return { sections, totalVolume };
+  };
+
   const buildSummaryText = () => {
     const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     const lines = [
@@ -330,9 +368,54 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
                 {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <div className="bg-gray-50 dark:bg-[#0a0a0a]/40 rounded-xl p-4 text-sm text-gray-700 dark:text-[#d8e7de]/80 whitespace-pre-wrap font-mono leading-relaxed">
-              {buildSummaryText()}
-            </div>
+            {(() => {
+              const { sections, totalVolume } = getVisualSummaryData();
+              return (
+                <div className="space-y-5">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-xs bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-[#d8e7de]/60 px-3 py-1.5 rounded-full font-medium">
+                      📅 {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </span>
+                    {duration > 0 && (
+                      <span className="text-xs bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-[#d8e7de]/60 px-3 py-1.5 rounded-full font-medium">
+                        ⏱ {formatDuration(duration)}
+                      </span>
+                    )}
+                  </div>
+
+                  {sections.map(section => (
+                    <div key={section.key}>
+                      {section.meta && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full mb-3 ${section.meta.chipClass}`}>
+                          {section.meta.icon} {section.meta.label}
+                        </span>
+                      )}
+                      <div className="space-y-3">
+                        {section.exercises.map((ex, i) => (
+                          <div key={i}>
+                            <div className="text-sm font-bold text-gray-800 dark:text-[#d8e7de] mb-1.5">{ex.name}</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {ex.sets.map((setStr, si) => (
+                                <span key={si} className="text-xs bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 px-2.5 py-1 rounded-full font-semibold tabular-nums">
+                                  {setStr}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {totalVolume > 0 && (
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-white/5">
+                      <span className="text-sm font-semibold text-gray-500 dark:text-[#d8e7de]/50">🏋️ Total Volume</span>
+                      <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{totalVolume.toLocaleString()} lbs</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

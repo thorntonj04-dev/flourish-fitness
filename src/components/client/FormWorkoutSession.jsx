@@ -18,6 +18,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const [savingDefault, setSavingDefault] = useState({});
   const [exitConfirm, setExitConfirm] = useState(false);
   const [restTimer, setRestTimer] = useState(null);
+  const [removeExerciseConfirm, setRemoveExerciseConfirm] = useState(null);
 
   useEffect(() => {
     initializeWorkout();
@@ -205,12 +206,33 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   };
 
   const removeSet = (exIdx) => {
+    if ((sessionData[exIdx]?.sets || []).length <= 1) {
+      setRemoveExerciseConfirm(exIdx);
+      return;
+    }
     setSessionData(prev => {
       const next = { ...prev };
-      if (next[exIdx].sets.length <= 1) return prev;
       next[exIdx] = { ...next[exIdx], sets: next[exIdx].sets.slice(0, -1) };
       return next;
     });
+  };
+
+  const removeExercise = (exIdx) => {
+    setExercises(prev => prev.filter((_, i) => i !== exIdx));
+    setSessionData(prev => {
+      const next = {};
+      let newIdx = 0;
+      Object.keys(prev).map(Number).sort().forEach(i => {
+        if (i !== exIdx) next[newIdx++] = prev[i];
+      });
+      return next;
+    });
+    setExpandedExercise(prev => {
+      if (prev === exIdx) return null;
+      if (prev > exIdx) return prev - 1;
+      return prev;
+    });
+    setRemoveExerciseConfirm(null);
   };
 
   const useLastValues = (exIdx) => {
@@ -544,14 +566,12 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                       >
                         <Plus className="w-4 h-4" /> Add Set
                       </button>
-                      {exData.sets.length > 1 && (
-                        <button
-                          onClick={() => removeSet(exIdx)}
-                          className="py-2.5 px-4 border-2 border-dashed border-red-200 dark:border-red-800/50 text-red-400 dark:text-red-500 rounded-xl text-sm font-semibold flex items-center justify-center min-h-[44px]"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => removeSet(exIdx)}
+                        className="py-2.5 px-4 border-2 border-dashed border-red-200 dark:border-red-800/50 text-red-400 dark:text-red-500 rounded-xl text-sm font-semibold flex items-center justify-center min-h-[44px]"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
@@ -615,6 +635,32 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
           onSkip={handleRestDone}
           onDone={handleRestDone}
         />
+      )}
+
+      {/* Remove exercise confirmation */}
+      {removeExerciseConfirm !== null && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-[#d8e7de] mb-2 tracking-tight">Remove exercise?</h3>
+            <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mb-5">
+              {exercises[removeExerciseConfirm]?.name} will be removed from this workout.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => removeExercise(removeExerciseConfirm)}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold min-h-[48px]"
+              >
+                Yes, Remove
+              </button>
+              <button
+                onClick={() => setRemoveExerciseConfirm(null)}
+                className="flex-1 py-3 border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 rounded-xl font-bold min-h-[48px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Exit confirmation */}
