@@ -388,23 +388,26 @@ export default function App() {
       </div>
 
 {/* MOBILE FLOATING PILL NAVIGATION */}
-<nav className="md:hidden fixed bottom-5 left-0 right-0 flex justify-center z-40 pointer-events-none">
-  <div className="flex items-center gap-1 bg-white/85 dark:bg-[#142219]/90 backdrop-blur-2xl rounded-full px-1.5 py-1.5 shadow-2xl shadow-black/20 dark:shadow-black/60 border border-white/70 dark:border-[#C6A45F]/20 pointer-events-auto">
+<nav className="md:hidden fixed bottom-5 left-0 right-0 flex justify-center z-40 pointer-events-none px-3">
+  <div className="flex items-center gap-0.5 bg-white/85 dark:bg-[#142219]/90 backdrop-blur-2xl rounded-full px-1.5 py-1.5 shadow-2xl shadow-black/20 dark:shadow-black/60 border border-white/70 dark:border-[#C6A45F]/20 pointer-events-auto overflow-x-auto scrollbar-hide max-w-full">
     {navItems.map(item => {
       const Icon = item.icon;
       const isActive = currentView === item.id;
+      const isAdmin = userRole === 'admin';
       return (
         <button
           key={item.id}
           onClick={() => navigateTo(item.id)}
-          className={`flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-full transition-all duration-200 min-w-[60px] ${
+          className={`flex flex-col items-center gap-0.5 rounded-full transition-all duration-200 flex-shrink-0 ${
+            isAdmin ? 'px-2.5 py-2 min-w-[46px]' : 'px-4 py-2.5 min-w-[60px]'
+          } ${
             isActive
               ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/40'
               : 'text-gray-400 dark:text-[#d8e7de]/50'
           }`}
         >
           <Icon className={`w-5 h-5 ${isActive ? 'drop-shadow-sm' : ''}`} />
-          <span className="text-[10px] font-semibold leading-none tracking-wide">
+          <span className={`font-semibold leading-none tracking-wide ${isAdmin ? 'text-[9px]' : 'text-[10px]'}`}>
             {item.label.split(' ')[0]}
           </span>
         </button>
