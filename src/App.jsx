@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Dumbbell, LogOut } from 'lucide-react';
+import { Dumbbell, LogOut, ArrowLeftRight } from 'lucide-react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref as dbRef, get, set } from 'firebase/database';
 import { auth, db } from './firebase';
@@ -47,6 +47,9 @@ export default function App() {
   const [showLanding, setShowLanding] = useState(true);
   const [showAuth, setShowAuth] = useState(false);
   
+  // Dual-role switcher (thorntonj04@outlook.com only)
+  const [isDualRole, setIsDualRole] = useState(false);
+
   // NEW: State for workout session
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [isInWorkout, setIsInWorkout] = useState(false);
@@ -88,6 +91,7 @@ export default function App() {
             const userData = snapshot.val();
             const role = userData.role || 'admin';
             setUserRole(role);
+            setIsDualRole(firebaseUser.email.toLowerCase() === 'thorntonj04@outlook.com');
             let resolvedName = userData.name || firebaseUser.email.split('@')[0];
             if (resolvedName === 'jlthornton07') {
               resolvedName = 'Lindsey';
@@ -115,6 +119,7 @@ export default function App() {
             });
             setUserName(name);
             setUserRole(role);
+            setIsDualRole(firebaseUser.email.toLowerCase() === 'thorntonj04@outlook.com');
             if (role === 'client') setCurrentView('this-week');
             setNeedsSetup(false);
           }
@@ -126,6 +131,7 @@ export default function App() {
         setUser(null);
         setUserName(null);
         setUserRole(null);
+        setIsDualRole(false);
         setNeedsSetup(false);
         setShowLanding(true);
       }
@@ -180,6 +186,16 @@ export default function App() {
     setIsInWorkout(false);
     setActiveWorkout(null);
     setCurrentView('this-week');
+  };
+
+  const handleRoleSwitch = () => {
+    const next = userRole === 'admin' ? 'client' : 'admin';
+    const nextView = next === 'admin' ? 'dashboard' : 'this-week';
+    prevViewRef.current = nextView;
+    setUserRole(next);
+    setCurrentView(nextView);
+    setIsInWorkout(false);
+    setActiveWorkout(null);
   };
 
   // ============================================
@@ -273,13 +289,23 @@ export default function App() {
   />
   <span className="font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300 bg-clip-text text-transparent">Flourish Fitness</span>
 </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <div className="text-right">
               <div className="text-sm font-medium text-gray-900 dark:text-[#d8e7de]">{userName}</div>
               <div className="text-xs text-emerald-600 dark:text-[#FFD700] capitalize font-medium">
                 {userRole === 'admin' ? '👑 Admin' : '💪 Client'}
               </div>
             </div>
+            {isDualRole && (
+              <button
+                onClick={handleRoleSwitch}
+                title={userRole === 'admin' ? 'Switch to Client view' : 'Switch to Admin view'}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition text-xs font-semibold"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{userRole === 'admin' ? 'Client' : 'Admin'}</span>
+              </button>
+            )}
             <button onClick={handleSignOut} className="p-2 hover:bg-gray-100 dark:hover:bg-[#1E3328] rounded-lg transition">
               <LogOut className="w-5 h-5 text-gray-600 dark:text-[#d8e7de]/80" />
             </button>
