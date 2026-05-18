@@ -36,6 +36,11 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     return () => clearTimeout(t);
   }, [sessionData, sessionId]);
 
+  const parseRepTarget = (reps) => {
+    if (typeof reps === 'string' && reps.includes('-')) return parseInt(reps.split('-')[0]) || 10;
+    return parseInt(reps) || 10;
+  };
+
   const findNextIncompleteExercise = (afterIdx) =>
     Object.keys(sessionData)
       .map(Number)
@@ -64,10 +69,13 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     exerciseList.forEach((ex, idx) => {
       initialData[idx] = {
         exerciseName: ex.name,
+        useDuration: ex.useDuration || false,
+        durationMinutes: ex.durationMinutes || 0,
+        durationSeconds: ex.durationSeconds || 30,
         sets: Array(ex.sets || 1).fill(null).map((_, i) => ({
           setNumber: i + 1,
           weight: ex.recommendedWeight || 0,
-          reps: ex.reps || 10,
+          reps: ex.useDuration ? 0 : parseRepTarget(ex.reps),
           completed: false,
           timestamp: null,
         })),
@@ -458,7 +466,10 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                         <>
                           <span className="text-gray-200 dark:text-[#d8e7de]/15">·</span>
                           <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
-                            Last: {last.weight}{exercise.dumbbells === 2 ? ' ea.' : ' lbs'} × {last.reps}
+                            Last: {exercise.useDuration
+                              ? (last.weight > 0 ? `${last.weight} lbs` : 'completed')
+                              : `${last.weight}${exercise.dumbbells === 2 ? ' ea.' : ' lbs'} × ${last.reps}`
+                            }
                           </span>
                           {!isAllDone && (
                             <button
@@ -542,7 +553,13 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                         {exercise.dumbbells === 2 ? 'lbs ea.' : 'lbs'}
                       </span>
                       <span className="w-5 flex-shrink-0" />
-                      <span className="w-20 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">reps</span>
+                      <span className="w-20 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">
+                        {exercise.useDuration
+                          ? 'duration'
+                          : (typeof exercise.reps === 'string' && exercise.reps.includes('-')
+                            ? `${exercise.reps} reps`
+                            : 'reps')}
+                      </span>
                       <span className="flex-1" />
                       <span className="w-12 flex-shrink-0" />
                     </div>
@@ -555,6 +572,9 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                         onWeightChange={v => updateSet(exIdx, setIdx, 'weight', v)}
                         onRepsChange={v => updateSet(exIdx, setIdx, 'reps', v)}
                         dumbbells={exercise.dumbbells}
+                        useDuration={exData.useDuration}
+                        durationMinutes={exData.durationMinutes}
+                        durationSeconds={exData.durationSeconds}
                       />
                     ))}
 
@@ -692,15 +712,17 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
 // ─── Set row ──────────────────────────────────────────────────────────────────
 
-function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells }) {
+function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useDuration = false, durationMinutes = 0, durationSeconds = 30 }) {
   const [rippleKey, setRippleKey] = React.useState(null);
 
   const handleCheck = () => {
-    if (!set.completed) {
-      setRippleKey(Date.now());
-    }
+    if (!set.completed) setRippleKey(Date.now());
     onComplete();
   };
+
+  const durLabel = durationMinutes > 0
+    ? `${durationMinutes}m ${durationSeconds > 0 ? durationSeconds + 's' : ''}`.trim()
+    : `${durationSeconds}s`;
 
   return (
     <div className={`flex items-center gap-2 rounded-xl px-2 py-2.5 transition-colors ${
@@ -743,21 +765,29 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells }) {
         set.completed ? 'text-emerald-300 dark:text-emerald-700' : 'text-gray-200 dark:text-[#d8e7de]/20'
       }`}>×</span>
 
-      {/* Reps input */}
-      <input
-        type="number"
-        inputMode="numeric"
-        value={set.reps}
-        onChange={e => onRepsChange(Math.max(1, parseInt(e.target.value) || 1))}
-        onClick={e => e.target.select()}
-        disabled={set.completed}
-        className={`w-20 flex-shrink-0 py-3 text-center text-xl font-black rounded-xl border-2 transition ${
-          set.completed
-            ? 'border-transparent bg-transparent text-emerald-500 dark:text-emerald-400'
-            : 'border-gray-200 dark:border-[#C6A45F]/20 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-[#d8e7de] focus:border-emerald-500 focus:outline-none'
-        }`}
-        min="1"
-      />
+      {/* Reps input OR duration display */}
+      {useDuration ? (
+        <div className={`w-20 flex-shrink-0 flex items-center justify-center rounded-xl py-3 ${
+          set.completed ? 'text-emerald-500 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'
+        }`}>
+          <span className="text-lg font-black tabular-nums">{durLabel}</span>
+        </div>
+      ) : (
+        <input
+          type="number"
+          inputMode="numeric"
+          value={set.reps}
+          onChange={e => onRepsChange(Math.max(1, parseInt(e.target.value) || 1))}
+          onClick={e => e.target.select()}
+          disabled={set.completed}
+          className={`w-20 flex-shrink-0 py-3 text-center text-xl font-black rounded-xl border-2 transition ${
+            set.completed
+              ? 'border-transparent bg-transparent text-emerald-500 dark:text-emerald-400'
+              : 'border-gray-200 dark:border-[#C6A45F]/20 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-[#d8e7de] focus:border-emerald-500 focus:outline-none'
+          }`}
+          min="1"
+        />
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />

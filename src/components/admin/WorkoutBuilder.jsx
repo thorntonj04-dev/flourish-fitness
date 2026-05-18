@@ -710,12 +710,14 @@ export default function WorkoutBuilder() {
                             <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-2 uppercase tracking-wide">Quick Scheme</label>
                             <div className="flex gap-2 flex-wrap">
                               {[
-                                { label: '3×8', sets: 3, reps: 8 },
-                                { label: '3×10', sets: 3, reps: 10 },
-                                { label: '4×8', sets: 4, reps: 8 },
+                                { label: '3×5', sets: 3, reps: 5 },
                                 { label: '5×5', sets: 5, reps: 5 },
-                                { label: '3×12', sets: 3, reps: 12 },
-                                { label: '4×12', sets: 4, reps: 12 },
+                                { label: '3×8-10', sets: 3, reps: '8-10' },
+                                { label: '3×8-12', sets: 3, reps: '8-12' },
+                                { label: '4×8-12', sets: 4, reps: '8-12' },
+                                { label: '3×10-12', sets: 3, reps: '10-12' },
+                                { label: '3×10-15', sets: 3, reps: '10-15' },
+                                { label: '4×12-15', sets: 4, reps: '12-15' },
                               ].map(({ label, sets, reps }) => (
                                 <button
                                   key={label}
@@ -725,7 +727,7 @@ export default function WorkoutBuilder() {
                                     setCurrentWorkout({ ...currentWorkout, exercises: updated });
                                   }}
                                   className={`px-3.5 py-2 rounded-xl text-sm font-bold min-h-[40px] transition ${
-                                    exercise.sets === sets && exercise.reps === reps
+                                    exercise.sets === sets && String(exercise.reps) === String(reps)
                                       ? 'bg-emerald-500 text-white'
                                       : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 active:bg-emerald-100 dark:active:bg-emerald-900/30'
                                   }`}
@@ -737,21 +739,28 @@ export default function WorkoutBuilder() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-3">
-                            {[
-                              { label: 'Sets', field: 'sets', max: 20 },
-                              { label: 'Reps', field: 'reps', max: 100 },
-                            ].map(({ label, field, max }) => (
-                              <div key={field}>
-                                <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">{label}</label>
-                                <input
-                                  type="number"
-                                  value={exercise[field]}
-                                  onChange={(e) => handleUpdateExercise(idx, field, parseInt(e.target.value) || 0)}
-                                  className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
-                                  min="0" max={max}
-                                />
-                              </div>
-                            ))}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">Sets</label>
+                              <input
+                                type="number"
+                                value={exercise.sets}
+                                onChange={(e) => handleUpdateExercise(idx, 'sets', parseInt(e.target.value) || 0)}
+                                className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
+                                min="1" max="20"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 dark:text-[#d8e7de]/60 mb-1 uppercase tracking-wide">
+                                Reps <span className="normal-case font-normal text-gray-400">(or range)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={exercise.reps}
+                                onChange={(e) => handleUpdateExercise(idx, 'reps', e.target.value)}
+                                placeholder="10 or 8-12"
+                                className="w-full px-2 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-center font-bold text-xl focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de] placeholder:text-sm placeholder:font-normal"
+                              />
+                            </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-3">
