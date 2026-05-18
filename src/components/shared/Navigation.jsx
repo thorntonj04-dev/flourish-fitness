@@ -3,7 +3,7 @@ import { LayoutDashboard, Layers, Dumbbell, Users, CalendarDays, Clock, User, In
 export const adminNavItems = [
   { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
   { id: 'programs', label: 'Programs', icon: Layers },
-  { id: 'workout-days', label: 'Workouts', icon: Dumbbell },
+  { id: 'workout-days', label: 'Builder', icon: Dumbbell },
   { id: 'clients', label: 'Clients', icon: Users },
   { id: 'inquiries', label: 'Inquiries', icon: Inbox },
   { id: 'feedback', label: 'Feedback', icon: MessageSquare },

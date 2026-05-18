@@ -173,7 +173,7 @@ export default function AdminDashboard({ user, onNavigate }) {
           <NavCard
             gradient="from-yellow-400 to-orange-500"
             icon={<Dumbbell className="w-6 h-6" />}
-            title="Workout Days"
+            title="Workout Builder"
             description="Build reusable workout templates with exercises, sets, reps, and rest timers."
             onClick={() => onNavigate('workout-days')}
           />
@@ -213,7 +213,7 @@ export default function AdminDashboard({ user, onNavigate }) {
         {expandedSection === 'howto' && (
           <div className="border-t border-gray-100 dark:border-[#C6A45F]/10 divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
             {[
-              { step: 1, label: 'Build Workout Days', detail: 'Go to Workout Days and create each training session — Push Day, Leg Day, Full Body, whatever you need. Add exercises with sets, reps, recommended weight, and coaching notes. Build once, reuse everywhere.', icon: <Dumbbell className="w-4 h-4" />, color: 'bg-yellow-500' },
+              { step: 1, label: 'Build Workouts', detail: 'Go to Workout Builder and create each training session — Push Day, Leg Day, Full Body, whatever you need. Add exercises with sets, reps, recommended weight, and coaching notes. Build once, reuse everywhere.', icon: <Dumbbell className="w-4 h-4" />, color: 'bg-yellow-500' },
               { step: 2, label: 'Build a Program', detail: 'Head to Programs. A program groups your workout days into phases — each with a set duration and weekly frequency. For example: Phase 1 (Foundation) = 4 weeks × 3 days/week. Phase 2 (Progression) = 6 weeks × 4 days/week.', icon: <Layers className="w-4 h-4" />, color: 'bg-emerald-500' },
               { step: 3, label: 'Add Your Client', detail: "Go to Clients and tap Add Client. Enter their name and email. Send them the app link and ask them to sign up with that exact email — they'll automatically be set up as a client with the right role.", icon: <Users className="w-4 h-4" />, color: 'bg-blue-500' },
               { step: 4, label: 'Assign the Program', detail: "On their client card, tap Assign Program. Select the program, choose a start date, and set their weekly schedule — which days they'll train each week. They can always rearrange this themselves.", icon: <CalendarDays className="w-4 h-4" />, color: 'bg-purple-500' },

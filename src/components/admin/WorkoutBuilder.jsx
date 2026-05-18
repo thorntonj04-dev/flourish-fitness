@@ -1096,7 +1096,7 @@ export default function WorkoutBuilder() {
         <div className="relative">
           <div className="flex items-center gap-2 mb-1">
             <Dumbbell className="w-4 h-4 text-yellow-200" />
-            <span className="text-yellow-100 text-sm font-medium">Workout Days</span>
+            <span className="text-yellow-100 text-sm font-medium">Workout Builder</span>
           </div>
           <h2 className="text-2xl font-bold">Your Workouts</h2>
           <p className="text-orange-100 text-sm mt-0.5">
