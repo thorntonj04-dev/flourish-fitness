@@ -54,6 +54,11 @@ function getVolumeEquivalent(lbs) {
 const APP_FEATURES = [
   { icon: '📅', title: 'Your Program', desc: 'Structured, multi-phase programs built specifically for your goals by your trainer. Each phase adapts as you progress.' },
   { icon: '💪', title: 'Guided Workouts', desc: 'Step-by-step sessions with set, rep, and weight tracking. Rest timers and superset support built right in.' },
+  { icon: '👁️', title: 'Workout Preview', desc: 'Tap the eye icon on any workout day to preview all exercises before you start — no commitment required.' },
+  { icon: '📆', title: 'Next Week View', desc: 'Switch between This Week and Next Week on your dashboard to see what\'s coming up so you can plan ahead.' },
+  { icon: '🗑️', title: 'Remove Exercises', desc: 'During a session, remove an exercise entirely by tapping minus on its last set — a confirmation keeps it accident-proof.' },
+  { icon: '⏱️', title: 'Timed Sets', desc: 'Some exercises are done for time instead of reps. The duration is shown right on the set row so you always know how long to go.' },
+  { icon: '↔️', title: 'Rep Ranges', desc: 'Your trainer can assign rep ranges like 8–12. Log the reps you actually completed each set.' },
   { icon: '📊', title: 'Workout History', desc: 'Every completed session is saved. Review past workouts, total volume, and see exactly how far you have come.' },
   { icon: '🏆', title: 'Personal Records', desc: 'Your heaviest lift per exercise is automatically tracked and displayed on a podium — gold, silver, and bronze.' },
   { icon: '⚖️', title: 'Body Weight Log', desc: 'Log your weight anytime and watch your trend over time with a visual chart.' },
