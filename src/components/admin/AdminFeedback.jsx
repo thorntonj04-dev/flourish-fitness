@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ref as dbRef, onValue, update } from 'firebase/database';
+import { ref as dbRef, onValue, update, get } from 'firebase/database';
 import { db } from '../../firebase';
 import { MessageSquare, ChevronDown, ChevronUp, CheckCircle, Archive, RotateCcw, Lightbulb, Bug, MessageCircle } from 'lucide-react';
 
@@ -30,15 +30,26 @@ export default function AdminFeedback() {
   const [filter, setFilter] = useState('all');
   const [expanded, setExpanded] = useState(null);
   const [updating, setUpdating] = useState(null);
+  const [permError, setPermError] = useState(false);
+
+  const parseSnap = (snap) => {
+    if (!snap.exists()) { setItems([]); return; }
+    const list = Object.entries(snap.val())
+      .map(([id, val]) => ({ id, ...val }))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    setItems(list);
+    setPermError(false);
+  };
 
   useEffect(() => {
-    const unsub = onValue(dbRef(db, 'app-feedback'), snap => {
-      if (!snap.exists()) { setItems([]); return; }
-      const list = Object.entries(snap.val())
-        .map(([id, val]) => ({ id, ...val }))
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setItems(list);
-    });
+    // One-time fetch first so data shows even if realtime sub had a prior error
+    get(dbRef(db, 'app-feedback')).then(parseSnap).catch(() => setPermError(true));
+
+    const unsub = onValue(
+      dbRef(db, 'app-feedback'),
+      parseSnap,
+      () => setPermError(true),
+    );
     return () => unsub();
   }, []);
 
@@ -89,6 +100,13 @@ export default function AdminFeedback() {
           )}
         </div>
       </div>
+
+      {/* Permission error */}
+      {permError && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/40 rounded-2xl p-4 text-sm text-red-700 dark:text-red-300">
+          Could not read feedback — Firebase permission denied. Make sure the database rules have been published in the Firebase console.
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
