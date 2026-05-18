@@ -19,6 +19,7 @@ import ProgramBuilder from './components/admin/ProgramBuilder';
 import ManageClients from './components/admin/ManageClients';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AdminInquiries from './components/admin/AdminInquiries';
+import AdminFeedback from './components/admin/AdminFeedback';
 
 // ============================================
 // CLIENT COMPONENTS
@@ -59,7 +60,7 @@ export default function App() {
   const prevViewRef = useRef('dashboard');
 
   const CLIENT_NAV = ['this-week', 'history', 'profile'];
-  const ADMIN_NAV  = ['dashboard', 'workout-days', 'programs', 'clients', 'inquiries'];
+  const ADMIN_NAV  = ['dashboard', 'workout-days', 'programs', 'clients', 'inquiries', 'feedback'];
 
   const navigateTo = (viewId) => {
     const order = userRole === 'client' ? CLIENT_NAV : ADMIN_NAV;
@@ -364,6 +365,9 @@ export default function App() {
 
             {/* ========== ADMIN: INQUIRIES ========== */}
             {currentView === 'inquiries' && userRole === 'admin' && <AdminInquiries />}
+
+            {/* ========== ADMIN: FEEDBACK ========== */}
+            {currentView === 'feedback' && userRole === 'admin' && <AdminFeedback />}
 
             {/* ========== CLIENT: THIS WEEK ========== */}
             {currentView === 'this-week' && userRole === 'client' && (

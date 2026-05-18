@@ -3,7 +3,7 @@ import { ref as dbRef, get, set, push } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
 import { db, storage, auth } from '../../firebase';
-import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check } from 'lucide-react';
+import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check, Send } from 'lucide-react';
 
 function useCountUp(target, duration = 750) {
   const [value, setValue] = React.useState(0);
@@ -81,6 +81,12 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   // Info panel
   const [showInfoPanel, setShowInfoPanel] = useState(false);
 
+  // Feedback
+  const [feedbackCategory, setFeedbackCategory] = useState('enhancement');
+  const [feedbackText, setFeedbackText] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+
   // Editable name
   const [loadedName, setLoadedName] = useState('');
   const [editingName, setEditingName] = useState(false);
@@ -150,6 +156,29 @@ export default function ClientProfile({ user, onProfileUpdate }) {
       console.error('Error saving name:', err);
     } finally {
       setSavingName(false);
+    }
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!feedbackText.trim()) return;
+    setSubmittingFeedback(true);
+    try {
+      await push(dbRef(db, 'app-feedback'), {
+        userId: user.uid,
+        userName: loadedName || user.email?.split('@')[0] || 'Client',
+        category: feedbackCategory,
+        message: feedbackText.trim(),
+        createdAt: new Date().toISOString(),
+        status: 'new',
+      });
+      setFeedbackText('');
+      setFeedbackCategory('enhancement');
+      setFeedbackSent(true);
+      setTimeout(() => setFeedbackSent(false), 4000);
+    } catch (err) {
+      console.error('Error submitting feedback:', err);
+    } finally {
+      setSubmittingFeedback(false);
     }
   };
 
@@ -725,6 +754,66 @@ export default function ClientProfile({ user, onProfileUpdate }) {
           </p>
         </div>
       )}
+
+      {/* ── Feedback ──────────────────────────────────────── */}
+      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 rounded-2xl flex items-center justify-center flex-shrink-0">
+            <Send className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 dark:text-[#d8e7de]">Share Feedback</h3>
+            <p className="text-xs text-gray-500 dark:text-[#d8e7de]/50">Suggest features or report issues</p>
+          </div>
+        </div>
+
+        {feedbackSent ? (
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <div className="text-4xl">🙌</div>
+            <p className="font-bold text-emerald-600 dark:text-emerald-400">Thanks! Your feedback was sent.</p>
+            <p className="text-xs text-gray-400 dark:text-[#d8e7de]/50">Your trainer will review it shortly.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              {[
+                { value: 'enhancement', label: '💡 Enhancement' },
+                { value: 'bug',         label: '🐛 Bug' },
+                { value: 'general',     label: '💬 General' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setFeedbackCategory(opt.value)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition ${
+                    feedbackCategory === opt.value
+                      ? 'bg-emerald-500 text-white border-emerald-500'
+                      : 'bg-gray-50 dark:bg-[#0a0a0a]/50 text-gray-600 dark:text-[#d8e7de]/60 border-gray-200 dark:border-[#C6A45F]/20'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={feedbackText}
+              onChange={e => setFeedbackText(e.target.value)}
+              placeholder="Describe your idea or issue..."
+              rows={4}
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de] dark:placeholder-[#d8e7de]/30 text-sm resize-none"
+            />
+
+            <button
+              onClick={handleSubmitFeedback}
+              disabled={submittingFeedback || !feedbackText.trim()}
+              className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl active:bg-emerald-600 disabled:opacity-50 flex items-center justify-center gap-2 transition"
+            >
+              <Send className="w-4 h-4" />
+              {submittingFeedback ? 'Sending…' : 'Send Feedback'}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* ── App Features Info Panel ───────────────────────── */}
       {showInfoPanel && (

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Layers, Dumbbell, Users, CalendarDays, Clock, User, Inbox } from 'lucide-react';
+import { LayoutDashboard, Layers, Dumbbell, Users, CalendarDays, Clock, User, Inbox, MessageSquare } from 'lucide-react';
 
 export const adminNavItems = [
   { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
@@ -6,6 +6,7 @@ export const adminNavItems = [
   { id: 'workout-days', label: 'Workouts', icon: Dumbbell },
   { id: 'clients', label: 'Clients', icon: Users },
   { id: 'inquiries', label: 'Inquiries', icon: Inbox },
+  { id: 'feedback', label: 'Feedback', icon: MessageSquare },
 ];
 
 export const clientNavItems = [
