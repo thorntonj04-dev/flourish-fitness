@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ref as dbRef, onValue, update, get } from 'firebase/database';
+import { ref as dbRef, onValue, update, get, remove } from 'firebase/database';
 import { db } from '../../firebase';
-import { MessageSquare, ChevronDown, ChevronUp, CheckCircle, Archive, RotateCcw, Lightbulb, Bug, MessageCircle, RefreshCw } from 'lucide-react';
+import { MessageSquare, ChevronDown, ChevronUp, CheckCircle, Trash2, RotateCcw, Lightbulb, Bug, MessageCircle, RefreshCw } from 'lucide-react';
 
-const STATUS_FILTERS = ['all', 'new', 'reviewed', 'done', 'archived'];
+const STATUS_FILTERS = ['all', 'new', 'reviewed', 'done'];
 
 // Separate styles for header chips (always on dark green) vs card badges (light or dark bg)
 const CHIP_STYLES = {
@@ -87,8 +87,15 @@ export default function AdminFeedback() {
     finally { setUpdating(null); }
   };
 
+  const deleteItem = async (id) => {
+    setUpdating(id);
+    try { await remove(dbRef(db, `app-feedback/${id}`)); }
+    catch (e) { console.error(e); }
+    finally { setUpdating(null); }
+  };
+
   const filtered = filter === 'all' ? items : items.filter(i => i.status === filter);
-  const counts = { new: 0, reviewed: 0, done: 0, archived: 0 };
+  const counts = { new: 0, reviewed: 0, done: 0 };
   items.forEach(i => { if (counts[i.status] !== undefined) counts[i.status]++; });
 
   return (
@@ -249,26 +256,14 @@ export default function AdminFeedback() {
                           Mark Done
                         </button>
                       )}
-                      {item.status !== 'archived' && (
-                        <button
-                          onClick={() => setStatus(item.id, 'archived')}
-                          disabled={updating === item.id}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 dark:bg-gray-800/40 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-700/40 rounded-xl text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-800/60 transition disabled:opacity-50"
-                        >
-                          <Archive className="w-3.5 h-3.5" />
-                          Archive
-                        </button>
-                      )}
-                      {item.status === 'archived' && (
-                        <button
-                          onClick={() => setStatus(item.id, 'new')}
-                          disabled={updating === item.id}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700/40 rounded-xl text-xs font-semibold hover:bg-purple-100 dark:hover:bg-purple-900/30 transition disabled:opacity-50"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          Restore
-                        </button>
-                      )}
+                      <button
+                        onClick={() => deleteItem(item.id)}
+                        disabled={updating === item.id}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-700/40 rounded-xl text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/30 transition disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
                     </div>
                   </div>
                 )}
