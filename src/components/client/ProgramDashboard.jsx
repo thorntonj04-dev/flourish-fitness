@@ -54,6 +54,7 @@ function computeWeekNumber(startDate, durationWeeks) {
 export default function ProgramDashboard({ user, onStartWorkout, readOnly = false }) {
   const [assignment, setAssignment] = useState(null);
   const [program, setProgram] = useState(null);
+  const [directSchedule, setDirectSchedule] = useState(null);
   const [workoutHistory, setWorkoutHistory] = useState([]);
   const [weeklySchedule, setWeeklySchedule] = useState({});
   const [loading, setLoading] = useState(true);
@@ -70,7 +71,20 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
     setLoading(true);
     try {
       const assignSnap = await get(dbRef(db, `programAssignments/${user.uid}`));
-      if (!assignSnap.exists()) { setLoading(false); return; }
+      if (!assignSnap.exists()) {
+        const [schedSnap, historySnap] = await Promise.all([
+          get(dbRef(db, `clientSchedules/${user.uid}`)),
+          get(dbRef(db, `workout-history/${user.uid}`)),
+        ]);
+        if (schedSnap.exists()) {
+          setDirectSchedule(schedSnap.val());
+          if (historySnap.exists()) {
+            setWorkoutHistory(Object.values(historySnap.val()).filter(h => h.completed));
+          }
+        }
+        setLoading(false);
+        return;
+      }
 
       let assign = assignSnap.val();
 
@@ -190,8 +204,18 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
     );
   }
 
-  // ─── No program assigned ───────────────────────────────────────────────────
+  // ─── No program — check direct schedule ───────────────────────────────────
   if (!assignment || !program) {
+    if (directSchedule) {
+      return (
+        <DirectScheduleView
+          directSchedule={directSchedule}
+          workoutHistory={workoutHistory}
+          onStartWorkout={onStartWorkout}
+          readOnly={readOnly}
+        />
+      );
+    }
     return (
       <div className="space-y-5">
         <div className="hero-gradient rounded-2xl p-5 text-white">
@@ -580,6 +604,126 @@ function WorkoutPreviewModal({ workout, loading, onClose, onStart }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Direct schedule view (no program) ────────────────────────────────────────
+
+function DirectScheduleView({ directSchedule, workoutHistory, onStartWorkout, readOnly }) {
+  const [previewWorkout, setPreviewWorkout] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const handlePreview = async (workoutId) => {
+    setPreviewLoading(true);
+    setPreviewWorkout({ loading: true });
+    try {
+      const snap = await get(dbRef(db, `workouts/${workoutId}`));
+      if (snap.exists()) setPreviewWorkout({ id: workoutId, ...snap.val() });
+      else setPreviewWorkout(null);
+    } catch (err) {
+      console.error('Error loading workout preview:', err);
+      setPreviewWorkout(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const weekDays = getThisWeek().map(day => {
+    const entry = directSchedule[day.name] || null;
+    const isCompleted = entry?.workoutId
+      ? workoutHistory.some(h =>
+          h.workoutId === entry.workoutId &&
+          new Date(h.startTime).toISOString().split('T')[0] === day.dateStr
+        )
+      : false;
+    return {
+      ...day,
+      workoutId: entry?.workoutId ?? null,
+      workoutName: entry?.workoutName ?? null,
+      dayLabel: null,
+      isRest: !entry,
+      isCompleted,
+    };
+  });
+
+  const todayDay = weekDays.find(d => d.isToday);
+  const completedCount = weekDays.filter(d => d.isCompleted).length;
+  const workoutDaysCount = weekDays.filter(d => !d.isRest).length;
+
+  return (
+    <div className="space-y-4 pb-6 content-enter">
+      {/* Header */}
+      <div className="hero-gradient rounded-2xl p-5 text-white shadow-lg shadow-emerald-900/30">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold">This Week</h2>
+            <p className="text-emerald-100 text-sm mt-0.5">
+              {workoutDaysCount} workout{workoutDaysCount !== 1 ? 's' : ''} scheduled
+            </p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <div className="text-2xl font-bold">{completedCount}/{workoutDaysCount}</div>
+            <div className="text-xs text-emerald-200">done this week</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Today's quick-start */}
+      {todayDay && !todayDay.isRest && !todayDay.isCompleted && !readOnly && (
+        <button
+          onClick={() => onStartWorkout(todayDay.workoutId)}
+          className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-4 text-white flex items-center justify-between shadow-md active:opacity-90 min-h-[72px]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Play className="w-6 h-6" />
+            </div>
+            <div className="text-left">
+              <div className="font-bold text-base">Start Today's Workout</div>
+              <div className="text-sm text-emerald-100">{todayDay.workoutName}</div>
+            </div>
+          </div>
+          <ChevronRight className="w-6 h-6 opacity-70 flex-shrink-0" />
+        </button>
+      )}
+
+      {/* Week schedule */}
+      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-[#C6A45F]/15">
+          <span className="text-sm font-bold text-gray-700 dark:text-[#d8e7de]/80">Your Schedule</span>
+        </div>
+        <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
+          {weekDays.filter(d => !d.isRest).map(day => (
+            <DayRow
+              key={day.name}
+              day={day}
+              onStart={!readOnly ? () => onStartWorkout(day.workoutId) : undefined}
+              onPreview={day.workoutId ? () => handlePreview(day.workoutId) : undefined}
+              readOnly={readOnly}
+            />
+          ))}
+          {workoutDaysCount === 0 && (
+            <div className="px-4 py-6 text-center text-sm text-gray-400 dark:text-[#d8e7de]/40">
+              No workouts scheduled this week.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Workout preview modal */}
+      {previewWorkout && (
+        <WorkoutPreviewModal
+          workout={previewWorkout}
+          loading={previewLoading}
+          onClose={() => setPreviewWorkout(null)}
+          onStart={
+            !readOnly && previewWorkout.id
+              ? () => { setPreviewWorkout(null); onStartWorkout(previewWorkout.id); }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

@@ -3,9 +3,10 @@ import { ref as dbRef, get, set } from 'firebase/database';
 import { db } from '../../firebase';
 import {
   Layers, Dumbbell, UserPlus, RefreshCw, Clock,
-  Eye, X, Mail, Users,
+  Eye, X, Mail, Users, CalendarDays,
 } from 'lucide-react';
 import AssignProgramModal from './AssignProgramModal';
+import AssignWorkoutScheduleModal from './AssignWorkoutScheduleModal';
 import ClientDetailView from './ClientDetailView';
 
 export default function ManageClients() {
@@ -14,8 +15,10 @@ export default function ManageClients() {
   const [assignments, setAssignments] = useState({});
   const [pendingClients, setPendingClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [clientSchedules, setClientSchedules] = useState({});
   const [selectedClient, setSelectedClient] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [scheduleClient, setScheduleClient] = useState(null);
   const [detailClient, setDetailClient] = useState(null);
   const [showAddClient, setShowAddClient] = useState(false);
   const [newClientName, setNewClientName] = useState('');
@@ -29,11 +32,12 @@ export default function ManageClients() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [usersSnap, programsSnap, assignmentsSnap, pendingSnap] = await Promise.all([
+      const [usersSnap, programsSnap, assignmentsSnap, pendingSnap, schedulesSnap] = await Promise.all([
         get(dbRef(db, 'users')),
         get(dbRef(db, 'programs')),
         get(dbRef(db, 'programAssignments')),
         get(dbRef(db, 'pendingClients')),
+        get(dbRef(db, 'clientSchedules')),
       ]);
 
       if (usersSnap.exists()) {
@@ -52,6 +56,7 @@ export default function ManageClients() {
       }
 
       if (assignmentsSnap.exists()) setAssignments(assignmentsSnap.val());
+      if (schedulesSnap.exists()) setClientSchedules(schedulesSnap.val());
 
       if (pendingSnap.exists()) {
         setPendingClients(Object.values(pendingSnap.val()));
@@ -242,25 +247,48 @@ export default function ManageClients() {
                             </div>
                           </div>
                         </div>
-                      ) : (
-                        <div className="bg-gray-50 dark:bg-[#0a0a0a]/30 rounded-xl p-3 text-center">
-                          <p className="text-sm text-gray-400 dark:text-[#d8e7de]/40">No program assigned</p>
-                        </div>
-                      )}
+                      ) : (() => {
+                        const sched = clientSchedules[client.id];
+                        const schedDays = sched
+                          ? Object.values(sched).filter(Boolean).length
+                          : 0;
+                        return schedDays > 0 ? (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3">
+                            <div className="flex items-center gap-2">
+                              <CalendarDays className="w-4 h-4 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+                              <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                                {schedDays} workout{schedDays !== 1 ? 's' : ''} scheduled per week
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-50 dark:bg-[#0a0a0a]/30 rounded-xl p-3 text-center">
+                            <p className="text-sm text-gray-400 dark:text-[#d8e7de]/40">No program or workouts assigned</p>
+                          </div>
+                        );
+                      })()}
 
-                      <button
-                        onClick={() => openAssignModal(client)}
-                        className={`w-full py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 min-h-[44px] transition ${
-                          assignment
-                            ? 'border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 active:border-emerald-400'
-                            : 'bg-emerald-500 text-white'
-                        }`}
-                      >
-                        {assignment
-                          ? <><RefreshCw className="w-4 h-4" /> Change Program</>
-                          : <><UserPlus className="w-4 h-4" /> Assign Program</>
-                        }
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openAssignModal(client)}
+                          className={`flex-1 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 min-h-[44px] transition ${
+                            assignment
+                              ? 'border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 active:border-emerald-400'
+                              : 'bg-emerald-500 text-white'
+                          }`}
+                        >
+                          {assignment
+                            ? <><RefreshCw className="w-4 h-4" /> Program</>
+                            : <><UserPlus className="w-4 h-4" /> Assign Program</>
+                          }
+                        </button>
+                        <button
+                          onClick={() => setScheduleClient(client)}
+                          className="flex-1 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 min-h-[44px] border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 active:border-blue-400 transition"
+                        >
+                          <CalendarDays className="w-4 h-4" /> Set Workouts
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -278,6 +306,19 @@ export default function ManageClients() {
           existingAssignment={assignments[selectedClient.id] || null}
           onClose={() => { setShowAssignModal(false); setSelectedClient(null); }}
           onSaved={() => { setShowAssignModal(false); setSelectedClient(null); loadAll(); }}
+        />
+      )}
+
+      {/* Assign workout schedule modal */}
+      {scheduleClient && (
+        <AssignWorkoutScheduleModal
+          client={scheduleClient}
+          existingSchedule={clientSchedules[scheduleClient.id] || null}
+          onClose={() => setScheduleClient(null)}
+          onSaved={(newSchedule) => {
+            setClientSchedules(prev => ({ ...prev, [scheduleClient.id]: newSchedule }));
+            setScheduleClient(null);
+          }}
         />
       )}
 

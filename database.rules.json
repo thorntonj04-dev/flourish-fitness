@@ -86,6 +86,14 @@
       "$feedbackId": {
         ".write": "auth != null && (!data.exists() || root.child('users').child(auth.uid).child('role').val() === 'admin')"
       }
+    },
+
+    "clientSchedules": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      "$clientId": {
+        ".read": "auth != null && auth.uid === $clientId",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      }
     }
 
   }
