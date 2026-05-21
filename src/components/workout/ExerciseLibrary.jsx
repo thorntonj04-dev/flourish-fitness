@@ -62,7 +62,11 @@ export default function ExerciseLibrary({ onSelectExercise, selectedExercises = 
       loadExercises();
     } catch (err) {
       console.error('Error adding exercise:', err);
-      alert('Failed to add exercise');
+      if (err?.code === 'PERMISSION_DENIED') {
+        alert('Permission denied — your account may not have admin access in Firebase. Check the Firebase Console rules and your user role.');
+      } else {
+        alert(`Failed to add exercise: ${err?.message || err}`);
+      }
     }
   };
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Dumbbell } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { ref as dbRef, get, set } from 'firebase/database';
+import { ref as dbRef, set } from 'firebase/database';
 import { auth, db } from '../firebase';
 
 export default function AuthScreen({ onBackToLanding }) {
@@ -26,12 +26,7 @@ export default function AuthScreen({ onBackToLanding }) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        
-        // Check if this is the first user
-        const usersRef = dbRef(db, 'users');
-        const snapshot = await get(usersRef);
-        const isFirstUser = !snapshot.exists();
-        
+
         await set(dbRef(db, `users/${userCredential.user.uid}`), {
           email,
           name,

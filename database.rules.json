@@ -79,6 +79,13 @@
       "$inquiryId": {
         ".write": "!data.exists() || (auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin')"
       }
+    },
+
+    "app-feedback": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      "$feedbackId": {
+        ".write": "auth != null && (!data.exists() || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+      }
     }
 
   }

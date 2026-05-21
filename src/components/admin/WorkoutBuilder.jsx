@@ -348,7 +348,11 @@ export default function WorkoutBuilder() {
       loadWorkouts();
     } catch (error) {
       console.error('Error saving workout:', error);
-      alert('Failed to save workout');
+      if (error?.code === 'PERMISSION_DENIED') {
+        alert('Permission denied — Firebase rules may have expired. Go to Firebase Console → Realtime Database → Rules and re-publish them.');
+      } else {
+        alert(`Failed to save workout: ${error?.message || error}`);
+      }
     }
   };
 

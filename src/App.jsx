@@ -90,7 +90,7 @@ export default function App() {
           
           if (snapshot.exists()) {
             const userData = snapshot.val();
-            const role = userData.role || 'admin';
+            const role = userData.role || 'client';
             setUserRole(role);
             setIsDualRole(firebaseUser.email.toLowerCase() === 'thorntonj04@outlook.com');
             let resolvedName = userData.name || firebaseUser.email.split('@')[0];
@@ -104,7 +104,7 @@ export default function App() {
           } else {
             const pendingKey = firebaseUser.email.toLowerCase().replace(/\./g, ',');
             const pendingSnap = await get(dbRef(db, `pendingClients/${pendingKey}`));
-            let role = 'admin';
+            let role = 'client';
             let name = firebaseUser.email.split('@')[0];
             if (pendingSnap.exists()) {
               const pending = pendingSnap.val();
