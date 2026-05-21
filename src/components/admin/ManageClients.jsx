@@ -24,6 +24,7 @@ export default function ManageClients() {
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [addingClient, setAddingClient] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     loadAll();
@@ -31,6 +32,7 @@ export default function ManageClients() {
 
   const loadAll = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [usersSnap, programsSnap, assignmentsSnap, pendingSnap, schedulesSnap] = await Promise.all([
         get(dbRef(db, 'users')),
@@ -65,6 +67,11 @@ export default function ManageClients() {
       }
     } catch (err) {
       console.error('Error loading client data:', err);
+      if (err?.code === 'PERMISSION_DENIED' || err?.message?.includes('permission')) {
+        setLoadError('permission');
+      } else {
+        setLoadError('unknown');
+      }
     } finally {
       setLoading(false);
     }
@@ -183,7 +190,21 @@ export default function ManageClients() {
           )}
 
           {/* Active clients */}
-          {clients.length === 0 ? (
+          {loadError ? (
+            <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-6 border border-red-200 dark:border-red-700/40 text-center">
+              <p className="font-semibold text-red-700 dark:text-red-400 mb-1">
+                {loadError === 'permission' ? 'Permission denied loading clients' : 'Error loading clients'}
+              </p>
+              <p className="text-sm text-red-600 dark:text-red-400/80">
+                {loadError === 'permission'
+                  ? 'Your account may not have the admin role set in Firebase. Go to Firebase Console → Realtime Database → users → your UID and make sure role is "admin".'
+                  : 'An unexpected error occurred. Check the browser console for details.'}
+              </p>
+              <button onClick={loadAll} className="mt-3 text-sm font-semibold text-red-600 dark:text-red-400 underline">
+                Retry
+              </button>
+            </div>
+          ) : clients.length === 0 ? (
             <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-8 border border-gray-200 dark:border-[#C6A45F]/25 text-center">
               <Dumbbell className="w-12 h-12 mx-auto text-gray-300 dark:text-[#d8e7de]/20 mb-3" />
               <p className="text-gray-500 dark:text-[#d8e7de]/60 mb-1">No active clients yet.</p>
