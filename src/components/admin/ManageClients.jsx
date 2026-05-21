@@ -34,13 +34,15 @@ export default function ManageClients() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [usersSnap, programsSnap, assignmentsSnap, pendingSnap, schedulesSnap] = await Promise.all([
+      const [usersSnap, programsSnap, assignmentsSnap, pendingSnap] = await Promise.all([
         get(dbRef(db, 'users')),
         get(dbRef(db, 'programs')),
         get(dbRef(db, 'programAssignments')),
         get(dbRef(db, 'pendingClients')),
-        get(dbRef(db, 'clientSchedules')),
       ]);
+
+      // Fetch separately so a missing/undeployed rule doesn't crash the whole page
+      const schedulesSnap = await get(dbRef(db, 'clientSchedules')).catch(() => null);
 
       if (usersSnap.exists()) {
         const clientList = Object.entries(usersSnap.val())
@@ -58,7 +60,7 @@ export default function ManageClients() {
       }
 
       if (assignmentsSnap.exists()) setAssignments(assignmentsSnap.val());
-      if (schedulesSnap.exists()) setClientSchedules(schedulesSnap.val());
+      if (schedulesSnap?.exists()) setClientSchedules(schedulesSnap.val());
 
       if (pendingSnap.exists()) {
         setPendingClients(Object.values(pendingSnap.val()));
