@@ -306,24 +306,27 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
       icon: '🔥',
       headerGradient: 'bg-gradient-to-br from-amber-50 via-orange-50/60 to-white dark:from-amber-900/20 dark:via-orange-900/10 dark:to-transparent',
-      cardShadow: 'shadow-lg shadow-amber-500/10 dark:shadow-black/30',
+      cardShadow: 'shadow-amber-500/10',
       stripAccent: 'border-l-4 border-l-amber-400',
+      accentBar: 'bg-gradient-to-r from-amber-400 to-orange-400',
     };
     if (section === 'work') return {
       border: 'border-emerald-500 dark:border-emerald-500',
       chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
       icon: '💪',
       headerGradient: 'bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white dark:from-emerald-900/20 dark:via-teal-900/10 dark:to-transparent',
-      cardShadow: 'shadow-lg shadow-emerald-500/10 dark:shadow-black/30',
+      cardShadow: 'shadow-emerald-500/10',
       stripAccent: 'border-l-4 border-l-emerald-500',
+      accentBar: 'bg-gradient-to-r from-emerald-400 to-teal-500',
     };
     return {
       border: 'border-teal-400 dark:border-teal-500',
       chip: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
       icon: '🧘',
       headerGradient: 'bg-gradient-to-br from-teal-50 via-cyan-50/60 to-white dark:from-teal-900/20 dark:via-cyan-900/10 dark:to-transparent',
-      cardShadow: 'shadow-lg shadow-teal-500/10 dark:shadow-black/30',
+      cardShadow: 'shadow-teal-500/10',
       stripAccent: 'border-l-4 border-l-teal-400',
+      accentBar: 'bg-gradient-to-r from-teal-400 to-cyan-400',
     };
   };
 
@@ -385,7 +388,11 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const nextStyle = nextExercise ? getSectionStyle(nextExercise.section) : null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-[#0d1a12] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-[#0d1a12] flex flex-col overflow-hidden">
+      {/* Ambient light source */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[600px] h-56 bg-emerald-400/10 dark:bg-emerald-400/6 rounded-full blur-3xl" />
+      </div>
 
       {previewMode && (
         <div className="bg-amber-500 text-white text-center py-2.5 px-4 text-sm font-bold flex items-center justify-center gap-2">
@@ -425,11 +432,17 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       {/* ── Exercise card ───────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
         <div key={currentExIdx} className={`p-4 max-w-2xl mx-auto ${slideClass}`}>
-          <div className={`bg-white dark:bg-[#1E3328] rounded-2xl border-2 overflow-hidden transition-shadow ${
-            isAllDone
-              ? 'border-emerald-400 dark:border-emerald-500 shadow-lg shadow-emerald-500/15 dark:shadow-black/30'
-              : `${style.border} ${style.cardShadow}`
-          }`}>
+          <div
+            className={`bg-white dark:bg-[#1E3328] rounded-2xl border-2 overflow-hidden ${
+              isAllDone ? 'border-emerald-400 dark:border-emerald-500' : style.border
+            }`}
+            style={{ boxShadow: isAllDone
+              ? '0 2px 6px rgba(0,0,0,0.05), 0 8px 24px rgba(16,185,129,0.14), 0 32px 64px rgba(0,0,0,0.10)'
+              : '0 2px 6px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.10), 0 32px 64px rgba(0,0,0,0.12)'
+            }}
+          >
+            {/* Top accent stripe */}
+            <div className={`h-1 w-full ${isAllDone ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : style.accentBar}`} />
 
             {/* ── Card header ───────────────────────────────────────────────── */}
             <div className={`p-4 relative ${
@@ -691,11 +704,17 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useD
     : `${durationSeconds}s`;
 
   return (
-    <div className={`flex items-center gap-2 rounded-xl px-2 py-2.5 transition-all duration-300 ${
-      set.completed
-        ? 'bg-gradient-to-r from-emerald-100/80 to-teal-50/60 dark:from-emerald-900/25 dark:to-teal-900/10'
-        : 'bg-gray-50/50 dark:bg-white/[0.02]'
-    }`}>
+    <div
+      className={`flex items-center gap-2 rounded-xl px-2 py-2.5 transition-all duration-300 ${
+        set.completed
+          ? 'bg-gradient-to-r from-emerald-100/90 to-teal-50/70 dark:from-emerald-900/30 dark:to-teal-900/15'
+          : 'bg-white dark:bg-[#0a0a0a]/70 border border-gray-100 dark:border-white/[0.04]'
+      }`}
+      style={set.completed
+        ? { boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 3px rgba(16,185,129,0.08)' }
+        : { boxShadow: '0 1px 3px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(0,0,0,0.03)' }
+      }
+    >
 
       {/* Set number */}
       <span className={`w-8 text-center text-sm font-black flex-shrink-0 ${
@@ -713,6 +732,7 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useD
           onChange={e => onWeightChange(Math.max(0, parseFloat(e.target.value) || 0))}
           onClick={e => e.target.select()}
           disabled={set.completed}
+          style={set.completed ? {} : { boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.07), inset 0 1px 2px rgba(0,0,0,0.05)' }}
           className={`w-full py-3 text-center text-xl font-black rounded-xl border-2 transition ${
             set.completed
               ? 'border-transparent bg-transparent text-emerald-500 dark:text-emerald-400'
@@ -748,6 +768,7 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useD
           onChange={e => onRepsChange(Math.max(1, parseInt(e.target.value) || 1))}
           onClick={e => e.target.select()}
           disabled={set.completed}
+          style={set.completed ? {} : { boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.07), inset 0 1px 2px rgba(0,0,0,0.05)' }}
           className={`w-20 flex-shrink-0 py-3 text-center text-xl font-black rounded-xl border-2 transition ${
             set.completed
               ? 'border-transparent bg-transparent text-emerald-500 dark:text-emerald-400'
@@ -763,10 +784,14 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useD
       {/* Check button */}
       <button
         onClick={handleCheck}
-        className={`relative w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all overflow-visible ${
+        style={set.completed
+          ? { boxShadow: '0 4px 14px rgba(16,185,129,0.45), 0 2px 6px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.25)' }
+          : { boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.10), inset 0 1px 2px rgba(0,0,0,0.06)' }
+        }
+        className={`relative w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 overflow-visible ${
           set.completed
-            ? 'bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-xl shadow-emerald-500/40 scale-105'
-            : 'border-2 border-gray-200 dark:border-[#C6A45F]/25 text-gray-300 dark:text-[#d8e7de]/20 active:border-emerald-400 active:text-emerald-400'
+            ? 'bg-gradient-to-br from-emerald-400 to-teal-500 text-white scale-105'
+            : 'border-2 border-gray-200 dark:border-[#C6A45F]/25 bg-gray-100 dark:bg-[#0a0a0a]/80 text-gray-300 dark:text-[#d8e7de]/20 active:border-emerald-400 active:text-emerald-400'
         }`}
       >
         {rippleKey && (

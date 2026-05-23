@@ -55,12 +55,12 @@
 
 /* ── Tab slide transitions ─────────────────────────────── */
 @keyframes slideForward {
-  from { opacity: 0; transform: translateX(28px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(32px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0)    scale(1); }
 }
 @keyframes slideBack {
-  from { opacity: 0; transform: translateX(-28px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateX(-32px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0)     scale(1); }
 }
 .slide-forward { animation: slideForward 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
 .slide-back    { animation: slideBack    0.22s cubic-bezier(0.22, 1, 0.36, 1); }
