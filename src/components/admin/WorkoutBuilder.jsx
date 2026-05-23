@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Plus, Save, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, Edit, FileText, Star, X, Eye, Dumbbell, Search } from 'lucide-react';
+import { Plus, Save, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, Edit, FileText, Star, X, Eye, Dumbbell, Search, ArrowUp, ArrowDown } from 'lucide-react';
 import { ref as dbRef, get, set, push, remove, update } from 'firebase/database';
 import { db, auth } from '../../firebase';
 import ExerciseLibrary from '../workout/ExerciseLibrary';
@@ -259,11 +259,27 @@ export default function WorkoutBuilder() {
     setView('create');
   };
 
+  const moveExercise = (idx, direction) => {
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= currentWorkout.exercises.length) return;
+    const newExercises = [...currentWorkout.exercises];
+    const [moved] = newExercises.splice(idx, 1);
+    newExercises.splice(newIdx, 0, moved);
+    setCurrentWorkout({ ...currentWorkout, exercises: newExercises });
+  };
+
   const pairAsSuperset = (idxA, idxB) => {
     const groupId = `ss_${Date.now()}`;
-    const updated = currentWorkout.exercises.map((ex, i) =>
+    let updated = currentWorkout.exercises.map((ex, i) =>
       i === idxA || i === idxB ? { ...ex, supersetGroupId: groupId } : ex
     );
+    // Pull the second exercise in the pair to sit right after the first
+    const firstIdx = Math.min(idxA, idxB);
+    const secondIdx = Math.max(idxA, idxB);
+    if (secondIdx !== firstIdx + 1) {
+      const [secondEx] = updated.splice(secondIdx, 1);
+      updated.splice(firstIdx + 1, 0, secondEx);
+    }
     setCurrentWorkout({ ...currentWorkout, exercises: updated });
   };
 
@@ -577,7 +593,22 @@ export default function WorkoutBuilder() {
                     onClick={() => toggleExerciseExpanded(idx)}
                   >
                     <div className="flex items-center gap-3">
-                      <GripVertical className="w-5 h-5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                      <div className="flex flex-col flex-shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveExercise(idx, -1); }}
+                          disabled={idx === 0}
+                          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-20 flex items-center justify-center min-w-[32px] min-h-[28px]"
+                        >
+                          <ArrowUp className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); moveExercise(idx, 1); }}
+                          disabled={idx === currentWorkout.exercises.length - 1}
+                          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-20 flex items-center justify-center min-w-[32px] min-h-[28px]"
+                        >
+                          <ArrowDown className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                        </button>
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span>{getSectionIcon(exercise.section)}</span>

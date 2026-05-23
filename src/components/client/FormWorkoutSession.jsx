@@ -7,7 +7,8 @@ import RestTimerOverlay from './RestTimerOverlay';
 
 export default function FormWorkoutSession({ workout, userId, onExit, previewMode = false }) {
   const [exercises, setExercises] = useState([]);
-  const [expandedExercise, setExpandedExercise] = useState(0);
+  const [currentExIdx, setCurrentExIdx] = useState(0);
+  const [slideClass, setSlideClass] = useState('');
   const [sessionData, setSessionData] = useState({});
   const [lastWorkoutData, setLastWorkoutData] = useState({});
   const [sessionId, setSessionId] = useState(null);
@@ -49,7 +50,13 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const handleRestDone = () => {
     const { type, nextExIdx } = restTimer || {};
     setRestTimer(null);
-    if (type === 'exercise' && nextExIdx !== undefined) setExpandedExercise(nextExIdx);
+    if (type === 'exercise' && nextExIdx !== undefined) navigateTo(nextExIdx);
+  };
+
+  const navigateTo = (idx, direction = 'slide-forward') => {
+    setSlideClass(direction);
+    setCurrentExIdx(idx);
+    setTimeout(() => setSlideClass(''), 250);
   };
 
   const initializeWorkout = async () => {
@@ -150,34 +157,35 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       const partnerIdx = supersetGroupId
         ? exercises.findIndex((ex, i) => i !== exIdx && ex.supersetGroupId === supersetGroupId)
         : -1;
+      const restSecs = exercise?.restSeconds > 0 ? exercise.restSeconds : 60;
 
       if (partnerIdx !== -1) {
         const partnerSets = sessionData[partnerIdx]?.sets || [];
         const partnerSetDone = partnerSets[setIdx]?.completed;
         if (!partnerSetDone) {
-          setTimeout(() => setExpandedExercise(partnerIdx), 400);
+          setTimeout(() => navigateTo(partnerIdx), 400);
         } else {
           const willAllThisDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
           const allPartnerDone = partnerSets.every(s => s.completed);
           if (willAllThisDone && allPartnerDone) {
-            const nextExIdx = findNextIncompleteExercise(Math.max(exIdx, partnerIdx));
-            if (nextExIdx !== undefined) {
-              setTimeout(() => setExpandedExercise(nextExIdx), 700);
+            const afterBoth = Math.max(exIdx, partnerIdx) + 1;
+            if (afterBoth < exercises.length) {
+              setTimeout(() => setRestTimer({ seconds: Math.max(restSecs, 60), label: 'Rest before next exercise', type: 'exercise', nextExIdx: afterBoth }), 600);
             }
           } else {
             const firstExIdx = Math.min(exIdx, partnerIdx);
-            setTimeout(() => setRestTimer({ seconds: 30, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx }), 400);
+            setTimeout(() => setRestTimer({ seconds: restSecs, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx }), 400);
           }
         }
       } else {
         const willAllBeDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
         if (willAllBeDone) {
-          const nextExIdx = findNextIncompleteExercise(exIdx);
-          if (nextExIdx !== undefined) {
-            setTimeout(() => setExpandedExercise(nextExIdx), 700);
+          const nextIdx = exIdx + 1;
+          if (nextIdx < exercises.length) {
+            setTimeout(() => setRestTimer({ seconds: Math.max(restSecs, 60), label: 'Rest before next exercise', type: 'exercise', nextExIdx: nextIdx }), 600);
           }
         } else {
-          setTimeout(() => setRestTimer({ seconds: 30, label: 'Rest between sets', type: 'set' }), 400);
+          setTimeout(() => setRestTimer({ seconds: restSecs, label: 'Rest between sets', type: 'set' }), 400);
         }
       }
     }
@@ -235,8 +243,8 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       });
       return next;
     });
-    setExpandedExercise(prev => {
-      if (prev === exIdx) return null;
+    setCurrentExIdx(prev => {
+      if (prev === exIdx) return Math.max(0, exIdx - 1);
       if (prev > exIdx) return prev - 1;
       return prev;
     });
@@ -365,17 +373,37 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
   // ─── Main session view ────────────────────────────────────────────────────────
 
+  const exercise = exercises[currentExIdx];
+  const exData = sessionData[currentExIdx];
+  const nextExercise = currentExIdx + 1 < exercises.length ? exercises[currentExIdx + 1] : null;
+  const nextExData = currentExIdx + 1 < exercises.length ? sessionData[currentExIdx + 1] : null;
+
+  if (!exercise || !exData) {
+    return (
+      <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-[#0d1a12] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const completedSets = exData.sets.filter(s => s.completed).length;
+  const totalSets = exData.sets.length;
+  const isAllDone = completedSets === totalSets;
+  const last = lastWorkoutData[exercise.name];
+  const defaultStatus = saveAsDefaultFor[currentExIdx];
+  const style = getSectionStyle(exercise.section);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-50 dark:bg-[#0d1a12] pb-32">
+    <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-[#0d1a12] flex flex-col">
 
       {previewMode && (
-        <div className="bg-amber-500 text-white text-center py-2.5 px-4 text-sm font-bold sticky top-0 z-50 flex items-center justify-center gap-2">
+        <div className="bg-amber-500 text-white text-center py-2.5 px-4 text-sm font-bold flex items-center justify-center gap-2">
           <span>👁</span> Preview Mode — nothing is saved
         </div>
       )}
 
-      {/* ── Sticky header ──────────────────────────────────────────────────── */}
-      <div className={`bg-white/90 dark:bg-[#1E3328]/95 backdrop-blur-xl border-b border-gray-200/60 dark:border-[#C6A45F]/20 sticky z-40 shadow-sm ${previewMode ? 'top-[42px]' : 'top-0'}`}>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="bg-white/90 dark:bg-[#1E3328]/95 backdrop-blur-xl border-b border-gray-200/60 dark:border-[#C6A45F]/20 shadow-sm z-40 flex-shrink-0">
         <div className="max-w-2xl mx-auto px-4 pt-3 pb-4">
           <div className="flex justify-between items-center mb-3">
             <button
@@ -386,19 +414,15 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
             </button>
             <div className="text-center flex-1 mx-2">
               <h1 className="text-sm font-bold text-gray-900 dark:text-[#d8e7de] truncate tracking-tight">{workout.name}</h1>
+              <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">{currentExIdx + 1} of {exercises.length}</p>
             </div>
             <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-xl">
               <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
               <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatTime(elapsedTime)}</span>
             </div>
           </div>
-
-          {/* Progress bar */}
           <div className="w-full bg-gray-200 dark:bg-gray-700/60 rounded-full h-2 overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-700 rounded-full"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-700 rounded-full" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">{exercises.length} exercises</span>
@@ -407,247 +431,221 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         </div>
       </div>
 
-      {/* ── Exercise cards ─────────────────────────────────────────────────── */}
-      <div className="max-w-2xl mx-auto p-4 space-y-3">
-        {exercises.map((exercise, exIdx) => {
-          const exData = sessionData[exIdx];
-          if (!exData) return null;
+      {/* ── Exercise card ───────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto">
+        <div key={currentExIdx} className={`p-4 max-w-2xl mx-auto ${slideClass}`}>
+          <div className={`bg-white dark:bg-[#1E3328] rounded-2xl border-2 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20 ${
+            isAllDone ? 'border-emerald-400 dark:border-emerald-500' : style.border
+          }`}>
 
-          const completedSets = exData.sets.filter(s => s.completed).length;
-          const totalSets = exData.sets.length;
-          const isAllDone = completedSets === totalSets;
-          const isExpanded = expandedExercise === exIdx;
-          const last = lastWorkoutData[exercise.name];
-          const defaultStatus = saveAsDefaultFor[exIdx];
-          const style = getSectionStyle(exercise.section);
+            {/* ── Card header ───────────────────────────────────────────────── */}
+            <div className={`p-4 ${isAllDone ? 'bg-emerald-50/60 dark:bg-emerald-900/10' : 'bg-gray-50 dark:bg-[#0a0a0a]/40'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${style.chip}`}>
+                  {style.icon} {exercise.section}
+                </span>
+                {exercise.supersetGroupId && (
+                  <span className="text-[11px] bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-bold">SS</span>
+                )}
+                {isAllDone && (
+                  <span className="text-[11px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold flex items-center gap-0.5">
+                    <Check className="w-3 h-3" /> Done
+                  </span>
+                )}
+              </div>
 
-          return (
-            <div
-              key={exIdx}
-              className={`bg-white dark:bg-[#1E3328] rounded-2xl border-2 overflow-hidden transition-all shadow-sm shadow-black/5 dark:shadow-black/20 ${
-                isAllDone ? 'border-emerald-400 dark:border-emerald-500' : style.border
-              }`}
-            >
-              {/* Exercise header */}
-              <button
-                onClick={() => setExpandedExercise(isExpanded ? null : exIdx)}
-                className={`w-full p-4 text-left transition-colors ${
-                  isAllDone ? 'bg-emerald-50/60 dark:bg-emerald-900/10' : 'active:bg-gray-50 dark:active:bg-white/5'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    {/* Section chip + status */}
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${style.chip}`}>
-                        {style.icon} {exercise.section}
-                      </span>
-                      {exercise.supersetGroupId && (
-                        <span className="text-[11px] bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-bold">SS</span>
-                      )}
-                      {isAllDone && (
-                        <span className="text-[11px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold flex items-center gap-0.5">
-                          <Check className="w-3 h-3" /> Done
-                        </span>
-                      )}
-                    </div>
+              <h2 className="font-bold text-xl text-gray-900 dark:text-[#d8e7de] tracking-tight leading-tight">
+                {exercise.name}
+              </h2>
 
-                    {/* Exercise name */}
-                    <div className="font-bold text-base text-gray-900 dark:text-[#d8e7de] truncate tracking-tight leading-tight">
-                      {exercise.name}
-                    </div>
-
-                    {/* Sets progress + last workout */}
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className={`text-sm font-semibold tabular-nums ${isAllDone ? 'text-emerald-500' : 'text-gray-500 dark:text-[#d8e7de]/60'}`}>
-                        {completedSets}/{totalSets} sets
-                      </span>
-                      {last && (
-                        <>
-                          <span className="text-gray-200 dark:text-[#d8e7de]/15">·</span>
-                          <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
-                            Last: {exercise.useDuration
-                              ? (last.weight > 0 ? `${last.weight} lbs` : 'completed')
-                              : `${last.weight}${exercise.dumbbells === 2 ? ' ea.' : ' lbs'} × ${last.reps}`
-                            }
-                          </span>
-                          {!isAllDone && (
-                            <button
-                              onClick={e => { e.stopPropagation(); useLastValues(exIdx); }}
-                              className="text-xs text-emerald-600 dark:text-emerald-400 font-bold underline underline-offset-2"
-                            >
-                              Use last
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
-                    {/* Circular mini-progress */}
-                    <div className="relative w-9 h-9">
-                      <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
-                        <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" strokeWidth="3"
-                          className="text-gray-200 dark:text-gray-700" />
-                        <circle cx="18" cy="18" r="14" fill="none" strokeWidth="3"
-                          stroke={isAllDone ? '#10b981' : '#d1d5db'}
-                          strokeDasharray={`${totalSets > 0 ? (completedSets / totalSets) * 87.96 : 0} 87.96`}
-                          strokeLinecap="round"
-                          className={isAllDone ? 'stroke-emerald-500' : 'stroke-emerald-400'}
-                        />
-                      </svg>
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-gray-600 dark:text-[#d8e7de]/70">
-                        {completedSets}/{totalSets}
-                      </span>
-                    </div>
-                    {isExpanded
-                      ? <ChevronUp className="w-4 h-4 text-gray-400" />
-                      : <ChevronDown className="w-4 h-4 text-gray-400" />
+              {last && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
+                    Last: {exercise.useDuration
+                      ? (last.weight > 0 ? `${last.weight} lbs` : 'completed')
+                      : `${last.weight}${exercise.dumbbells === 2 ? ' ea.' : ' lbs'} × ${last.reps}`
                     }
-                  </div>
-                </div>
-              </button>
-
-              {/* ── Expanded content ──────────────────────────────────────── */}
-              {isExpanded && (
-                <div className="border-t border-gray-100 dark:border-[#C6A45F]/10">
-
-                  {/* Form video */}
-                  {exercise.videoUrl && (
-                    <div className="px-4 pt-4">
-                      <a
-                        href={exercise.videoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-3 bg-gray-900 dark:bg-black/40 text-white rounded-xl active:opacity-80"
-                      >
-                        <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Play className="w-4 h-4 fill-white" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm">Watch Form Video</div>
-                          <div className="text-xs text-gray-400">Technique reference</div>
-                        </div>
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Coach's notes */}
-                  {exercise.notes && (
-                    <div className="px-4 pt-4">
-                      <div className="bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-sm">
-                        <span className="font-bold text-amber-700 dark:text-amber-400">Coach: </span>
-                        <span className="text-amber-800 dark:text-amber-200/80">{exercise.notes}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── Set table ─────────────────────────────────────────── */}
-                  <div className="px-3 pt-4 pb-3 space-y-2">
-
-                    {/* Column labels */}
-                    <div className="flex items-center gap-2 px-1 pb-1">
-                      <span className="w-8 flex-shrink-0" />
-                      <span className="w-24 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">
-                        {exercise.dumbbells === 2 ? 'lbs ea.' : 'lbs'}
-                      </span>
-                      <span className="w-5 flex-shrink-0" />
-                      <span className="w-20 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">
-                        {exercise.useDuration
-                          ? 'duration'
-                          : (typeof exercise.reps === 'string' && exercise.reps.includes('-')
-                            ? `${exercise.reps} reps`
-                            : 'reps')}
-                      </span>
-                      <span className="flex-1" />
-                      <span className="w-12 flex-shrink-0" />
-                    </div>
-
-                    {exData.sets.map((s, setIdx) => (
-                      <SetRow
-                        key={setIdx}
-                        set={s}
-                        onComplete={() => completeSet(exIdx, setIdx)}
-                        onWeightChange={v => updateSet(exIdx, setIdx, 'weight', v)}
-                        onRepsChange={v => updateSet(exIdx, setIdx, 'reps', v)}
-                        dumbbells={exercise.dumbbells}
-                        useDuration={exData.useDuration}
-                        durationMinutes={exData.durationMinutes}
-                        durationSeconds={exData.durationSeconds}
-                      />
-                    ))}
-
-                    {/* Add / Remove set */}
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={() => addSet(exIdx)}
-                        className="flex-1 py-2.5 border-2 border-dashed border-emerald-300 dark:border-emerald-700/60 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 min-h-[44px]"
-                      >
-                        <Plus className="w-4 h-4" /> Add Set
-                      </button>
-                      <button
-                        onClick={() => removeSet(exIdx)}
-                        className="py-2.5 px-4 border-2 border-dashed border-red-200 dark:border-red-800/50 text-red-400 dark:text-red-500 rounded-xl text-sm font-semibold flex items-center justify-center min-h-[44px]"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Save as default */}
-                  {defaultStatus === 'pending' && (
-                    <div className="mx-4 mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Save className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                        <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">Save as starting defaults?</span>
-                      </div>
-                      <div className="flex gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleSaveDefault(exIdx)}
-                          disabled={savingDefault[exIdx]}
-                          className="px-3 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold min-h-[40px] disabled:opacity-50"
-                        >
-                          {savingDefault[exIdx] ? '…' : 'Yes'}
-                        </button>
-                        <button
-                          onClick={() => setSaveAsDefaultFor(p => ({ ...p, [exIdx]: 'skipped' }))}
-                          className="px-3 py-2 text-amber-600 dark:text-amber-400 rounded-lg text-xs font-bold min-h-[40px]"
-                        >
-                          Skip
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {defaultStatus === 'saved' && (
-                    <div className="mx-4 mb-4 text-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold py-1">
-                      ✓ Defaults saved for next time
-                    </div>
+                  </span>
+                  {!isAllDone && (
+                    <button
+                      onClick={() => useLastValues(currentExIdx)}
+                      className="text-xs text-emerald-600 dark:text-emerald-400 font-bold underline underline-offset-2"
+                    >
+                      Use last
+                    </button>
                   )}
                 </div>
               )}
+
+              {/* ── Nav row ─────────────────────────────────────────────────── */}
+              <div className="flex items-center justify-between mt-3 -mx-1">
+                <button
+                  onClick={() => navigateTo(currentExIdx - 1, 'slide-back')}
+                  disabled={currentExIdx === 0}
+                  className="px-2 py-1.5 text-xs font-semibold text-gray-400 dark:text-[#d8e7de]/40 rounded-lg disabled:opacity-25 min-h-[36px]"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={() => setRemoveExerciseConfirm(currentExIdx)}
+                  className="text-xs text-red-400 dark:text-red-500 px-2 py-1.5 rounded-lg min-h-[36px]"
+                >
+                  Remove
+                </button>
+                <button
+                  onClick={() => navigateTo(currentExIdx + 1, 'slide-forward')}
+                  disabled={currentExIdx >= exercises.length - 1}
+                  className="px-2 py-1.5 text-xs font-semibold text-gray-400 dark:text-[#d8e7de]/40 rounded-lg disabled:opacity-25 min-h-[36px]"
+                >
+                  Skip →
+                </button>
+              </div>
             </div>
-          );
-        })}
+
+            {/* ── Card body ─────────────────────────────────────────────────── */}
+            <div className="border-t border-gray-100 dark:border-[#C6A45F]/10">
+
+              {exercise.videoUrl && (
+                <div className="px-4 pt-4">
+                  <a
+                    href={exercise.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 bg-gray-900 dark:bg-black/40 text-white rounded-xl active:opacity-80"
+                  >
+                    <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Play className="w-4 h-4 fill-white" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm">Watch Form Video</div>
+                      <div className="text-xs text-gray-400">Technique reference</div>
+                    </div>
+                  </a>
+                </div>
+              )}
+
+              {exercise.notes && (
+                <div className="px-4 pt-4">
+                  <div className="bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-sm">
+                    <span className="font-bold text-amber-700 dark:text-amber-400">Coach: </span>
+                    <span className="text-amber-800 dark:text-amber-200/80">{exercise.notes}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Set table ───────────────────────────────────────────────── */}
+              <div className="px-3 pt-4 pb-3 space-y-2">
+                <div className="flex items-center gap-2 px-1 pb-1">
+                  <span className="w-8 flex-shrink-0" />
+                  <span className="w-24 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">
+                    {exercise.dumbbells === 2 ? 'lbs ea.' : 'lbs'}
+                  </span>
+                  <span className="w-5 flex-shrink-0" />
+                  <span className="w-20 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">
+                    {exercise.useDuration
+                      ? 'duration'
+                      : (typeof exercise.reps === 'string' && exercise.reps.includes('-') ? `${exercise.reps} reps` : 'reps')}
+                  </span>
+                  <span className="flex-1" />
+                  <span className="w-12 flex-shrink-0" />
+                </div>
+
+                {exData.sets.map((s, setIdx) => (
+                  <SetRow
+                    key={setIdx}
+                    set={s}
+                    onComplete={() => completeSet(currentExIdx, setIdx)}
+                    onWeightChange={v => updateSet(currentExIdx, setIdx, 'weight', v)}
+                    onRepsChange={v => updateSet(currentExIdx, setIdx, 'reps', v)}
+                    dumbbells={exercise.dumbbells}
+                    useDuration={exData.useDuration}
+                    durationMinutes={exData.durationMinutes}
+                    durationSeconds={exData.durationSeconds}
+                  />
+                ))}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => addSet(currentExIdx)}
+                    className="flex-1 py-2.5 border-2 border-dashed border-emerald-300 dark:border-emerald-700/60 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 min-h-[44px]"
+                  >
+                    <Plus className="w-4 h-4" /> Add Set
+                  </button>
+                  <button
+                    onClick={() => removeSet(currentExIdx)}
+                    className="py-2.5 px-4 border-2 border-dashed border-red-200 dark:border-red-800/50 text-red-400 dark:text-red-500 rounded-xl text-sm font-semibold flex items-center justify-center min-h-[44px]"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {defaultStatus === 'pending' && (
+                <div className="mx-4 mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Save className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">Save as starting defaults?</span>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleSaveDefault(currentExIdx)}
+                      disabled={savingDefault[currentExIdx]}
+                      className="px-3 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold min-h-[40px] disabled:opacity-50"
+                    >
+                      {savingDefault[currentExIdx] ? '…' : 'Yes'}
+                    </button>
+                    <button
+                      onClick={() => setSaveAsDefaultFor(p => ({ ...p, [currentExIdx]: 'skipped' }))}
+                      className="px-3 py-2 text-amber-600 dark:text-amber-400 rounded-lg text-xs font-bold min-h-[40px]"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              )}
+              {defaultStatus === 'saved' && (
+                <div className="mx-4 mb-4 text-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold py-1">
+                  ✓ Defaults saved for next time
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* ── Complete workout button ─────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-[#1E3328]/95 backdrop-blur-xl border-t border-gray-200/60 dark:border-[#C6A45F]/20 shadow-2xl">
-        <button
-          onClick={handleCompleteWorkout}
-          disabled={progress < 100}
-          className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 min-h-[56px] transition-all ${
-            progress === 100
-              ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30'
-              : 'bg-gray-100 dark:bg-gray-800/60 text-gray-400 dark:text-gray-600'
-          }`}
-        >
-          <Trophy className="w-5 h-5" />
-          {progress === 100 ? 'Complete Workout 🎉' : `${progress}% — keep going!`}
-        </button>
+      {/* ── Coming up next / Complete ──────────────────────────────────────── */}
+      <div className="bg-white dark:bg-[#1E3328] border-t border-gray-200/60 dark:border-[#C6A45F]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] flex-shrink-0">
+        {nextExercise ? (
+          <div className="flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-widest mb-0.5">Coming up next</p>
+              <p className="font-semibold text-sm text-gray-800 dark:text-[#d8e7de] truncate">{nextExercise.name}</p>
+              {nextExData && (
+                <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">
+                  {nextExData.sets.length} sets{nextExercise.supersetGroupId ? ' · Superset' : ''}
+                </p>
+              )}
+            </div>
+            <span className="text-xl opacity-30">{getSectionStyle(nextExercise.section).icon}</span>
+          </div>
+        ) : (
+          <div className="p-4 max-w-2xl mx-auto">
+            <button
+              onClick={handleCompleteWorkout}
+              disabled={progress < 100}
+              className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 min-h-[56px] transition-all ${
+                progress === 100
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30'
+                  : 'bg-gray-100 dark:bg-gray-800/60 text-gray-400 dark:text-gray-600'
+              }`}
+            >
+              <Trophy className="w-5 h-5" />
+              {progress === 100 ? 'Complete Workout 🎉' : `${progress}% — keep going!`}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Rest timer */}
       {restTimer && (
         <RestTimerOverlay
           seconds={restTimer.seconds}
@@ -657,7 +655,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         />
       )}
 
-      {/* Remove exercise confirmation */}
       {removeExerciseConfirm !== null && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
@@ -666,42 +663,21 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
               {exercises[removeExerciseConfirm]?.name} will be removed from this workout.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => removeExercise(removeExerciseConfirm)}
-                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold min-h-[48px]"
-              >
-                Yes, Remove
-              </button>
-              <button
-                onClick={() => setRemoveExerciseConfirm(null)}
-                className="flex-1 py-3 border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 rounded-xl font-bold min-h-[48px]"
-              >
-                Cancel
-              </button>
+              <button onClick={() => removeExercise(removeExerciseConfirm)} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold min-h-[48px]">Yes, Remove</button>
+              <button onClick={() => setRemoveExerciseConfirm(null)} className="flex-1 py-3 border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 rounded-xl font-bold min-h-[48px]">Cancel</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Exit confirmation */}
       {exitConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="text-lg font-bold text-gray-900 dark:text-[#d8e7de] mb-2 tracking-tight">Leave workout?</h3>
             <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mb-5">Your progress has been saved. You can resume later.</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => { saveProgress(); onExit(); }}
-                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold min-h-[48px]"
-              >
-                Leave
-              </button>
-              <button
-                onClick={() => setExitConfirm(false)}
-                className="flex-1 py-3 border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 rounded-xl font-bold min-h-[48px]"
-              >
-                Stay
-              </button>
+              <button onClick={() => { saveProgress(); onExit(); }} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold min-h-[48px]">Leave</button>
+              <button onClick={() => setExitConfirm(false)} className="flex-1 py-3 border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 rounded-xl font-bold min-h-[48px]">Stay</button>
             </div>
           </div>
         </div>
