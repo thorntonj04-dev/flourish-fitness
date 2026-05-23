@@ -54,24 +54,14 @@
 }
 
 /* ── Page tab transitions (enter only — key remount) ───── */
+/* NOTE: No will-change:transform here — that would create a new containing
+   block for fixed-position children (e.g. the workout preview overlay). */
 @keyframes pageFadeIn {
-  from { opacity: 0; transform: translateX(14px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-@keyframes pageFadeInBack {
-  from { opacity: 0; transform: translateX(-14px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-.slide-forward {
-  animation: pageFadeIn     0.24s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-}
-.slide-back {
-  animation: pageFadeInBack 0.24s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-  will-change: transform, opacity;
-  backface-visibility: hidden;
-}
+.slide-forward { animation: pageFadeIn 0.22s ease-out both; }
+.slide-back    { animation: pageFadeIn 0.22s ease-out both; }
 
 /* ── Exercise card transitions (enter + exit) ───────────── */
 @keyframes cardEnterRight {
