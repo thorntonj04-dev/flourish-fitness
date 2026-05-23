@@ -128,9 +128,9 @@ function LandingPage({ onLoginClick }) {
               {/* Brand Logo */}
               <div className="flex items-center gap-3">
                 <img
-                  src="/images/logosmall.png"
+                  src="/images/fflogonew.png"
                   alt="Flourish Fitness logo"
-                  className="w-12 h-12 object-contain rounded-md transition-transform transform hover:scale-105"
+                  className="w-12 h-12 object-contain rounded-xl transition-transform transform hover:scale-105"
                   style={{ boxShadow: '0 6px 18px rgba(0,0,0,0.6)' }}
                 />
                 <div>
@@ -413,9 +413,9 @@ function LandingPage({ onLoginClick }) {
       {/* FOOTER */}
       <footer className="bg-[#0a0a0a] border-t border-[#1f1f1f] py-12 px-6 flex flex-col items-center gap-6">
         <img
-          src="/images/fflogo.png"
+          src="/images/fflogonew.png"
           alt="Flourish logo"
-          className="w-72 md:w-96 object-contain transition-transform transform hover:scale-105"
+          className="w-64 md:w-80 object-contain rounded-2xl transition-transform transform hover:scale-105"
           style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}
         />
         <p className="text-sm text-[#d8e7de] text-center max-w-md">

@@ -86,9 +86,9 @@ export default function AuthScreen({ onBackToLanding }) {
 
         <div className="text-center mb-8">
           <img
-            src="/images/logosmall.png"
+            src="/images/fflogonew.png"
             alt="Flourish Fitness"
-            className="w-16 h-16 mx-auto mb-4 object-contain"
+            className="w-16 h-16 mx-auto mb-4 object-contain rounded-xl"
           />
           <h1 className="text-4xl font-bold text-white mb-2">
             <span className="gold-heading">Flourish Fitness</span>
