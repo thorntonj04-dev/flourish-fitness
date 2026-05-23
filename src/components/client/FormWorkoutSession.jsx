@@ -711,8 +711,8 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useD
           : 'bg-white dark:bg-[#0a0a0a]/70 border border-gray-100 dark:border-white/[0.04]'
       }`}
       style={set.completed
-        ? { boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 3px rgba(16,185,129,0.08)' }
-        : { boxShadow: '0 1px 3px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 0 rgba(0,0,0,0.03)' }
+        ? { boxShadow: 'inset 0 1px 0 rgba(198,164,95,0.55), 0 1px 3px rgba(16,185,129,0.08)' }
+        : { boxShadow: '0 1px 3px rgba(0,0,0,0.04), inset 0 1px 0 rgba(198,164,95,0.45), inset 0 -1px 0 rgba(0,0,0,0.03)' }
       }
     >
 
