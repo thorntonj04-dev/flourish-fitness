@@ -48,9 +48,9 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       .find(i => i > afterIdx && sessionData[i] && !(sessionData[i].sets || []).every(s => s.completed));
 
   const handleRestDone = () => {
-    const { type, nextExIdx } = restTimer || {};
+    const { type, nextExIdx, direction } = restTimer || {};
     setRestTimer(null);
-    if (type === 'exercise' && nextExIdx !== undefined) navigateTo(nextExIdx);
+    if (type === 'exercise' && nextExIdx !== undefined) navigateTo(nextExIdx, direction ?? 'slide-forward');
   };
 
   const navigateTo = (idx, direction = 'slide-forward') => {
@@ -174,18 +174,20 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         const partnerSets = sessionData[partnerIdx]?.sets || [];
         const partnerSetDone = partnerSets[setIdx]?.completed;
         if (!partnerSetDone) {
-          setTimeout(() => navigateTo(partnerIdx), 400);
+          const dir = partnerIdx > exIdx ? 'slide-forward' : 'slide-back';
+          setTimeout(() => navigateTo(partnerIdx, dir), 400);
         } else {
           const willAllThisDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
           const allPartnerDone = partnerSets.every(s => s.completed);
           if (willAllThisDone && allPartnerDone) {
             const afterBoth = Math.max(exIdx, partnerIdx) + 1;
             if (afterBoth < exercises.length) {
-              setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest before next exercise', type: 'exercise', nextExIdx: afterBoth }), 600);
+              setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest before next exercise', type: 'exercise', nextExIdx: afterBoth, direction: 'slide-forward' }), 600);
             }
           } else {
             const firstExIdx = Math.min(exIdx, partnerIdx);
-            setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx }), 400);
+            const dir = firstExIdx < exIdx ? 'slide-back' : 'slide-forward';
+            setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx, direction: dir }), 400);
           }
         }
       } else {
@@ -193,7 +195,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         if (willAllBeDone) {
           const nextIdx = exIdx + 1;
           if (nextIdx < exercises.length) {
-            setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest before next exercise', type: 'exercise', nextExIdx: nextIdx }), 600);
+            setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest before next exercise', type: 'exercise', nextExIdx: nextIdx, direction: 'slide-forward' }), 600);
           }
         } else {
           setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest between sets', type: 'set' }), 400);
