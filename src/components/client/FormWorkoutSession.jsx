@@ -309,6 +309,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       cardShadow: 'shadow-amber-500/10',
       stripAccent: 'border-l-4 border-l-amber-400',
       accentBar: 'bg-gradient-to-r from-amber-400 to-orange-400',
+      glowShadow: '0 2px 6px rgba(0,0,0,0.05), 0 4px 20px rgba(245,158,11,0.28), 0 12px 48px rgba(245,158,11,0.18), 0 32px 64px rgba(0,0,0,0.10)',
     };
     if (section === 'work') return {
       border: 'border-emerald-500 dark:border-emerald-500',
@@ -318,6 +319,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       cardShadow: 'shadow-emerald-500/10',
       stripAccent: 'border-l-4 border-l-emerald-500',
       accentBar: 'bg-gradient-to-r from-emerald-400 to-teal-500',
+      glowShadow: '0 2px 6px rgba(0,0,0,0.05), 0 4px 20px rgba(16,185,129,0.28), 0 12px 48px rgba(16,185,129,0.18), 0 32px 64px rgba(0,0,0,0.10)',
     };
     return {
       border: 'border-teal-400 dark:border-teal-500',
@@ -327,6 +329,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       cardShadow: 'shadow-teal-500/10',
       stripAccent: 'border-l-4 border-l-teal-400',
       accentBar: 'bg-gradient-to-r from-teal-400 to-cyan-400',
+      glowShadow: '0 2px 6px rgba(0,0,0,0.05), 0 4px 20px rgba(20,184,166,0.28), 0 12px 48px rgba(20,184,166,0.18), 0 32px 64px rgba(0,0,0,0.10)',
     };
   };
 
@@ -437,8 +440,8 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
               isAllDone ? 'border-emerald-400 dark:border-emerald-500' : style.border
             }`}
             style={{ boxShadow: isAllDone
-              ? '0 2px 6px rgba(0,0,0,0.05), 0 8px 24px rgba(16,185,129,0.14), 0 32px 64px rgba(0,0,0,0.10)'
-              : '0 2px 6px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.10), 0 32px 64px rgba(0,0,0,0.12)'
+              ? '0 2px 6px rgba(0,0,0,0.05), 0 4px 20px rgba(16,185,129,0.32), 0 12px 48px rgba(16,185,129,0.20), 0 32px 64px rgba(0,0,0,0.10)'
+              : style.glowShadow
             }}
           >
             {/* Top accent stripe */}
