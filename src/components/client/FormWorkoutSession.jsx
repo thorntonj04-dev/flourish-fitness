@@ -312,24 +312,24 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       glowShadow: '0 2px 6px rgba(0,0,0,0.05), 0 4px 20px rgba(245,158,11,0.28), 0 12px 48px rgba(245,158,11,0.18), 0 32px 64px rgba(0,0,0,0.10)',
     };
     if (section === 'work') return {
-      border: 'border-emerald-500 dark:border-emerald-500',
-      chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+      border: 'border-red-500 dark:border-red-500',
+      chip: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
       icon: '💪',
-      headerGradient: 'bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white dark:from-emerald-900/20 dark:via-teal-900/10 dark:to-transparent',
-      cardShadow: 'shadow-emerald-500/10',
-      stripAccent: 'border-l-4 border-l-emerald-500',
-      accentBar: 'bg-gradient-to-r from-emerald-400 to-teal-500',
-      glowShadow: '0 2px 6px rgba(0,0,0,0.05), 0 4px 20px rgba(16,185,129,0.28), 0 12px 48px rgba(16,185,129,0.18), 0 32px 64px rgba(0,0,0,0.10)',
+      headerGradient: 'bg-gradient-to-br from-red-50 via-rose-50/60 to-white dark:from-red-900/20 dark:via-rose-900/10 dark:to-transparent',
+      cardShadow: 'shadow-red-500/10',
+      stripAccent: 'border-l-4 border-l-red-500',
+      accentBar: 'bg-gradient-to-r from-red-500 to-rose-400',
+      glowShadow: '0 2px 6px rgba(0,0,0,0.05), 0 4px 20px rgba(239,68,68,0.28), 0 12px 48px rgba(239,68,68,0.18), 0 32px 64px rgba(0,0,0,0.10)',
     };
     return {
-      border: 'border-teal-400 dark:border-teal-500',
-      chip: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+      border: 'border-blue-400 dark:border-blue-500',
+      chip: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
       icon: '🧘',
-      headerGradient: 'bg-gradient-to-br from-teal-50 via-cyan-50/60 to-white dark:from-teal-900/20 dark:via-cyan-900/10 dark:to-transparent',
-      cardShadow: 'shadow-teal-500/10',
-      stripAccent: 'border-l-4 border-l-teal-400',
-      accentBar: 'bg-gradient-to-r from-teal-400 to-cyan-400',
-      glowShadow: '0 2px 6px rgba(0,0,0,0.05), 0 4px 20px rgba(20,184,166,0.28), 0 12px 48px rgba(20,184,166,0.18), 0 32px 64px rgba(0,0,0,0.10)',
+      headerGradient: 'bg-gradient-to-br from-blue-50 via-sky-50/60 to-white dark:from-blue-900/20 dark:via-sky-900/10 dark:to-transparent',
+      cardShadow: 'shadow-blue-500/10',
+      stripAccent: 'border-l-4 border-l-blue-400',
+      accentBar: 'bg-gradient-to-r from-blue-400 to-sky-400',
+      glowShadow: '0 2px 6px rgba(0,0,0,0.05), 0 4px 20px rgba(96,165,250,0.28), 0 12px 48px rgba(96,165,250,0.18), 0 32px 64px rgba(0,0,0,0.10)',
     };
   };
 
