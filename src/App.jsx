@@ -284,7 +284,7 @@ export default function App() {
   <DarkModeToggle />
   
   <img
-    src="/images/fflogonew.png"
+    src="/images/logosmall.png"
     alt="Flourish Fitness"
     className="w-10 h-10 object-contain rounded-md"
   />

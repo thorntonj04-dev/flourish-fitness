@@ -128,9 +128,9 @@ function LandingPage({ onLoginClick }) {
               {/* Brand Logo */}
               <div className="flex items-center gap-3">
                 <img
-                  src="/images/fflogonew.png"
+                  src="/images/logosmall.png"
                   alt="Flourish Fitness logo"
-                  className="w-12 h-12 object-contain rounded-xl transition-transform transform hover:scale-105"
+                  className="w-12 h-12 object-contain rounded-md transition-transform transform hover:scale-105"
                   style={{ boxShadow: '0 6px 18px rgba(0,0,0,0.6)' }}
                 />
                 <div>
