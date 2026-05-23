@@ -308,7 +308,7 @@ export default function App() {
               </button>
             )}
             <button onClick={handleSignOut} className="p-2 hover:bg-gray-100 dark:hover:bg-[#1E3328] rounded-lg transition">
-              <LogOut className="w-5 h-5 text-gray-600 dark:text-[#d8e7de]/80" />
+              <LogOut className="w-5 h-5 text-gray-700 dark:text-[#d8e7de]/80" />
             </button>
           </div>
         </div>
@@ -329,7 +329,7 @@ export default function App() {
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
                     currentView === item.id 
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white' 
-                      : 'text-gray-600 dark:text-[#d8e7de]/80 hover:bg-gray-100 dark:hover:bg-[#1E3328]'
+                      : 'text-gray-700 dark:text-[#d8e7de]/80 hover:bg-emerald-50 dark:hover:bg-[#1E3328]'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -403,7 +403,7 @@ export default function App() {
           } ${
             isActive
               ? 'bg-gradient-to-b from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/40'
-              : 'text-gray-400 dark:text-[#d8e7de]/50'
+              : 'text-gray-600 dark:text-[#d8e7de]/50'
           }`}
         >
           <Icon className={`w-5 h-5 ${isActive ? 'drop-shadow-sm' : ''}`} />
