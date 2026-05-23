@@ -53,17 +53,47 @@
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
-/* ── Tab slide transitions ─────────────────────────────── */
-@keyframes slideForward {
-  from { opacity: 0; transform: translateX(32px) scale(0.97); }
-  to   { opacity: 1; transform: translateX(0)    scale(1); }
+/* ── Page tab transitions (enter only — key remount) ───── */
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateX(14px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
-@keyframes slideBack {
-  from { opacity: 0; transform: translateX(-32px) scale(0.97); }
-  to   { opacity: 1; transform: translateX(0)     scale(1); }
+@keyframes pageFadeInBack {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
-.slide-forward { animation: slideForward 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
-.slide-back    { animation: slideBack    0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+.slide-forward {
+  animation: pageFadeIn     0.24s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+.slide-back {
+  animation: pageFadeInBack 0.24s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* ── Exercise card transitions (enter + exit) ───────────── */
+@keyframes cardEnterRight {
+  from { opacity: 0; transform: translateX(22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes cardEnterLeft {
+  from { opacity: 0; transform: translateX(-22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes cardExitLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-22px); }
+}
+@keyframes cardExitRight {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(22px); }
+}
+.card-enter-right { animation: cardEnterRight 0.26s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; will-change: transform, opacity; backface-visibility: hidden; }
+.card-enter-left  { animation: cardEnterLeft  0.26s cubic-bezier(0.25, 0.46, 0.45, 0.94) both; will-change: transform, opacity; backface-visibility: hidden; }
+.card-exit-left   { animation: cardExitLeft   0.16s ease-in both; will-change: transform, opacity; pointer-events: none; }
+.card-exit-right  { animation: cardExitRight  0.16s ease-in both; will-change: transform, opacity; pointer-events: none; }
 
 /* ── Set completion ripple ─────────────────────────────── */
 @keyframes rippleOut {

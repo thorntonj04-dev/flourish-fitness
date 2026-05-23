@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Check, X, Trophy, Clock, Plus, Minus, Play, Settings, Timer } from 'lucide-react';
 import { ref as dbRef, get, set, push, update } from 'firebase/database';
 import { db } from '../../firebase';
@@ -9,6 +9,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const [exercises, setExercises] = useState([]);
   const [currentExIdx, setCurrentExIdx] = useState(0);
   const [slideClass, setSlideClass] = useState('');
+  const navTimerRef = useRef(null);
   const [sessionData, setSessionData] = useState({});
   const [lastWorkoutData, setLastWorkoutData] = useState({});
   const [sessionId, setSessionId] = useState(null);
@@ -54,9 +55,15 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   };
 
   const navigateTo = (idx, direction = 'slide-forward') => {
-    setSlideClass(direction);
-    setCurrentExIdx(idx);
-    setTimeout(() => setSlideClass(''), 250);
+    if (navTimerRef.current) clearTimeout(navTimerRef.current);
+    const exitClass = direction === 'slide-forward' ? 'card-exit-left' : 'card-exit-right';
+    const enterClass = direction === 'slide-forward' ? 'card-enter-right' : 'card-enter-left';
+    setSlideClass(exitClass);
+    navTimerRef.current = setTimeout(() => {
+      setCurrentExIdx(idx);
+      setSlideClass(enterClass);
+      navTimerRef.current = setTimeout(() => setSlideClass(''), 300);
+    }, 160);
   };
 
   const initializeWorkout = async () => {
@@ -434,7 +441,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
       {/* ── Exercise card ───────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-        <div key={currentExIdx} className={`p-4 max-w-2xl mx-auto ${slideClass}`}>
+        <div className={`p-4 max-w-2xl mx-auto ${slideClass}`}>
           <div
             className={`bg-white dark:bg-[#1E3328] rounded-2xl border-2 overflow-hidden ${
               isAllDone ? 'border-emerald-400 dark:border-emerald-500' : style.border
@@ -444,8 +451,8 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
               : style.glowShadow
             }}
           >
-            {/* Top accent stripe */}
-            <div className={`h-1 w-full ${isAllDone ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : style.accentBar}`} />
+            {/* Top accent line */}
+            <div className={`h-px w-full opacity-60 ${isAllDone ? 'bg-gradient-to-r from-emerald-300 to-teal-400' : style.accentBar}`} />
 
             {/* ── Card header ───────────────────────────────────────────────── */}
             <div className={`p-4 relative ${
