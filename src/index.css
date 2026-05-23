@@ -96,6 +96,43 @@
   animation: contentFadeIn 0.3s ease-out;
 }
 
+/* ── Workout session visual effects ──────────────────────── */
+
+/* Progress bar shimmer — light sweep across the fill */
+@keyframes shimmerSweep {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.progress-shimmer {
+  background: linear-gradient(90deg, #10b981 25%, #34d399 50%, #10b981 75%);
+  background-size: 300% auto;
+  animation: shimmerSweep 2.8s linear infinite;
+}
+
+/* Timer circle glow pulse — breathes during rest */
+@keyframes glowPulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.35)); }
+  50%       { filter: drop-shadow(0 0 18px rgba(16, 185, 129, 0.70)); }
+}
+.timer-circle-glow {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+/* Set-complete flash — brief bright overlay on the row */
+@keyframes setFlash {
+  0%   { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+.set-flash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #10b981, #2dd4bf);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: setFlash 0.4s ease-out forwards;
+}
+
 /* ── Light mode contrast improvements ─────────────────── */
 /* Raises gray-400/500 text to meet WCAG AA contrast on white.
    Selectors only fire when .dark is NOT on <html> so dark mode

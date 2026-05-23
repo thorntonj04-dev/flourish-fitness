@@ -79,7 +79,7 @@ export default function RestTimerOverlay({ seconds = 30, label, onSkip, onDone }
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1E3328] border-t border-gray-200 dark:border-[#C6A45F]/25 rounded-t-3xl shadow-2xl px-6 pt-5 pb-10 flex flex-col items-center">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-b from-white to-emerald-50/40 dark:from-[#1E3328] dark:to-[#0d1a12] border-t border-gray-200 dark:border-[#C6A45F]/25 rounded-t-3xl shadow-2xl shadow-black/20 dark:shadow-black/60 px-6 pt-5 pb-10 flex flex-col items-center">
       {/* Handle row with minimize button */}
       <div className="w-full flex items-center justify-between mb-4">
         <div className="w-8" />
@@ -97,7 +97,7 @@ export default function RestTimerOverlay({ seconds = 30, label, onSkip, onDone }
         {label}
       </p>
 
-      <div className="relative w-36 h-36 mb-6">
+      <div className="relative w-36 h-36 mb-6 timer-circle-glow">
         <svg className="w-36 h-36 -rotate-90" viewBox="0 0 120 120">
           <circle
             cx="60" cy="60" r={RADIUS}
@@ -118,10 +118,10 @@ export default function RestTimerOverlay({ seconds = 30, label, onSkip, onDone }
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-5xl font-bold text-gray-900 dark:text-[#d8e7de] tabular-nums leading-none">
+          <span className="text-5xl font-black text-gray-900 dark:text-[#d8e7de] tabular-nums leading-none tracking-tight">
             {remaining}
           </span>
-          <span className="text-xs text-gray-400 dark:text-[#d8e7de]/50 mt-1">sec</span>
+          <span className="text-[11px] font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mt-1">sec</span>
         </div>
       </div>
 

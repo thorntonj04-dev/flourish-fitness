@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Trophy, Clock, Save, Plus, Minus, Play, Settings, Timer } from 'lucide-react';
+import { Check, X, Trophy, Clock, Plus, Minus, Play, Settings, Timer } from 'lucide-react';
 import { ref as dbRef, get, set, push, update } from 'firebase/database';
 import { db } from '../../firebase';
 import WorkoutComplete from './WorkoutComplete';
@@ -15,8 +15,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const [startTime] = useState(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [saveAsDefaultFor, setSaveAsDefaultFor] = useState({});
-  const [savingDefault, setSavingDefault] = useState({});
   const [exitConfirm, setExitConfirm] = useState(false);
   const [restTimer, setRestTimer] = useState(null);
   const [removeExerciseConfirm, setRemoveExerciseConfirm] = useState(null);
@@ -25,7 +23,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
   useEffect(() => {
     initializeWorkout();
-    loadLastWorkout();
+    loadPersonalBests();
   }, []);
 
   useEffect(() => {
@@ -105,29 +103,42 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     });
   };
 
-  const loadLastWorkout = async () => {
+  const loadPersonalBests = async () => {
     if (previewMode) return;
     try {
       const snap = await get(dbRef(db, `workout-history/${userId}`));
       if (!snap.exists()) return;
-      const history = Object.values(snap.val());
-      const previous = history
-        .filter(h => h.workoutId === workout.id && h.completed)
-        .sort((a, b) => b.startTime - a.startTime);
-      if (previous.length === 0) return;
-      const last = previous[0];
-      const lastData = {};
-      if (last.exercises) {
-        Object.values(last.exercises).forEach(exData => {
-          const firstDone = (exData.sets || []).find(s => s.completed);
-          if (firstDone) {
-            lastData[exData.exerciseName] = { weight: firstDone.weight ?? 0, reps: firstDone.reps ?? exData.sets[0]?.reps ?? 0 };
+      const bests = {};
+      Object.values(snap.val()).forEach(session => {
+        if (!session.completed || !session.exercises) return;
+        Object.values(session.exercises).forEach(exData => {
+          const name = exData.exerciseName;
+          if (!name) return;
+          (exData.sets || []).forEach(s => {
+            if (!s.completed || s.weight == null) return;
+            if (!bests[name] || s.weight > bests[name].weight) {
+              bests[name] = { weight: s.weight, reps: s.reps ?? 0 };
+            }
+          });
+        });
+      });
+      setLastWorkoutData(bests);
+      setSessionData(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(idxStr => {
+          const idx = Number(idxStr);
+          const best = bests[next[idx].exerciseName];
+          if (best && best.weight > 0) {
+            next[idx] = {
+              ...next[idx],
+              sets: next[idx].sets.map(s => s.completed ? s : { ...s, weight: best.weight }),
+            };
           }
         });
-      }
-      setLastWorkoutData(lastData);
+        return next;
+      });
     } catch (err) {
-      console.error('Error loading last workout:', err);
+      console.error('Error loading personal bests:', err);
     }
   };
 
@@ -199,12 +210,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         return { ...s, completed: nowComplete, timestamp: nowComplete ? Date.now() : null };
       });
       next[exIdx] = { ...next[exIdx], sets };
-      const allDone = sets.every(s => s.completed);
-      const ex = exercises[exIdx];
-      if (allDone && ex) {
-        const avgWeight = Math.round(sets.reduce((sum, s) => sum + (s.weight || 0), 0) / sets.length);
-        if (avgWeight !== (ex.recommendedWeight || 0)) setSaveAsDefaultFor(p => ({ ...p, [exIdx]: 'pending' }));
-      }
       return next;
     });
   };
@@ -251,44 +256,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     setRemoveExerciseConfirm(null);
   };
 
-  const useLastValues = (exIdx) => {
-    const ex = exercises[exIdx];
-    if (!ex) return;
-    const last = lastWorkoutData[ex.name];
-    if (!last) return;
-    setSessionData(prev => {
-      const next = { ...prev };
-      next[exIdx] = {
-        ...next[exIdx],
-        sets: next[exIdx].sets.map(s => s.completed ? s : { ...s, weight: last.weight, reps: last.reps }),
-      };
-      return next;
-    });
-  };
 
-  const handleSaveDefault = async (exIdx) => {
-    setSavingDefault(p => ({ ...p, [exIdx]: true }));
-    try {
-      const sets = sessionData[exIdx]?.sets ?? [];
-      const avgWeight = Math.round(sets.reduce((sum, s) => sum + (s.weight || 0), 0) / sets.length);
-      const avgReps = Math.round(sets.reduce((sum, s) => sum + (s.reps || 0), 0) / sets.length);
-      const workoutSnap = await get(dbRef(db, `workouts/${workout.id}`));
-      if (workoutSnap.exists()) {
-        const workoutData = workoutSnap.val();
-        if (!workoutData.exercises) return;
-        const updatedExercises = workoutData.exercises.map((ex, i) =>
-          i === exIdx ? { ...ex, recommendedWeight: avgWeight, reps: avgReps } : ex
-        );
-        await update(dbRef(db, `workouts/${workout.id}`), { exercises: updatedExercises });
-      }
-      setSaveAsDefaultFor(p => ({ ...p, [exIdx]: 'saved' }));
-    } catch (err) {
-      console.error('Error saving default:', err);
-      alert('Could not save defaults.');
-    } finally {
-      setSavingDefault(p => ({ ...p, [exIdx]: false }));
-    }
-  };
 
   const handleCompleteWorkout = async () => {
     if (!previewMode) {
@@ -331,9 +299,30 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   const getSectionStyle = (section) => {
-    if (section === 'warmup') return { border: 'border-amber-400 dark:border-amber-500', chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: '🔥' };
-    if (section === 'work')   return { border: 'border-emerald-500 dark:border-emerald-500', chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: '💪' };
-    return { border: 'border-teal-400 dark:border-teal-500', chip: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400', icon: '🧘' };
+    if (section === 'warmup') return {
+      border: 'border-amber-400 dark:border-amber-500',
+      chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+      icon: '🔥',
+      headerGradient: 'bg-gradient-to-br from-amber-50 via-orange-50/60 to-white dark:from-amber-900/20 dark:via-orange-900/10 dark:to-transparent',
+      cardShadow: 'shadow-lg shadow-amber-500/10 dark:shadow-black/30',
+      stripAccent: 'border-l-4 border-l-amber-400',
+    };
+    if (section === 'work') return {
+      border: 'border-emerald-500 dark:border-emerald-500',
+      chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+      icon: '💪',
+      headerGradient: 'bg-gradient-to-br from-emerald-50 via-teal-50/60 to-white dark:from-emerald-900/20 dark:via-teal-900/10 dark:to-transparent',
+      cardShadow: 'shadow-lg shadow-emerald-500/10 dark:shadow-black/30',
+      stripAccent: 'border-l-4 border-l-emerald-500',
+    };
+    return {
+      border: 'border-teal-400 dark:border-teal-500',
+      chip: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+      icon: '🧘',
+      headerGradient: 'bg-gradient-to-br from-teal-50 via-cyan-50/60 to-white dark:from-teal-900/20 dark:via-cyan-900/10 dark:to-transparent',
+      cardShadow: 'shadow-lg shadow-teal-500/10 dark:shadow-black/30',
+      stripAccent: 'border-l-4 border-l-teal-400',
+    };
   };
 
   // ─── Completed view ───────────────────────────────────────────────────────────
@@ -390,8 +379,8 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const totalSets = exData.sets.length;
   const isAllDone = completedSets === totalSets;
   const last = lastWorkoutData[exercise.name];
-  const defaultStatus = saveAsDefaultFor[currentExIdx];
   const style = getSectionStyle(exercise.section);
+  const nextStyle = nextExercise ? getSectionStyle(nextExercise.section) : null;
 
   return (
     <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-[#0d1a12] flex flex-col">
@@ -422,7 +411,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
             </div>
           </div>
           <div className="w-full bg-gray-200 dark:bg-gray-700/60 rounded-full h-2 overflow-hidden">
-            <div className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-700 rounded-full" style={{ width: `${progress}%` }} />
+            <div className="progress-shimmer h-full transition-[width] duration-700 rounded-full" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">{exercises.length} exercises</span>
@@ -434,12 +423,18 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       {/* ── Exercise card ───────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
         <div key={currentExIdx} className={`p-4 max-w-2xl mx-auto ${slideClass}`}>
-          <div className={`bg-white dark:bg-[#1E3328] rounded-2xl border-2 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20 ${
-            isAllDone ? 'border-emerald-400 dark:border-emerald-500' : style.border
+          <div className={`bg-white dark:bg-[#1E3328] rounded-2xl border-2 overflow-hidden transition-shadow ${
+            isAllDone
+              ? 'border-emerald-400 dark:border-emerald-500 shadow-lg shadow-emerald-500/15 dark:shadow-black/30'
+              : `${style.border} ${style.cardShadow}`
           }`}>
 
             {/* ── Card header ───────────────────────────────────────────────── */}
-            <div className={`p-4 relative ${isAllDone ? 'bg-emerald-50/60 dark:bg-emerald-900/10' : 'bg-gray-50 dark:bg-[#0a0a0a]/40'}`}>
+            <div className={`p-4 relative ${
+              isAllDone
+                ? 'bg-gradient-to-br from-emerald-100 via-teal-50/70 to-white dark:from-emerald-900/30 dark:via-teal-900/15 dark:to-transparent'
+                : style.headerGradient
+            }`}>
 
               {/* Chips row + cog menu */}
               <div className="flex items-center gap-2 mb-2">
@@ -497,22 +492,14 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                 {exercise.name}
               </h2>
 
-              {last && (
-                <div className="flex items-center gap-2 mt-1.5">
+              {last && last.weight > 0 && (
+                <div className="mt-1.5">
                   <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
-                    Last: {exercise.useDuration
-                      ? (last.weight > 0 ? `${last.weight} lbs` : 'completed')
-                      : `${last.weight}${exercise.dumbbells === 2 ? ' ea.' : ' lbs'} × ${last.reps}`
+                    Best: {exercise.useDuration
+                      ? `${last.weight} lbs`
+                      : `${last.weight}${exercise.dumbbells === 2 ? ' ea.' : ' lbs'}`
                     }
                   </span>
-                  {!isAllDone && (
-                    <button
-                      onClick={() => useLastValues(currentExIdx)}
-                      className="text-xs text-emerald-600 dark:text-emerald-400 font-bold underline underline-offset-2"
-                    >
-                      Use last
-                    </button>
-                  )}
                 </div>
               )}
 
@@ -609,34 +596,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
               </div>
 
-              {defaultStatus === 'pending' && (
-                <div className="mx-4 mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Save className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                    <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">Save as starting defaults?</span>
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => handleSaveDefault(currentExIdx)}
-                      disabled={savingDefault[currentExIdx]}
-                      className="px-3 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold min-h-[40px] disabled:opacity-50"
-                    >
-                      {savingDefault[currentExIdx] ? '…' : 'Yes'}
-                    </button>
-                    <button
-                      onClick={() => setSaveAsDefaultFor(p => ({ ...p, [currentExIdx]: 'skipped' }))}
-                      className="px-3 py-2 text-amber-600 dark:text-amber-400 rounded-lg text-xs font-bold min-h-[40px]"
-                    >
-                      Skip
-                    </button>
-                  </div>
-                </div>
-              )}
-              {defaultStatus === 'saved' && (
-                <div className="mx-4 mb-4 text-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold py-1">
-                  ✓ Defaults saved for next time
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -645,7 +604,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       {/* ── Coming up next / Complete ──────────────────────────────────────── */}
       <div className="bg-white dark:bg-[#1E3328] border-t border-gray-200/60 dark:border-[#C6A45F]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] flex-shrink-0">
         {nextExercise ? (
-          <div className="flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto">
+          <div className={`flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto ${nextStyle.stripAccent}`}>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-widest mb-0.5">Coming up next</p>
               <p className="font-semibold text-sm text-gray-800 dark:text-[#d8e7de] truncate">{nextExercise.name}</p>
@@ -655,7 +614,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                 </p>
               )}
             </div>
-            <span className="text-xl opacity-30">{getSectionStyle(nextExercise.section).icon}</span>
+            <span className="text-2xl">{nextStyle.icon}</span>
           </div>
         ) : (
           <div className="p-4 max-w-2xl mx-auto">
@@ -730,8 +689,10 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useD
     : `${durationSeconds}s`;
 
   return (
-    <div className={`flex items-center gap-2 rounded-xl px-2 py-2.5 transition-colors ${
-      set.completed ? 'bg-emerald-50 dark:bg-emerald-900/15' : 'bg-gray-50/50 dark:bg-white/[0.02]'
+    <div className={`flex items-center gap-2 rounded-xl px-2 py-2.5 transition-all duration-300 ${
+      set.completed
+        ? 'bg-gradient-to-r from-emerald-100/80 to-teal-50/60 dark:from-emerald-900/25 dark:to-teal-900/10'
+        : 'bg-gray-50/50 dark:bg-white/[0.02]'
     }`}>
 
       {/* Set number */}
@@ -802,7 +763,7 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useD
         onClick={handleCheck}
         className={`relative w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all overflow-visible ${
           set.completed
-            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-105'
+            ? 'bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-xl shadow-emerald-500/40 scale-105'
             : 'border-2 border-gray-200 dark:border-[#C6A45F]/25 text-gray-300 dark:text-[#d8e7de]/20 active:border-emerald-400 active:text-emerald-400'
         }`}
       >
