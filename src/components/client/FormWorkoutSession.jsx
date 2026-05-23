@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Check, X, Trophy, Clock, Save, Plus, Minus, Play } from 'lucide-react';
+import { Check, X, Trophy, Clock, Save, Plus, Minus, Play, Settings, Timer } from 'lucide-react';
 import { ref as dbRef, get, set, push, update } from 'firebase/database';
 import { db } from '../../firebase';
 import WorkoutComplete from './WorkoutComplete';
@@ -20,6 +20,8 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const [exitConfirm, setExitConfirm] = useState(false);
   const [restTimer, setRestTimer] = useState(null);
   const [removeExerciseConfirm, setRemoveExerciseConfirm] = useState(null);
+  const [restDefaultSecs, setRestDefaultSecs] = useState(30);
+  const [showCogMenu, setShowCogMenu] = useState(false);
 
   useEffect(() => {
     initializeWorkout();
@@ -157,8 +159,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       const partnerIdx = supersetGroupId
         ? exercises.findIndex((ex, i) => i !== exIdx && ex.supersetGroupId === supersetGroupId)
         : -1;
-      const restSecs = exercise?.restSeconds > 0 ? exercise.restSeconds : 60;
-
       if (partnerIdx !== -1) {
         const partnerSets = sessionData[partnerIdx]?.sets || [];
         const partnerSetDone = partnerSets[setIdx]?.completed;
@@ -170,11 +170,11 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
           if (willAllThisDone && allPartnerDone) {
             const afterBoth = Math.max(exIdx, partnerIdx) + 1;
             if (afterBoth < exercises.length) {
-              setTimeout(() => setRestTimer({ seconds: Math.max(restSecs, 60), label: 'Rest before next exercise', type: 'exercise', nextExIdx: afterBoth }), 600);
+              setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest before next exercise', type: 'exercise', nextExIdx: afterBoth }), 600);
             }
           } else {
             const firstExIdx = Math.min(exIdx, partnerIdx);
-            setTimeout(() => setRestTimer({ seconds: restSecs, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx }), 400);
+            setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx }), 400);
           }
         }
       } else {
@@ -182,10 +182,10 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         if (willAllBeDone) {
           const nextIdx = exIdx + 1;
           if (nextIdx < exercises.length) {
-            setTimeout(() => setRestTimer({ seconds: Math.max(restSecs, 60), label: 'Rest before next exercise', type: 'exercise', nextExIdx: nextIdx }), 600);
+            setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest before next exercise', type: 'exercise', nextExIdx: nextIdx }), 600);
           }
         } else {
-          setTimeout(() => setRestTimer({ seconds: restSecs, label: 'Rest between sets', type: 'set' }), 400);
+          setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest between sets', type: 'set' }), 400);
         }
       }
     }
@@ -439,7 +439,9 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
           }`}>
 
             {/* ── Card header ───────────────────────────────────────────────── */}
-            <div className={`p-4 ${isAllDone ? 'bg-emerald-50/60 dark:bg-emerald-900/10' : 'bg-gray-50 dark:bg-[#0a0a0a]/40'}`}>
+            <div className={`p-4 relative ${isAllDone ? 'bg-emerald-50/60 dark:bg-emerald-900/10' : 'bg-gray-50 dark:bg-[#0a0a0a]/40'}`}>
+
+              {/* Chips row + cog menu */}
               <div className="flex items-center gap-2 mb-2">
                 <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${style.chip}`}>
                   {style.icon} {exercise.section}
@@ -452,6 +454,43 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                     <Check className="w-3 h-3" /> Done
                   </span>
                 )}
+
+                {/* Cog menu */}
+                <div className="ml-auto relative">
+                  <button
+                    onClick={() => setShowCogMenu(v => !v)}
+                    className="p-1.5 rounded-lg active:bg-gray-200 dark:active:bg-white/10 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                  >
+                    <Settings className="w-4 h-4 text-gray-500 dark:text-[#d8e7de]/50" />
+                  </button>
+
+                  {showCogMenu && (
+                    <>
+                      <div className="fixed inset-0 z-[60]" onClick={() => setShowCogMenu(false)} />
+                      <div className="absolute right-0 top-10 z-[61] bg-white dark:bg-[#1E3328] rounded-2xl shadow-xl border border-gray-200 dark:border-[#C6A45F]/25 py-1.5 w-44 overflow-hidden">
+                        <button
+                          onClick={() => { addSet(currentExIdx); setShowCogMenu(false); }}
+                          className="w-full px-4 py-3 text-sm text-left text-gray-700 dark:text-[#d8e7de] font-medium active:bg-gray-50 dark:active:bg-white/5 flex items-center gap-2.5"
+                        >
+                          <Plus className="w-4 h-4 text-emerald-500" /> Add a set
+                        </button>
+                        <button
+                          onClick={() => { removeSet(currentExIdx); setShowCogMenu(false); }}
+                          className="w-full px-4 py-3 text-sm text-left text-gray-700 dark:text-[#d8e7de] font-medium active:bg-gray-50 dark:active:bg-white/5 flex items-center gap-2.5"
+                        >
+                          <Minus className="w-4 h-4 text-orange-500" /> Remove a set
+                        </button>
+                        <div className="my-1 border-t border-gray-100 dark:border-[#C6A45F]/10" />
+                        <button
+                          onClick={() => { setRemoveExerciseConfirm(currentExIdx); setShowCogMenu(false); }}
+                          className="w-full px-4 py-3 text-sm text-left text-red-500 dark:text-red-400 font-medium active:bg-red-50 dark:active:bg-red-900/10 flex items-center gap-2.5"
+                        >
+                          <X className="w-4 h-4" /> Remove exercise
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               <h2 className="font-bold text-xl text-gray-900 dark:text-[#d8e7de] tracking-tight leading-tight">
@@ -486,12 +525,16 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                 >
                   ← Back
                 </button>
+
+                {/* Rest timer cycle button */}
                 <button
-                  onClick={() => setRemoveExerciseConfirm(currentExIdx)}
-                  className="text-xs text-red-400 dark:text-red-500 px-2 py-1.5 rounded-lg min-h-[36px]"
+                  onClick={() => setRestDefaultSecs(s => s === 30 ? 60 : s === 60 ? 90 : 30)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold min-h-[36px]"
                 >
-                  Remove
+                  <Timer className="w-3.5 h-3.5" />
+                  {restDefaultSecs}s rest
                 </button>
+
                 <button
                   onClick={() => navigateTo(currentExIdx + 1, 'slide-forward')}
                   disabled={currentExIdx >= exercises.length - 1}
@@ -564,20 +607,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                   />
                 ))}
 
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={() => addSet(currentExIdx)}
-                    className="flex-1 py-2.5 border-2 border-dashed border-emerald-300 dark:border-emerald-700/60 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 min-h-[44px]"
-                  >
-                    <Plus className="w-4 h-4" /> Add Set
-                  </button>
-                  <button
-                    onClick={() => removeSet(currentExIdx)}
-                    className="py-2.5 px-4 border-2 border-dashed border-red-200 dark:border-red-800/50 text-red-400 dark:text-red-500 rounded-xl text-sm font-semibold flex items-center justify-center min-h-[44px]"
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
 
               {defaultStatus === 'pending' && (
