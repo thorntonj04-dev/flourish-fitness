@@ -413,9 +413,9 @@ function LandingPage({ onLoginClick }) {
       {/* FOOTER */}
       <footer className="bg-[#0a0a0a] border-t border-[#1f1f1f] py-12 px-6 flex flex-col items-center gap-6">
         <img
-          src="/images/fflogonew.png"
+          src="/images/fflogo.png"
           alt="Flourish logo"
-          className="w-64 md:w-80 object-contain rounded-2xl transition-transform transform hover:scale-105"
+          className="w-72 md:w-96 object-contain transition-transform transform hover:scale-105"
           style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}
         />
         <p className="text-sm text-[#d8e7de] text-center max-w-md">
