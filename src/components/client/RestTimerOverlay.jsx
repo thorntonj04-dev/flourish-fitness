@@ -3,10 +3,9 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const PRESETS = [30, 60, 90, 120];
 
 export default function RestTimerOverlay({ seconds = 30, label, onSkip, onDone }) {
-  const [totalSeconds, setTotalSeconds] = useState(seconds);
+  const [totalSeconds] = useState(seconds);
   const [remaining, setRemaining] = useState(seconds);
   const [minimized, setMinimized] = useState(false);
   const [flashing, setFlashing] = useState(false);
@@ -36,12 +35,6 @@ export default function RestTimerOverlay({ seconds = 30, label, onSkip, onDone }
     const t = setTimeout(() => setRemaining(r => r - 1), 1000);
     return () => clearTimeout(t);
   }, [remaining]);
-
-  const handlePreset = (sec) => {
-    setTotalSeconds(sec);
-    setRemaining(sec);
-    setFlashing(false);
-  };
 
   const progress = totalSeconds > 0 ? (totalSeconds - remaining) / totalSeconds : 1;
   const dashOffset = CIRCUMFERENCE * (1 - progress);
@@ -97,7 +90,7 @@ export default function RestTimerOverlay({ seconds = 30, label, onSkip, onDone }
         {label}
       </p>
 
-      <div className="relative w-36 h-36 mb-6 timer-circle-glow">
+      <div className="relative w-36 h-36 mb-8 timer-circle-glow">
         <svg className="w-36 h-36 -rotate-90" viewBox="0 0 120 120">
           <circle
             cx="60" cy="60" r={RADIUS}
@@ -123,23 +116,6 @@ export default function RestTimerOverlay({ seconds = 30, label, onSkip, onDone }
           </span>
           <span className="text-[11px] font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mt-1">sec</span>
         </div>
-      </div>
-
-      {/* Duration preset buttons */}
-      <div className="flex gap-2 w-full mb-4">
-        {PRESETS.map(sec => (
-          <button
-            key={sec}
-            onClick={() => handlePreset(sec)}
-            className={`flex-1 py-3 rounded-xl text-sm font-bold min-h-[44px] transition-all active:scale-95 ${
-              totalSeconds === sec
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25'
-                : 'bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-500 dark:text-[#d8e7de]/50'
-            }`}
-          >
-            {sec}s
-          </button>
-        ))}
       </div>
 
       <button
