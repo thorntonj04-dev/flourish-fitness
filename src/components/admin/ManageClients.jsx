@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ref as dbRef, get, set } from 'firebase/database';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
 import {
   Layers, Dumbbell, UserPlus, RefreshCw, Clock,
   Eye, X, Mail, Users, CalendarDays,
@@ -45,10 +45,19 @@ export default function ManageClients() {
       const schedulesSnap = await get(dbRef(db, 'clientSchedules')).catch(() => null);
 
       if (usersSnap.exists()) {
-        const clientList = Object.entries(usersSnap.val())
+        const usersData = usersSnap.val();
+        const clientList = Object.entries(usersData)
           .filter(([, u]) => u.role === 'client')
-          .map(([id, u]) => ({ id, ...u }))
-          .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+          .map(([id, u]) => ({ id, ...u }));
+
+        // Let an admin assign programs/workouts to their own account too,
+        // even though they aren't a 'client' in the users list.
+        const selfUid = auth.currentUser?.uid;
+        if (selfUid && usersData[selfUid] && !clientList.some(c => c.id === selfUid)) {
+          clientList.push({ id: selfUid, ...usersData[selfUid], isSelf: true });
+        }
+
+        clientList.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
         setClients(clientList);
       }
 
@@ -231,8 +240,13 @@ export default function ManageClients() {
                         {(client.name || client.email || '?').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-gray-900 dark:text-[#d8e7de] truncate">
+                        <div className="font-bold text-gray-900 dark:text-[#d8e7de] truncate flex items-center gap-1.5">
                           {client.name || client.email}
+                          {client.isSelf && (
+                            <span className="text-[10px] font-bold uppercase tracking-wide bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full px-2 py-0.5 flex-shrink-0">
+                              You
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60 truncate">{client.email}</div>
                         <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">
