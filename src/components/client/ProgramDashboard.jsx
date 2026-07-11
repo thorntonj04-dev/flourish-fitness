@@ -48,6 +48,7 @@ function computeWeekNumber(startDate, durationWeeks) {
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
   const daysElapsed = Math.floor((Date.now() - start.getTime()) / 86400000);
+  if (daysElapsed < 0) return 0; // program hasn't started yet
   return Math.min(Math.max(1, Math.floor(daysElapsed / 7) + 1), durationWeeks);
 }
 
@@ -156,6 +157,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
     ? computeWeekNumber(assignment.startDate, phase.durationWeeks)
     : 1;
 
+  const hasStarted = weekNumber > 0;
   const phaseProgress = phase ? Math.round((weekNumber / phase.durationWeeks) * 100) : 0;
 
   const phaseDaysArray = phase?.days
@@ -247,7 +249,9 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
             </div>
             <h2 className="text-xl font-bold">{phase?.name ?? 'Current Phase'}</h2>
             <p className="text-emerald-100 text-sm mt-0.5">
-              Week {weekNumber} of {phase?.durationWeeks ?? '?'} · {workoutDaysCount}× per week
+              {hasStarted
+                ? `Week ${weekNumber} of ${phase?.durationWeeks ?? '?'} · ${workoutDaysCount}× per week`
+                : `Starts ${new Date(assignment.startDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })} · ${workoutDaysCount}× per week`}
             </p>
           </div>
           <div className="text-right flex-shrink-0">
@@ -525,9 +529,7 @@ function WorkoutPreviewModal({ workout, loading, onClose, onStart }) {
       return `${ex.sets} set${ex.sets !== 1 ? 's' : ''} · ${dur}`;
     }
     const repStr = ex.reps != null ? String(ex.reps) : '—';
-    const wt = ex.recommendedWeight > 0
-      ? ` · ${ex.recommendedWeight}${ex.dumbbells === 2 ? ' lbs ea.' : ' lbs'}`
-      : '';
+    const wt = ex.recommendedWeight > 0 ? ` · ${ex.recommendedWeight} lbs` : '';
     return `${ex.sets} set${ex.sets !== 1 ? 's' : ''} · ${repStr} reps${wt}`;
   };
 
