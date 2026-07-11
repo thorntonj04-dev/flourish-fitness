@@ -83,6 +83,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     exerciseList.forEach((ex, idx) => {
       initialData[idx] = {
         exerciseName: ex.name,
+        muscleGroup: ex.muscleGroup || null,
         useDuration: ex.useDuration || false,
         durationMinutes: ex.durationMinutes || 0,
         durationSeconds: ex.durationSeconds || 30,

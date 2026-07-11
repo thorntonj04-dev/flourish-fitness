@@ -3,7 +3,16 @@ import { ref as dbRef, get, set, push } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
 import { db, storage, auth } from '../../firebase';
-import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check, Send } from 'lucide-react';
+import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check, Send, Sparkles } from 'lucide-react';
+import { EXERCISE_LIBRARY } from '../../data/exerciseLibrary';
+
+const BODY_GROUPS = ['chest', 'back', 'shoulders', 'arms', 'core', 'legs'];
+const GROUP_LABELS = { chest: 'Chest', back: 'Back', shoulders: 'Shoulders', arms: 'Arms', core: 'Core', legs: 'Legs' };
+const NAME_TO_GROUP = EXERCISE_LIBRARY.reduce((map, ex) => { map[ex.name] = ex.group; return map; }, {});
+
+function resolveGroup(exData) {
+  return exData.muscleGroup || NAME_TO_GROUP[exData.exerciseName] || 'other';
+}
 
 function useCountUp(target, duration = 750) {
   const [value, setValue] = React.useState(0);
@@ -247,6 +256,133 @@ export default function ClientProfile({ user, onProfileUpdate }) {
     return total;
   };
 
+  const getGroupVolumes = () => {
+    const totals = {};
+    BODY_GROUPS.forEach(g => { totals[g] = 0; });
+    history.forEach(session => {
+      if (!session.exercises) return;
+      Object.values(session.exercises).forEach(ex => {
+        const group = resolveGroup(ex);
+        if (!BODY_GROUPS.includes(group)) return;
+        (ex.sets || []).filter(s => s.completed).forEach(s => {
+          totals[group] += (s.weight || 0) * (s.reps || 0);
+        });
+      });
+    });
+    return totals;
+  };
+
+  const getBalanceInsight = (groupVolumes) => {
+    const entries = BODY_GROUPS.map(g => [g, groupVolumes[g] || 0]).filter(([, v]) => v > 0);
+    if (entries.length < 2) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    const total = entries.reduce((s, [, v]) => s + v, 0);
+    const [topGroup, topVol] = entries[0];
+    const topPct = Math.round((topVol / total) * 100);
+    const untrained = BODY_GROUPS.filter(g => !(groupVolumes[g] > 0));
+    if (untrained.length > 0) {
+      return {
+        icon: '🧭',
+        title: `${GROUP_LABELS[topGroup]} leads the way`,
+        text: `${topPct}% of your total volume. You haven't logged any ${untrained.map(g => GROUP_LABELS[g]).join(' or ')} work yet — worth adding some.`,
+      };
+    }
+    const [bottomGroup, bottomVol] = entries[entries.length - 1];
+    if (topVol / bottomVol >= 2.5) {
+      return {
+        icon: '⚖️',
+        title: `${GROUP_LABELS[topGroup]} vs ${GROUP_LABELS[bottomGroup]} imbalance`,
+        text: `You've lifted ${Math.round(topVol / bottomVol)}x more for ${GROUP_LABELS[topGroup].toLowerCase()} than ${GROUP_LABELS[bottomGroup].toLowerCase()}. A little more balance can help avoid overuse issues.`,
+      };
+    }
+    return {
+      icon: '⚖️',
+      title: 'Well-balanced training',
+      text: `${GROUP_LABELS[topGroup]} leads at ${topPct}% of volume, but your training is spread fairly evenly across muscle groups.`,
+    };
+  };
+
+  const getPushPullInsight = (groupVolumes) => {
+    const push = (groupVolumes.chest || 0) + (groupVolumes.shoulders || 0);
+    const pull = groupVolumes.back || 0;
+    if (push === 0 && pull === 0) return null;
+    if (pull === 0) {
+      return { icon: '🔙', title: 'No pulling volume yet', text: 'Chest and shoulder work is logged, but no back work yet. Rows or pulldowns help balance out pressing movements.' };
+    }
+    if (push === 0) {
+      return { icon: '🤝', title: 'No pushing volume yet', text: 'Back work is logged, but no chest or shoulder pressing yet. Adding some can round out your upper body.' };
+    }
+    const ratio = push / pull;
+    if (ratio >= 1.5) {
+      return { icon: '🔙', title: 'Push-heavy training', text: `You push ${ratio.toFixed(1)}x more than you pull. More rows or pull-ups can help offset shoulder strain from heavy pressing.` };
+    }
+    if (ratio <= 0.66) {
+      return { icon: '🤝', title: 'Pull-heavy training', text: `You pull ${(1 / ratio).toFixed(1)}x more than you push. Solid back development — balance it out with some pressing work.` };
+    }
+    return { icon: '🤝', title: 'Push/pull balance is solid', text: 'Your pushing and pulling volume are well matched — great for shoulder health.' };
+  };
+
+  const getMostImprovedLift = () => {
+    const byExercise = {};
+    history.forEach(session => {
+      if (!session.exercises || !session.startTime) return;
+      Object.values(session.exercises).forEach(ex => {
+        if (!ex.exerciseName) return;
+        const maxSet = (ex.sets || []).filter(s => s.completed && s.weight > 0).reduce((m, s) => Math.max(m, s.weight), 0);
+        if (maxSet <= 0) return;
+        if (!byExercise[ex.exerciseName]) byExercise[ex.exerciseName] = [];
+        byExercise[ex.exerciseName].push({ weight: maxSet, time: session.startTime });
+      });
+    });
+    let best = null;
+    Object.entries(byExercise).forEach(([name, entries]) => {
+      if (entries.length < 2) return;
+      entries.sort((a, b) => a.time - b.time);
+      const first = entries[0].weight;
+      const last = entries[entries.length - 1].weight;
+      const daySpan = (entries[entries.length - 1].time - entries[0].time) / 86400000;
+      if (first <= 0 || daySpan < 7) return;
+      const pctGain = ((last - first) / first) * 100;
+      if (pctGain > 0 && (!best || pctGain > best.pctGain)) {
+        best = { name, first, last, pctGain, daySpan };
+      }
+    });
+    return best;
+  };
+
+  const getVolumeTrend = () => {
+    const now = Date.now();
+    const day = 86400000;
+    let recent = 0, prior = 0;
+    history.forEach(session => {
+      if (!session.exercises || !session.startTime) return;
+      const age = now - session.startTime;
+      let vol = 0;
+      Object.values(session.exercises).forEach(ex => {
+        (ex.sets || []).filter(s => s.completed).forEach(s => { vol += (s.weight || 0) * (s.reps || 0); });
+      });
+      if (age >= 0 && age < 30 * day) recent += vol;
+      else if (age >= 30 * day && age < 60 * day) prior += vol;
+    });
+    if (prior <= 0) return null;
+    const pctChange = Math.round(((recent - prior) / prior) * 100);
+    return { recent, prior, pctChange };
+  };
+
+  const getFavoriteDay = () => {
+    const counts = {};
+    history.forEach(s => {
+      if (!s.startTime) return;
+      const day = new Date(s.startTime).toLocaleDateString('en-US', { weekday: 'long' });
+      counts[day] = (counts[day] || 0) + 1;
+    });
+    const entries = Object.entries(counts);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    if (entries[0][1] < 2) return null;
+    return { day: entries[0][0], count: entries[0][1] };
+  };
+
   const formatVolume = (lbs) => {
     if (lbs >= 1000000) return `${(lbs / 1000000).toFixed(1)}M`;
     if (lbs >= 1000) return `${Math.round(lbs / 1000)}K`;
@@ -292,6 +428,39 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   const nextAt = getNextLevelAt(totalWorkouts);
   const personalRecords = getPersonalRecords();
   const totalVolume = getTotalVolume();
+  const groupVolumes = getGroupVolumes();
+  const insights = [
+    getBalanceInsight(groupVolumes),
+    getPushPullInsight(groupVolumes),
+    (() => {
+      const trend = getVolumeTrend();
+      if (!trend) return null;
+      const up = trend.pctChange >= 0;
+      return {
+        icon: up ? '📈' : '📉',
+        title: `Volume ${up ? 'up' : 'down'} ${Math.abs(trend.pctChange)}% this month`,
+        text: `You lifted ${formatVolume(trend.recent)} lbs in the last 30 days vs ${formatVolume(trend.prior)} lbs the 30 days before that.`,
+      };
+    })(),
+    (() => {
+      const best = getMostImprovedLift();
+      if (!best) return null;
+      return {
+        icon: '🚀',
+        title: `${best.name} is climbing fast`,
+        text: `Up ${Math.round(best.pctGain)}% — from ${best.first} to ${best.last} lbs over ${Math.round(best.daySpan)} days.`,
+      };
+    })(),
+    (() => {
+      const fav = getFavoriteDay();
+      if (!fav) return null;
+      return {
+        icon: '📅',
+        title: `${fav.day} is your day`,
+        text: `You've completed more workouts on ${fav.day} than any other day of the week.`,
+      };
+    })(),
+  ].filter(Boolean);
   const animWorkouts = useCountUp(totalWorkouts);
   const animStreak   = useCountUp(stats?.currentStreak || 0, 600);
   const animVolume   = useCountUp(totalVolume, 900);
@@ -659,6 +828,41 @@ export default function ClientProfile({ user, onProfileUpdate }) {
         </div>
       )}
 
+      {/* ── Muscle group heatmap ───────────────────────────── */}
+      {totalVolume > 0 && (
+        <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-[#C6A45F]/15 flex items-center gap-2">
+            <Dumbbell className="w-5 h-5 text-emerald-500" />
+            <h3 className="font-bold text-gray-900 dark:text-[#d8e7de]">Muscle Balance</h3>
+            <span className="ml-auto text-xs text-gray-400 dark:text-[#d8e7de]/40">all-time volume</span>
+          </div>
+          <div className="p-5">
+            <MuscleHeatmap groupVolumes={groupVolumes} formatVolume={formatVolume} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Smart insights ─────────────────────────────────── */}
+      {insights.length > 0 && (
+        <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-[#C6A45F]/15 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-violet-500" />
+            <h3 className="font-bold text-gray-900 dark:text-[#d8e7de]">Smart Insights</h3>
+          </div>
+          <div className="divide-y divide-gray-50 dark:divide-[#C6A45F]/5">
+            {insights.map((insight, i) => (
+              <div key={i} className="flex gap-3 px-5 py-4">
+                <div className="text-2xl leading-none flex-shrink-0">{insight.icon}</div>
+                <div>
+                  <div className="font-bold text-gray-900 dark:text-[#d8e7de] text-sm mb-0.5">{insight.title}</div>
+                  <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60 leading-snug">{insight.text}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Body weight tracker ───────────────────────────── */}
       <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
         <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-2 min-w-0">
@@ -875,6 +1079,73 @@ function StatCard({ gradient, top, value, label, sub }) {
       <div className="text-2xl font-black text-white leading-tight">{value}</div>
       <div className="text-xs text-white/70 mt-0.5 font-medium">{label}</div>
       {sub && <div className="text-[10px] text-white/50 mt-1 leading-tight">{sub}</div>}
+    </div>
+  );
+}
+
+function MuscleHeatmap({ groupVolumes, formatVolume }) {
+  const maxVol = Math.max(1, ...BODY_GROUPS.map(g => groupVolumes[g] || 0));
+  const totalVol = BODY_GROUPS.reduce((sum, g) => sum + (groupVolumes[g] || 0), 0);
+  const opacityFor = (g) => {
+    const v = groupVolumes[g] || 0;
+    if (v <= 0) return 0.1;
+    return 0.22 + (v / maxVol) * 0.78;
+  };
+  const sorted = [...BODY_GROUPS].sort((a, b) => (groupVolumes[b] || 0) - (groupVolumes[a] || 0));
+  const NEUTRAL = 'text-gray-200 dark:text-white/10';
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center gap-5">
+      <svg viewBox="0 0 180 280" className="w-32 sm:w-36 h-auto flex-shrink-0" aria-label="Muscle group training volume diagram">
+        {/* head, neck, pelvis — not tracked */}
+        <circle cx="90" cy="18" r="15" fill="currentColor" className={NEUTRAL} />
+        <rect x="83" y="31" width="14" height="8" rx="3" fill="currentColor" className={NEUTRAL} />
+        <rect x="70" y="140" width="40" height="12" rx="4" fill="currentColor" className={NEUTRAL} />
+
+        {/* shoulders */}
+        <ellipse cx="50" cy="48" rx="14" ry="11" fill="#10b981" fillOpacity={opacityFor('shoulders')} />
+        <ellipse cx="130" cy="48" rx="14" ry="11" fill="#10b981" fillOpacity={opacityFor('shoulders')} />
+
+        {/* back (lats, shown as the outer torso edges) */}
+        <rect x="45" y="44" width="16" height="80" rx="8" fill="#10b981" fillOpacity={opacityFor('back')} />
+        <rect x="119" y="44" width="16" height="80" rx="8" fill="#10b981" fillOpacity={opacityFor('back')} />
+
+        {/* arms */}
+        <rect x="30" y="50" width="16" height="108" rx="8" fill="#10b981" fillOpacity={opacityFor('arms')} />
+        <rect x="134" y="50" width="16" height="108" rx="8" fill="#10b981" fillOpacity={opacityFor('arms')} />
+
+        {/* chest */}
+        <rect x="64" y="46" width="52" height="42" rx="12" fill="#10b981" fillOpacity={opacityFor('chest')} />
+
+        {/* core */}
+        <rect x="64" y="92" width="52" height="48" rx="10" fill="#10b981" fillOpacity={opacityFor('core')} />
+
+        {/* legs */}
+        <rect x="58" y="155" width="22" height="115" rx="10" fill="#10b981" fillOpacity={opacityFor('legs')} />
+        <rect x="100" y="155" width="22" height="115" rx="10" fill="#10b981" fillOpacity={opacityFor('legs')} />
+      </svg>
+
+      <div className="flex-1 w-full space-y-2">
+        {sorted.map(g => {
+          const v = groupVolumes[g] || 0;
+          const pct = totalVol > 0 ? Math.round((v / totalVol) * 100) : 0;
+          return (
+            <div key={g} className="flex items-center gap-2">
+              <div
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: '#10b981', opacity: v > 0 ? (0.22 + (v / maxVol) * 0.78) : 0.15 }}
+              />
+              <div className="text-sm text-gray-700 dark:text-[#d8e7de]/80 flex-1">{GROUP_LABELS[g]}</div>
+              <div className="text-sm font-bold text-gray-900 dark:text-[#d8e7de] tabular-nums">
+                {v > 0 ? `${formatVolume(v)} lbs` : '—'}
+              </div>
+              <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 w-9 text-right tabular-nums">
+                {v > 0 ? `${pct}%` : ''}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
