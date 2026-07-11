@@ -46,16 +46,13 @@ export default function ManageClients() {
 
       if (usersSnap.exists()) {
         const usersData = usersSnap.val();
-        const clientList = Object.entries(usersData)
-          .filter(([, u]) => u.role === 'client')
-          .map(([id, u]) => ({ id, ...u }));
-
-        // Let an admin assign programs/workouts to their own account too,
-        // even though they aren't a 'client' in the users list.
         const selfUid = auth.currentUser?.uid;
-        if (selfUid && usersData[selfUid] && !clientList.some(c => c.id === selfUid)) {
-          clientList.push({ id: selfUid, ...usersData[selfUid], isSelf: true });
-        }
+
+        // Include clients and other admins (e.g. a co-trainer) so programs/
+        // workouts can be assigned to any account, not just plain clients.
+        const clientList = Object.entries(usersData)
+          .filter(([, u]) => u.role === 'client' || u.role === 'admin')
+          .map(([id, u]) => ({ id, ...u, isSelf: id === selfUid }));
 
         clientList.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
         setClients(clientList);

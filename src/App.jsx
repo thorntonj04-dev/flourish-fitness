@@ -20,6 +20,7 @@ import ManageClients from './components/admin/ManageClients';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AdminInquiries from './components/admin/AdminInquiries';
 import AdminFeedback from './components/admin/AdminFeedback';
+import AssignUserRoles from './components/admin/AssignUserRoles';
 
 // ============================================
 // CLIENT COMPONENTS
@@ -92,7 +93,7 @@ export default function App() {
             const userData = snapshot.val();
             const role = userData.role || 'client';
             setUserRole(role);
-            setIsDualRole(firebaseUser.email.toLowerCase() === 'thorntonj04@outlook.com');
+            setIsDualRole(role === 'admin');
             let resolvedName = userData.name || firebaseUser.email.split('@')[0];
             if (resolvedName === 'jlthornton07') {
               resolvedName = 'Lindsey';
@@ -120,7 +121,7 @@ export default function App() {
             });
             setUserName(name);
             setUserRole(role);
-            setIsDualRole(firebaseUser.email.toLowerCase() === 'thorntonj04@outlook.com');
+            setIsDualRole(role === 'admin');
             if (role === 'client') setCurrentView('this-week');
             setNeedsSetup(false);
           }
@@ -368,6 +369,9 @@ export default function App() {
 
             {/* ========== ADMIN: FEEDBACK ========== */}
             {currentView === 'feedback' && userRole === 'admin' && <AdminFeedback />}
+
+            {/* ========== ADMIN: ROLES ========== */}
+            {currentView === 'roles' && userRole === 'admin' && <AssignUserRoles />}
 
             {/* ========== CLIENT: THIS WEEK ========== */}
             {currentView === 'this-week' && userRole === 'client' && (
