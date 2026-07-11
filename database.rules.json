@@ -28,6 +28,9 @@
         ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
         "weeklySchedule": {
           ".write": "auth != null && auth.uid === $uid"
+        },
+        "adhocSchedule": {
+          ".write": "auth != null && auth.uid === $uid"
         }
       }
     },
@@ -92,7 +95,10 @@
       ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
       "$clientId": {
         ".read": "auth != null && auth.uid === $clientId",
-        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        "adhoc": {
+          ".write": "auth != null && auth.uid === $clientId"
+        }
       }
     }
 

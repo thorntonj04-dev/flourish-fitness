@@ -77,6 +77,10 @@ export default function AssignProgramModal({ client, programs, existingAssignmen
         currentWeek: 1,
         weeklySchedule: schedule,
       };
+      // Preserve any client-set ad-hoc single-day assignments across reassignment.
+      if (existingAssignment?.adhocSchedule) {
+        assignmentData.adhocSchedule = existingAssignment.adhocSchedule;
+      }
 
       await set(dbRef(db, `programAssignments/${client.id}`), assignmentData);
       onSaved();

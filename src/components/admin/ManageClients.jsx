@@ -284,7 +284,7 @@ export default function ManageClients() {
                       ) : (() => {
                         const sched = clientSchedules[client.id];
                         const schedDays = sched
-                          ? Object.values(sched).filter(Boolean).length
+                          ? Object.entries(sched).filter(([k, v]) => k !== 'adhoc' && Boolean(v)).length
                           : 0;
                         return schedDays > 0 ? (
                           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3">

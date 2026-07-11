@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ref as dbRef, get, update } from 'firebase/database';
 import { db } from '../../firebase';
-import { Play, CheckCircle, Layers, CalendarDays, ChevronRight, SlidersHorizontal, Dumbbell, Eye, X } from 'lucide-react';
+import { Play, CheckCircle, Layers, CalendarDays, ChevronRight, SlidersHorizontal, Dumbbell, Eye, X, Plus } from 'lucide-react';
 import ScheduleAdjustModal from './ScheduleAdjustModal';
+import WorkoutPickerModal from '../admin/WorkoutPickerModal';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -56,13 +57,17 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
   const [assignment, setAssignment] = useState(null);
   const [program, setProgram] = useState(null);
   const [directSchedule, setDirectSchedule] = useState(null);
+  const [directAdhoc, setDirectAdhoc] = useState({});
   const [workoutHistory, setWorkoutHistory] = useState([]);
   const [weeklySchedule, setWeeklySchedule] = useState({});
+  const [adhocSchedule, setAdhocSchedule] = useState({});
+  const [workoutsLibrary, setWorkoutsLibrary] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdjust, setShowAdjust] = useState(false);
   const [showNextWeek, setShowNextWeek] = useState(false);
   const [previewWorkout, setPreviewWorkout] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [pickerDay, setPickerDay] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -71,14 +76,24 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
   const loadData = async () => {
     setLoading(true);
     try {
-      const assignSnap = await get(dbRef(db, `programAssignments/${user.uid}`));
+      const [assignSnap, workoutsSnap] = await Promise.all([
+        get(dbRef(db, `programAssignments/${user.uid}`)),
+        get(dbRef(db, 'workouts')),
+      ]);
+      if (workoutsSnap.exists()) {
+        setWorkoutsLibrary(Object.entries(workoutsSnap.val()).map(([id, w]) => ({ id, ...w })));
+      }
+
       if (!assignSnap.exists()) {
         const [schedSnap, historySnap] = await Promise.all([
           get(dbRef(db, `clientSchedules/${user.uid}`)),
           get(dbRef(db, `workout-history/${user.uid}`)),
         ]);
         if (schedSnap.exists()) {
-          setDirectSchedule(schedSnap.val());
+          const sched = schedSnap.val();
+          const { adhoc, ...rest } = sched;
+          setDirectSchedule(rest);
+          setDirectAdhoc(adhoc || {});
           if (historySnap.exists()) {
             setWorkoutHistory(Object.values(historySnap.val()).filter(h => h.completed));
           }
@@ -121,6 +136,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
 
       setAssignment(assign);
       setWeeklySchedule(assign.weeklySchedule || {});
+      setAdhocSchedule(assign.adhocSchedule || {});
       if (programSnap.exists()) setProgram(programSnap.val());
 
       if (historySnap.exists()) {
@@ -168,22 +184,50 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
     weekBase.map(day => {
       const dayId = weeklySchedule[day.name] || null;
       const phaseDay = dayId ? phaseDaysArray.find(d => d.id === dayId) : null;
-      const isCompleted = phaseDay?.workoutId
+      const adhoc = !phaseDay ? adhocSchedule[day.dateStr] : null;
+      const workoutId = phaseDay?.workoutId ?? adhoc?.workoutId ?? null;
+      const workoutName = phaseDay?.workoutName ?? adhoc?.workoutName ?? null;
+      const isCompleted = workoutId
         ? workoutHistory.some(h =>
-            h.workoutId === phaseDay.workoutId &&
+            h.workoutId === workoutId &&
             new Date(h.startTime).toISOString().split('T')[0] === day.dateStr
           )
         : false;
       return {
         ...day,
         dayId,
-        workoutId: phaseDay?.workoutId ?? null,
-        workoutName: phaseDay?.workoutName ?? null,
-        dayLabel: phaseDay?.label ?? null,
-        isRest: !phaseDay,
+        workoutId,
+        workoutName,
+        dayLabel: phaseDay?.label ?? (adhoc ? 'Ad-hoc' : null),
+        isRest: !phaseDay && !adhoc,
+        isAdhoc: !!adhoc,
         isCompleted,
       };
     });
+
+  const handleAssignAdhoc = async (day, workout) => {
+    const entry = { workoutId: workout.id, workoutName: workout.name };
+    setAdhocSchedule(prev => ({ ...prev, [day.dateStr]: entry }));
+    setPickerDay(null);
+    try {
+      await update(dbRef(db, `programAssignments/${user.uid}/adhocSchedule`), { [day.dateStr]: entry });
+    } catch (err) {
+      console.error('Error saving ad-hoc workout:', err);
+    }
+  };
+
+  const handleRemoveAdhoc = async (day) => {
+    setAdhocSchedule(prev => {
+      const next = { ...prev };
+      delete next[day.dateStr];
+      return next;
+    });
+    try {
+      await update(dbRef(db, `programAssignments/${user.uid}/adhocSchedule`), { [day.dateStr]: null });
+    } catch (err) {
+      console.error('Error removing ad-hoc workout:', err);
+    }
+  };
 
   const weekDays = buildWeekDays(getThisWeek());
   const nextWeekDays = buildWeekDays(getNextWeek());
@@ -211,7 +255,11 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
     if (directSchedule) {
       return (
         <DirectScheduleView
+          userId={user.uid}
           directSchedule={directSchedule}
+          directAdhoc={directAdhoc}
+          setDirectAdhoc={setDirectAdhoc}
+          workoutsLibrary={workoutsLibrary}
           workoutHistory={workoutHistory}
           onStartWorkout={onStartWorkout}
           readOnly={readOnly}
@@ -333,20 +381,17 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
         </div>
 
         <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
-          {displayDays.filter(d => !d.isRest).map(day => (
+          {displayDays.map(day => (
             <DayRow
               key={day.name}
               day={day}
               onStart={!showNextWeek && !readOnly ? () => onStartWorkout(day.workoutId) : undefined}
               onPreview={day.workoutId ? () => handlePreview(day.workoutId) : undefined}
+              onAddAdhoc={!readOnly ? () => setPickerDay(day) : undefined}
+              onRemoveAdhoc={!readOnly ? () => handleRemoveAdhoc(day) : undefined}
               readOnly={readOnly}
             />
           ))}
-          {displayDays.filter(d => !d.isRest).length === 0 && (
-            <div className="px-4 py-6 text-center text-sm text-gray-400 dark:text-[#d8e7de]/40">
-              No workouts scheduled — tap Adjust to set your schedule.
-            </div>
-          )}
         </div>
       </div>
 
@@ -377,13 +422,23 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
           }
         />
       )}
+
+      {/* Ad-hoc workout picker */}
+      {pickerDay && (
+        <WorkoutPickerModal
+          workouts={workoutsLibrary}
+          currentWorkoutId={null}
+          onSelect={(workout) => handleAssignAdhoc(pickerDay, workout)}
+          onClose={() => setPickerDay(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Day row ──────────────────────────────────────────────────────────────────
 
-function DayRow({ day, onStart, onPreview, readOnly = false }) {
+function DayRow({ day, onStart, onPreview, onAddAdhoc, onRemoveAdhoc, readOnly = false }) {
   const dayAbbr = day.name.slice(0, 3).toUpperCase();
 
   const EyeBtn = () => onPreview ? (
@@ -392,6 +447,16 @@ function DayRow({ day, onStart, onPreview, readOnly = false }) {
       className="p-2.5 rounded-xl text-gray-400 dark:text-[#d8e7de]/40 active:bg-gray-100 dark:active:bg-white/10 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
     >
       <Eye className="w-4 h-4" />
+    </button>
+  ) : null;
+
+  const RemoveAdhocBtn = () => (day.isAdhoc && onRemoveAdhoc) ? (
+    <button
+      onClick={onRemoveAdhoc}
+      title="Remove ad-hoc workout"
+      className="p-2.5 rounded-xl text-gray-400 dark:text-[#d8e7de]/40 active:bg-gray-100 dark:active:bg-white/10 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
+    >
+      <X className="w-4 h-4" />
     </button>
   ) : null;
 
@@ -430,6 +495,7 @@ function DayRow({ day, onStart, onPreview, readOnly = false }) {
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <EyeBtn />
+          <RemoveAdhocBtn />
           {readOnly ? (
             <span className="text-xs text-violet-400 font-semibold">Preview</span>
           ) : onStart ? (
@@ -454,9 +520,18 @@ function DayRow({ day, onStart, onPreview, readOnly = false }) {
           <div className={`text-xs font-bold ${day.isToday ? 'text-gray-500 dark:text-[#d8e7de]/60' : 'text-gray-300 dark:text-[#d8e7de]/30'}`}>{dayAbbr}</div>
           <div className={`text-lg font-bold ${day.isToday ? 'text-gray-600 dark:text-[#d8e7de]/70' : 'text-gray-300 dark:text-[#d8e7de]/30'}`}>{day.date.getDate()}</div>
         </div>
-        <div className={`text-sm ${day.isToday ? 'text-gray-500 dark:text-[#d8e7de]/60 font-medium' : 'text-gray-300 dark:text-[#d8e7de]/30'}`}>
+        <div className={`flex-1 text-sm ${day.isToday ? 'text-gray-500 dark:text-[#d8e7de]/60 font-medium' : 'text-gray-300 dark:text-[#d8e7de]/30'}`}>
           Rest{day.isToday ? ' — Take it easy today' : ''}
         </div>
+        {!readOnly && onAddAdhoc && (
+          <button
+            onClick={onAddAdhoc}
+            title="Add a workout for this day"
+            className="p-2.5 rounded-xl text-emerald-500 dark:text-emerald-400 active:bg-emerald-50 dark:active:bg-emerald-900/20 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        )}
       </div>
     );
   }
@@ -497,6 +572,7 @@ function DayRow({ day, onStart, onPreview, readOnly = false }) {
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <EyeBtn />
+        <RemoveAdhocBtn />
         {isFuture && !readOnly && onStart && (
           <button
             onClick={onStart}
@@ -612,9 +688,10 @@ function WorkoutPreviewModal({ workout, loading, onClose, onStart }) {
 
 // ─── Direct schedule view (no program) ────────────────────────────────────────
 
-function DirectScheduleView({ directSchedule, workoutHistory, onStartWorkout, readOnly }) {
+function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdhoc, workoutsLibrary, workoutHistory, onStartWorkout, readOnly }) {
   const [previewWorkout, setPreviewWorkout] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [pickerDay, setPickerDay] = useState(null);
 
   const handlePreview = async (workoutId) => {
     setPreviewLoading(true);
@@ -633,21 +710,49 @@ function DirectScheduleView({ directSchedule, workoutHistory, onStartWorkout, re
 
   const weekDays = getThisWeek().map(day => {
     const entry = directSchedule[day.name] || null;
-    const isCompleted = entry?.workoutId
+    const adhoc = !entry ? directAdhoc[day.dateStr] : null;
+    const workoutId = entry?.workoutId ?? adhoc?.workoutId ?? null;
+    const workoutName = entry?.workoutName ?? adhoc?.workoutName ?? null;
+    const isCompleted = workoutId
       ? workoutHistory.some(h =>
-          h.workoutId === entry.workoutId &&
+          h.workoutId === workoutId &&
           new Date(h.startTime).toISOString().split('T')[0] === day.dateStr
         )
       : false;
     return {
       ...day,
-      workoutId: entry?.workoutId ?? null,
-      workoutName: entry?.workoutName ?? null,
-      dayLabel: null,
-      isRest: !entry,
+      workoutId,
+      workoutName,
+      dayLabel: adhoc ? 'Ad-hoc' : null,
+      isRest: !entry && !adhoc,
+      isAdhoc: !!adhoc,
       isCompleted,
     };
   });
+
+  const handleAssignAdhoc = async (day, workout) => {
+    const entry = { workoutId: workout.id, workoutName: workout.name };
+    setDirectAdhoc(prev => ({ ...prev, [day.dateStr]: entry }));
+    setPickerDay(null);
+    try {
+      await update(dbRef(db, `clientSchedules/${userId}/adhoc`), { [day.dateStr]: entry });
+    } catch (err) {
+      console.error('Error saving ad-hoc workout:', err);
+    }
+  };
+
+  const handleRemoveAdhoc = async (day) => {
+    setDirectAdhoc(prev => {
+      const next = { ...prev };
+      delete next[day.dateStr];
+      return next;
+    });
+    try {
+      await update(dbRef(db, `clientSchedules/${userId}/adhoc`), { [day.dateStr]: null });
+    } catch (err) {
+      console.error('Error removing ad-hoc workout:', err);
+    }
+  };
 
   const todayDay = weekDays.find(d => d.isToday);
   const completedCount = weekDays.filter(d => d.isCompleted).length;
@@ -696,20 +801,17 @@ function DirectScheduleView({ directSchedule, workoutHistory, onStartWorkout, re
           <span className="text-sm font-bold text-gray-700 dark:text-[#d8e7de]/80">Your Schedule</span>
         </div>
         <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
-          {weekDays.filter(d => !d.isRest).map(day => (
+          {weekDays.map(day => (
             <DayRow
               key={day.name}
               day={day}
               onStart={!readOnly ? () => onStartWorkout(day.workoutId) : undefined}
               onPreview={day.workoutId ? () => handlePreview(day.workoutId) : undefined}
+              onAddAdhoc={!readOnly ? () => setPickerDay(day) : undefined}
+              onRemoveAdhoc={!readOnly ? () => handleRemoveAdhoc(day) : undefined}
               readOnly={readOnly}
             />
           ))}
-          {workoutDaysCount === 0 && (
-            <div className="px-4 py-6 text-center text-sm text-gray-400 dark:text-[#d8e7de]/40">
-              No workouts scheduled this week.
-            </div>
-          )}
         </div>
       </div>
 
@@ -724,6 +826,16 @@ function DirectScheduleView({ directSchedule, workoutHistory, onStartWorkout, re
               ? () => { setPreviewWorkout(null); onStartWorkout(previewWorkout.id); }
               : undefined
           }
+        />
+      )}
+
+      {/* Ad-hoc workout picker */}
+      {pickerDay && (
+        <WorkoutPickerModal
+          workouts={workoutsLibrary}
+          currentWorkoutId={null}
+          onSelect={(workout) => handleAssignAdhoc(pickerDay, workout)}
+          onClose={() => setPickerDay(null)}
         />
       )}
     </div>

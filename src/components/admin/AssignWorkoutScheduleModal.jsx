@@ -43,8 +43,10 @@ export default function AssignWorkoutScheduleModal({ client, existingSchedule, o
   const handleSave = async () => {
     setSaving(true);
     try {
-      await set(dbRef(db, `clientSchedules/${client.id}`), schedule);
-      onSaved(schedule);
+      // Preserve any client-set ad-hoc day assignments — this save only manages the recurring weekly days.
+      const toSave = existingSchedule?.adhoc ? { ...schedule, adhoc: existingSchedule.adhoc } : schedule;
+      await set(dbRef(db, `clientSchedules/${client.id}`), toSave);
+      onSaved(toSave);
     } catch (err) {
       console.error('Error saving schedule:', err);
       alert('Failed to save schedule. Please try again.');
