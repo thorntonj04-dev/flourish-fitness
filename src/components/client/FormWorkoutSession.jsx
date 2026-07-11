@@ -640,6 +640,17 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         </div>
       </div>
 
+      {/* Minimized rest timer sits in-flow, stacked above "Coming up next" so it
+          never covers it — only the full (non-minimized) timer takes over the screen. */}
+      {restTimer && (
+        <RestTimerOverlay
+          seconds={restTimer.seconds}
+          label={restTimer.label}
+          onSkip={handleRestDone}
+          onDone={handleRestDone}
+        />
+      )}
+
       {/* ── Coming up next / Complete ──────────────────────────────────────── */}
       <div className="bg-white dark:bg-[#1E3328] border-t border-gray-200/60 dark:border-[#C6A45F]/20 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_20px_rgba(0,0,0,0.3)] flex-shrink-0">
         {nextExercise ? (
@@ -672,15 +683,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
           </div>
         )}
       </div>
-
-      {restTimer && (
-        <RestTimerOverlay
-          seconds={restTimer.seconds}
-          label={restTimer.label}
-          onSkip={handleRestDone}
-          onDone={handleRestDone}
-        />
-      )}
 
       {removeExerciseConfirm !== null && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">

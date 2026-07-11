@@ -20,7 +20,7 @@ export default function AboutModal({ isOpen, onClose }) {
     // Modal Backdrop - Dark overlay that covers the screen
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       {/* Modal Container - The actual content box */}
-      <div className="bg-white dark:bg-[#1E3328] rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white dark:bg-[#1E3328] rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90svh] overflow-hidden">
         
         {/* Header Section - Title and close button */}
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6 relative">
@@ -43,7 +43,7 @@ export default function AboutModal({ isOpen, onClose }) {
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)] p-8">
+        <div className="overflow-y-auto max-h-[calc(90svh-120px)] p-8">
           
           {/* Introduction Section */}
           <div className="prose prose-lg max-w-none dark:prose-invert mb-8">

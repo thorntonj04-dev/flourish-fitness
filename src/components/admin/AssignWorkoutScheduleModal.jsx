@@ -59,10 +59,7 @@ export default function AssignWorkoutScheduleModal({ client, existingSchedule, o
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div
-        className="bg-white dark:bg-[#1E3328] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md flex flex-col"
-        style={{ maxHeight: '90vh' }}
-      >
+      <div className="bg-white dark:bg-[#1E3328] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md flex flex-col max-h-[90svh]">
         {/* Header */}
         <div className="p-5 border-b border-gray-200 dark:border-[#C6A45F]/25 flex items-center justify-between flex-shrink-0">
           <div>

@@ -1023,7 +1023,7 @@ export default function WorkoutBuilder() {
         {/* Templates modal */}
         {showTemplates && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white dark:bg-[#1E3328] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="bg-white dark:bg-[#1E3328] rounded-2xl w-full max-w-2xl max-h-[85svh] flex flex-col">
               <div className="p-5 border-b border-gray-200 dark:border-[#C6A45F]/25 flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-[#d8e7de]">Workout Templates</h3>
@@ -1085,7 +1085,7 @@ export default function WorkoutBuilder() {
         {/* Exercise Library modal */}
         {showExerciseLibrary && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white dark:bg-[#1E3328] rounded-2xl w-full max-w-xl max-h-[85vh] flex flex-col">
+            <div className="bg-white dark:bg-[#1E3328] rounded-2xl w-full max-w-xl max-h-[85svh] flex flex-col">
               <div className="p-5 border-b border-gray-200 dark:border-[#C6A45F]/25 flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 dark:text-[#d8e7de]">Exercise Library</h3>

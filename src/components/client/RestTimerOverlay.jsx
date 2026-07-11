@@ -50,7 +50,7 @@ export default function RestTimerOverlay({ seconds = 30, label, onSkip, onDone }
 
   if (minimized) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-emerald-500 dark:bg-emerald-600 flex items-center justify-between px-5 py-3 shadow-xl">
+      <div className="flex-shrink-0 bg-emerald-500 dark:bg-emerald-600 flex items-center justify-between px-5 py-3 shadow-xl relative z-10">
         <span className="text-white text-sm font-semibold truncate mr-3">{label}</span>
         <div className="flex items-center gap-4 flex-shrink-0">
           <span className="text-white font-bold text-xl tabular-nums">{remaining}s</span>

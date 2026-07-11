@@ -1027,7 +1027,7 @@ export default function ClientProfile({ user, onProfileUpdate }) {
         >
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div
-            className="relative w-full bg-white dark:bg-[#0d1a12] rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto scrollbar-hide"
+            className="relative w-full bg-white dark:bg-[#0d1a12] rounded-t-3xl shadow-2xl max-h-[85svh] overflow-y-auto scrollbar-hide"
             onClick={e => e.stopPropagation()}
           >
             {/* Drag handle */}

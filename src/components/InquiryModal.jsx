@@ -64,7 +64,7 @@ export default function InquiryModal({ onClose }) {
         style={{
           background: '#0f1a14',
           border: '1px solid rgba(198,164,95,0.3)',
-          maxHeight: '92vh',
+          maxHeight: '92svh',
         }}
       >
         {/* Sticky header */}

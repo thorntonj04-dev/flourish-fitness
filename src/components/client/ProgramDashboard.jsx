@@ -610,11 +610,8 @@ function WorkoutPreviewModal({ workout, loading, onClose, onStart }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end">
-      <div
-        className="w-full bg-white dark:bg-[#1E3328] rounded-t-3xl flex flex-col"
-        style={{ maxHeight: '88vh' }}
-      >
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end">
+      <div className="w-full bg-white dark:bg-[#1E3328] rounded-t-3xl flex flex-col max-h-[88svh]">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 dark:border-[#C6A45F]/15 flex-shrink-0">
           <div className="flex-1 min-w-0 pr-3">
