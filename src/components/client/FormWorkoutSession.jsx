@@ -285,12 +285,37 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
 
 
+  // Exercises marked "one arm per set" are performed on both arms per set, but only
+  // entered once — duplicate each set into two records (one per arm) at save time so
+  // every downstream volume/history calculation is correct without needing its own
+  // multiplier logic.
+  const buildFinalSessionData = () => {
+    const final = {};
+    exercises.forEach((ex, idx) => {
+      const data = sessionData[idx];
+      if (!data) return;
+      if (!ex.oneArmPerSet) {
+        final[idx] = data;
+        return;
+      }
+      const doubledSets = [];
+      data.sets.forEach(s => {
+        doubledSets.push({ ...s, setNumber: doubledSets.length + 1 });
+        doubledSets.push({ ...s, setNumber: doubledSets.length + 1 });
+      });
+      final[idx] = { ...data, sets: doubledSets };
+    });
+    return final;
+  };
+
   const handleCompleteWorkout = async () => {
+    const finalData = buildFinalSessionData();
+    setSessionData(finalData);
     if (!previewMode) {
       const endTime = Date.now();
       if (sessionId) {
         await update(dbRef(db, `workout-history/${userId}/${sessionId}`), {
-          completed: true, endTime, duration: Math.round((endTime - startTime) / 1000), exercises: sessionData,
+          completed: true, endTime, duration: Math.round((endTime - startTime) / 1000), exercises: finalData,
         });
       }
       await updateUserStats();

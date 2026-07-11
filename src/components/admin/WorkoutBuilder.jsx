@@ -137,6 +137,7 @@ export default function WorkoutBuilder() {
   }, [quickAddSearch, quickAddMuscle]);
 
   const handleAddFromLibrary = (name, group) => {
+    const isOneArm = /\b(one|single)[\s-]arm\b/i.test(name);
     const newExercise = {
       name,
       muscleGroup: group,
@@ -149,6 +150,7 @@ export default function WorkoutBuilder() {
       useDuration: false,
       durationMinutes: 0,
       durationSeconds: 30,
+      oneArmPerSet: isOneArm,
       tempId: Date.now() + Math.random(),
     };
     setCurrentWorkout(prev => ({ ...prev, exercises: [...prev.exercises, newExercise] }));
@@ -635,6 +637,9 @@ export default function WorkoutBuilder() {
                           {exercise.supersetGroupId && (
                             <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">SS</span>
                           )}
+                          {exercise.oneArmPerSet && (
+                            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">1-ARM</span>
+                          )}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5">
                           {exercise.useDuration
@@ -843,6 +848,21 @@ export default function WorkoutBuilder() {
                               min="0" step="5"
                             />
                           </div>
+
+                          <label className="flex items-center gap-2.5 py-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!exercise.oneArmPerSet}
+                              onChange={(e) => handleUpdateExercise(idx, 'oneArmPerSet', e.target.checked)}
+                              className="w-5 h-5 rounded accent-emerald-500 flex-shrink-0"
+                            />
+                            <span className="text-sm font-semibold text-gray-600 dark:text-[#d8e7de]/80">One arm per set</span>
+                          </label>
+                          {exercise.oneArmPerSet && (
+                            <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 -mt-2">
+                              Each set is logged once but counted for both arms — history and volume will record it twice.
+                            </p>
+                          )}
                         </>
                       )}
 
