@@ -30,10 +30,10 @@ export default function ScheduleAdjustModal({ userId, currentSchedule, available
   const assignedCount = Object.values(schedule).filter(Boolean).length;
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white dark:bg-[#1E3328] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm">
+    <div className="fixed inset-0 bg-black/60 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white dark:bg-[#1E3328] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-sm max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="p-5 border-b border-gray-200 dark:border-[#C6A45F]/25 flex items-center justify-between">
+        <div className="p-5 border-b border-gray-200 dark:border-[#C6A45F]/25 flex items-center justify-between flex-shrink-0">
           <div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-[#d8e7de]">Adjust My Schedule</h3>
             <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5">{assignedCount} workouts this week</p>
@@ -44,7 +44,7 @@ export default function ScheduleAdjustModal({ userId, currentSchedule, available
         </div>
 
         {/* Schedule picker */}
-        <div className="p-5 space-y-2">
+        <div className="overflow-y-auto flex-1 p-5 space-y-2">
           {DAYS_OF_WEEK.map(dayName => (
             <div key={dayName} className="flex items-center gap-3">
               <div className="w-10 text-xs font-bold text-gray-400 dark:text-[#d8e7de]/50 uppercase flex-shrink-0">
@@ -71,7 +71,7 @@ export default function ScheduleAdjustModal({ userId, currentSchedule, available
         </div>
 
         {/* Save */}
-        <div className="p-4 pt-0">
+        <div className="p-4 pt-3 border-t border-gray-100 dark:border-[#C6A45F]/15 flex-shrink-0">
           <button
             onClick={handleSave}
             disabled={saving}
