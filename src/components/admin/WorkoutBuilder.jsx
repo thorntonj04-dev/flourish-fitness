@@ -269,10 +269,17 @@ export default function WorkoutBuilder() {
   };
 
   const addToSuperset = (idxA, idxB) => {
-    const groupId = currentWorkout.exercises[idxA]?.supersetGroupId || `ss_${Date.now()}`;
-    let updated = currentWorkout.exercises.map((ex, i) =>
-      i === idxA || i === idxB ? { ...ex, supersetGroupId: groupId } : ex
-    );
+    const oldGroupA = currentWorkout.exercises[idxA]?.supersetGroupId;
+    const oldGroupB = currentWorkout.exercises[idxB]?.supersetGroupId;
+    const groupId = oldGroupA || oldGroupB || `ss_${Date.now()}`;
+    // Merge: anyone already in A's or B's group joins the same unified group.
+    let updated = currentWorkout.exercises.map((ex, i) => {
+      if (i === idxA || i === idxB) return { ...ex, supersetGroupId: groupId };
+      if ((oldGroupA && ex.supersetGroupId === oldGroupA) || (oldGroupB && ex.supersetGroupId === oldGroupB)) {
+        return { ...ex, supersetGroupId: groupId };
+      }
+      return ex;
+    });
 
     // Keep every member of the group (2, 3, or more) contiguous in the list.
     const groupIndices = updated
@@ -628,11 +635,6 @@ export default function WorkoutBuilder() {
                           {exercise.supersetGroupId && (
                             <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">SS</span>
                           )}
-                          {exercise.dumbbells && (
-                            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">
-                              DB{exercise.dumbbells === 2 ? '×2' : '×1'}
-                            </span>
-                          )}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5">
                           {exercise.useDuration
@@ -841,33 +843,6 @@ export default function WorkoutBuilder() {
                               min="0" step="5"
                             />
                           </div>
-
-                          {/* Dumbbell picker */}
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-600 dark:text-[#d8e7de]/80 mb-2">Equipment</label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {[
-                                { val: null, label: 'Barbell / Machine' },
-                                { val: 1, label: '1 Dumbbell' },
-                                { val: 2, label: '2 Dumbbells' },
-                              ].map(({ val, label }) => (
-                                <button
-                                  key={String(val)}
-                                  onClick={() => handleUpdateExercise(idx, 'dumbbells', val)}
-                                  className={`py-2.5 rounded-xl text-xs font-semibold min-h-[44px] transition ${
-                                    (exercise.dumbbells ?? null) === val
-                                      ? 'bg-emerald-500 text-white'
-                                      : 'bg-gray-100 dark:bg-[#0a0a0a]/40 text-gray-700 dark:text-[#d8e7de]/80'
-                                  }`}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                            {exercise.dumbbells === 2 && (
-                              <p className="text-xs text-blue-500 dark:text-blue-400 mt-1.5">Weight entered per dumbbell — total volume calculated ×2.</p>
-                            )}
-                          </div>
                         </>
                       )}
 
@@ -924,7 +899,7 @@ export default function WorkoutBuilder() {
                             const partners = currentWorkout.exercises.filter((ex, i) => i !== idx && ex.supersetGroupId === exercise.supersetGroupId);
                             const available = currentWorkout.exercises
                               .map((ex, i) => ({ ex, i }))
-                              .filter(({ ex, i }) => i !== idx && !ex.supersetGroupId);
+                              .filter(({ ex, i }) => i !== idx && ex.supersetGroupId !== exercise.supersetGroupId);
                             return (
                               <div>
                                 <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-xl">
@@ -961,7 +936,7 @@ export default function WorkoutBuilder() {
                           (() => {
                             const available = currentWorkout.exercises
                               .map((ex, i) => ({ ex, i }))
-                              .filter(({ ex, i }) => i !== idx && !ex.supersetGroupId);
+                              .filter(({ ex, i }) => i !== idx);
                             if (available.length === 0) {
                               return <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 italic">No available exercises to pair with.</p>;
                             }

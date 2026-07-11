@@ -537,10 +537,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
               {last && last.weight > 0 && (
                 <div className="mt-1.5">
                   <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
-                    Best: {exercise.useDuration
-                      ? `${last.weight} lbs`
-                      : `${last.weight}${exercise.dumbbells === 2 ? ' ea.' : ' lbs'}`
-                    }
+                    Best: {last.weight} lbs
                   </span>
                 </div>
               )}
@@ -610,7 +607,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                 <div className="flex items-center gap-2 px-1 pb-1">
                   <span className="w-8 flex-shrink-0" />
                   <span className="w-24 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">
-                    {exercise.dumbbells === 2 ? 'lbs ea.' : 'lbs'}
+                    lbs
                   </span>
                   <span className="w-5 flex-shrink-0" />
                   <span className="w-20 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">
@@ -629,7 +626,6 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                     onComplete={() => completeSet(currentExIdx, setIdx)}
                     onWeightChange={v => updateSet(currentExIdx, setIdx, 'weight', v)}
                     onRepsChange={v => updateSet(currentExIdx, setIdx, 'reps', v)}
-                    dumbbells={exercise.dumbbells}
                     useDuration={exData.useDuration}
                     durationMinutes={exData.durationMinutes}
                     durationSeconds={exData.durationSeconds}
@@ -718,7 +714,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
 // ─── Set row ──────────────────────────────────────────────────────────────────
 
-function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useDuration = false, durationMinutes = 0, durationSeconds = 30 }) {
+function SetRow({ set, onComplete, onWeightChange, onRepsChange, useDuration = false, durationMinutes = 0, durationSeconds = 30 }) {
   const [rippleKey, setRippleKey] = React.useState(null);
 
   const handleCheck = () => {
@@ -768,11 +764,6 @@ function SetRow({ set, onComplete, onWeightChange, onRepsChange, dumbbells, useD
           min="0"
           step="5"
         />
-        {dumbbells && !set.completed && (
-          <span className="absolute right-1.5 bottom-1.5 text-[9px] font-bold text-emerald-400 pointer-events-none leading-none">
-            {dumbbells === 2 ? '×2' : '×1'}
-          </span>
-        )}
       </div>
 
       {/* × separator */}

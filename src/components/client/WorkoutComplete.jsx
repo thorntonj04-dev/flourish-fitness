@@ -152,16 +152,14 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
       if (!data) return null;
       const completedSets = (data.sets || []).filter(s => s.completed);
       if (completedSets.length === 0) return null;
-      const dbLabel = ex.dumbbells === 2 ? 'ea.' : '';
-      const dbMult = ex.dumbbells === 2 ? 2 : 1;
       if (ex.useDuration) {
         const mins = ex.durationMinutes > 0 ? `${ex.durationMinutes}m ` : '';
         const durStr = `${mins}${ex.durationSeconds}s`.trim();
-        completedSets.forEach(s => { totalVolume += (s.weight || 0) * dbMult * (ex.durationSeconds + (ex.durationMinutes || 0) * 60); });
-        return { name: ex.name, sets: completedSets.map(s => s.weight > 0 ? `${s.weight}${dbLabel}×${durStr}` : durStr), timed: true };
+        completedSets.forEach(s => { totalVolume += (s.weight || 0) * (ex.durationSeconds + (ex.durationMinutes || 0) * 60); });
+        return { name: ex.name, sets: completedSets.map(s => s.weight > 0 ? `${s.weight}×${durStr}` : durStr), timed: true };
       }
-      completedSets.forEach(s => { totalVolume += (s.weight || 0) * dbMult * (s.reps || 0); });
-      return { name: ex.name, sets: completedSets.map(s => `${s.weight}${dbLabel}×${s.reps}`) };
+      completedSets.forEach(s => { totalVolume += (s.weight || 0) * (s.reps || 0); });
+      return { name: ex.name, sets: completedSets.map(s => `${s.weight}×${s.reps}`) };
     };
 
     const sectionMeta = {
@@ -203,17 +201,15 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
       if (!data) return;
       const completedSets = (data.sets || []).filter(s => s.completed);
       if (completedSets.length === 0) return;
-      const dbLabel = ex.dumbbells === 2 ? ' ea.' : '';
-      const dbMult = ex.dumbbells === 2 ? 2 : 1;
       let setsStr;
       if (ex.useDuration) {
         const mins = ex.durationMinutes > 0 ? `${ex.durationMinutes}m ` : '';
         const durStr = `${mins}${ex.durationSeconds}s`.trim();
-        setsStr = completedSets.map(s => s.weight > 0 ? `${s.weight}${dbLabel}×${durStr}` : durStr).join(' | ');
-        completedSets.forEach(s => { totalVolume += (s.weight || 0) * dbMult * (ex.durationSeconds + (ex.durationMinutes || 0) * 60); });
+        setsStr = completedSets.map(s => s.weight > 0 ? `${s.weight}×${durStr}` : durStr).join(' | ');
+        completedSets.forEach(s => { totalVolume += (s.weight || 0) * (ex.durationSeconds + (ex.durationMinutes || 0) * 60); });
       } else {
-        setsStr = completedSets.map(s => `${s.weight}${dbLabel}×${s.reps}`).join(' | ');
-        completedSets.forEach(s => { totalVolume += (s.weight || 0) * dbMult * (s.reps || 0); });
+        setsStr = completedSets.map(s => `${s.weight}×${s.reps}`).join(' | ');
+        completedSets.forEach(s => { totalVolume += (s.weight || 0) * (s.reps || 0); });
       }
       lines.push(`  ${ex.name}: ${setsStr}`);
     };
