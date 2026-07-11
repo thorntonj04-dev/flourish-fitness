@@ -1084,67 +1084,149 @@ function StatCard({ gradient, top, value, label, sub }) {
 }
 
 function MuscleHeatmap({ groupVolumes, formatVolume }) {
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const maxVol = Math.max(1, ...BODY_GROUPS.map(g => groupVolumes[g] || 0));
   const totalVol = BODY_GROUPS.reduce((sum, g) => sum + (groupVolumes[g] || 0), 0);
-  const opacityFor = (g) => {
+
+  const baseOpacity = (g) => {
     const v = groupVolumes[g] || 0;
-    if (v <= 0) return 0.1;
+    if (v <= 0) return 0.12;
     return 0.22 + (v / maxVol) * 0.78;
   };
+
+  const toggleSelect = (g) => setSelectedGroup(prev => (prev === g ? null : g));
+
+  // Shared visual + interaction props for every shape belonging to one data group.
+  const regionProps = (g) => {
+    const isSelected = selectedGroup === g;
+    const isDimmed = selectedGroup && selectedGroup !== g;
+    return {
+      fill: '#10b981',
+      fillOpacity: isSelected ? 1 : isDimmed ? 0.06 : baseOpacity(g),
+      stroke: isSelected ? '#C6A45F' : 'none',
+      strokeWidth: isSelected ? 2.5 : 0,
+      onClick: () => toggleSelect(g),
+      style: { cursor: 'pointer', transition: 'fill-opacity 0.25s ease, stroke-width 0.25s ease' },
+    };
+  };
+
   const sorted = [...BODY_GROUPS].sort((a, b) => (groupVolumes[b] || 0) - (groupVolumes[a] || 0));
-  const NEUTRAL = 'text-gray-200 dark:text-white/10';
+  const BONE = 'text-[#d9d0b0] dark:text-[#5c5947]';
+  const BONE_LINE = 'text-[#b8ac85] dark:text-[#847d5e]';
+  const VEIN = 'text-blue-400/40 dark:text-blue-300/35';
+
+  const selectedVol = selectedGroup ? groupVolumes[selectedGroup] || 0 : 0;
+  const selectedPct = selectedGroup && totalVol > 0 ? Math.round((selectedVol / totalVol) * 100) : 0;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-5">
-      <svg viewBox="0 0 180 280" className="w-32 sm:w-36 h-auto flex-shrink-0" aria-label="Muscle group training volume diagram">
-        {/* head, neck, pelvis — not tracked */}
-        <circle cx="90" cy="18" r="15" fill="currentColor" className={NEUTRAL} />
-        <rect x="83" y="31" width="14" height="8" rx="3" fill="currentColor" className={NEUTRAL} />
-        <rect x="70" y="140" width="40" height="12" rx="4" fill="currentColor" className={NEUTRAL} />
-
-        {/* shoulders */}
-        <ellipse cx="50" cy="48" rx="14" ry="11" fill="#10b981" fillOpacity={opacityFor('shoulders')} />
-        <ellipse cx="130" cy="48" rx="14" ry="11" fill="#10b981" fillOpacity={opacityFor('shoulders')} />
-
-        {/* back (lats, shown as the outer torso edges) */}
-        <rect x="45" y="44" width="16" height="80" rx="8" fill="#10b981" fillOpacity={opacityFor('back')} />
-        <rect x="119" y="44" width="16" height="80" rx="8" fill="#10b981" fillOpacity={opacityFor('back')} />
-
-        {/* arms */}
-        <rect x="30" y="50" width="16" height="108" rx="8" fill="#10b981" fillOpacity={opacityFor('arms')} />
-        <rect x="134" y="50" width="16" height="108" rx="8" fill="#10b981" fillOpacity={opacityFor('arms')} />
-
-        {/* chest */}
-        <rect x="64" y="46" width="52" height="42" rx="12" fill="#10b981" fillOpacity={opacityFor('chest')} />
-
-        {/* core */}
-        <rect x="64" y="92" width="52" height="48" rx="10" fill="#10b981" fillOpacity={opacityFor('core')} />
-
-        {/* legs */}
-        <rect x="58" y="155" width="22" height="115" rx="10" fill="#10b981" fillOpacity={opacityFor('legs')} />
-        <rect x="100" y="155" width="22" height="115" rx="10" fill="#10b981" fillOpacity={opacityFor('legs')} />
-      </svg>
-
-      <div className="flex-1 w-full space-y-2">
-        {sorted.map(g => {
-          const v = groupVolumes[g] || 0;
-          const pct = totalVol > 0 ? Math.round((v / totalVol) * 100) : 0;
-          return (
-            <div key={g} className="flex items-center gap-2">
-              <div
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: '#10b981', opacity: v > 0 ? (0.22 + (v / maxVol) * 0.78) : 0.15 }}
-              />
-              <div className="text-sm text-gray-700 dark:text-[#d8e7de]/80 flex-1">{GROUP_LABELS[g]}</div>
-              <div className="text-sm font-bold text-gray-900 dark:text-[#d8e7de] tabular-nums">
-                {v > 0 ? `${formatVolume(v)} lbs` : '—'}
-              </div>
-              <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 w-9 text-right tabular-nums">
-                {v > 0 ? `${pct}%` : ''}
-              </div>
+    <div className="space-y-3">
+      {/* Selection callout */}
+      <div className={`flex items-center justify-between rounded-xl px-3 py-2 transition ${selectedGroup ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-gray-50 dark:bg-[#0a0a0a]/30'}`}>
+        {selectedGroup ? (
+          <>
+            <div className="text-sm">
+              <span className="font-bold text-emerald-700 dark:text-emerald-400">{GROUP_LABELS[selectedGroup]}</span>
+              <span className="text-gray-500 dark:text-[#d8e7de]/50">
+                {' · '}{selectedVol > 0 ? `${formatVolume(selectedVol)} lbs · ${selectedPct}%` : 'No volume logged yet'}
+              </span>
             </div>
-          );
-        })}
+            <button onClick={() => setSelectedGroup(null)} className="text-xs font-semibold text-gray-400 dark:text-[#d8e7de]/40 flex-shrink-0 pl-2">
+              Clear
+            </button>
+          </>
+        ) : (
+          <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40">Tap a muscle to see its details</div>
+        )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center gap-5">
+        <svg viewBox="0 0 200 340" className="w-36 sm:w-40 h-auto flex-shrink-0" aria-label="Interactive anatomical muscle volume diagram">
+          {/* ── skeleton layer (decorative) ───────────────────────────── */}
+          <ellipse cx="100" cy="20" rx="14" ry="16" fill="currentColor" className={BONE} />
+          <path d="M 89 10 Q 100 6 111 10" stroke="currentColor" className={BONE_LINE} strokeWidth="1" fill="none" />
+          <path d="M 87 17 Q 100 21 113 17" stroke="currentColor" className={BONE_LINE} strokeWidth="1" fill="none" />
+          <rect x="93" y="35" width="14" height="10" rx="2" fill="currentColor" className={BONE} />
+          <path d="M 100 45 L 100 165" stroke="currentColor" className={BONE_LINE} strokeWidth="2" strokeDasharray="3,3" fill="none" />
+          <path d="M 78 172 L 122 172 L 116 186 L 84 186 Z" fill="currentColor" className={BONE} />
+
+          {/* ── traps / back (visible from the front, above the chest) ─── */}
+          <path d="M 100 40 L 58 60 L 100 74 L 142 60 Z" {...regionProps('back')} />
+
+          {/* ── shoulders ──────────────────────────────────────────────── */}
+          <ellipse cx="54" cy="66" rx="15" ry="13" {...regionProps('shoulders')} />
+          <ellipse cx="146" cy="66" rx="15" ry="13" {...regionProps('shoulders')} />
+
+          {/* ── chest ──────────────────────────────────────────────────── */}
+          <ellipse cx="85" cy="96" rx="16" ry="19" transform="rotate(-10 85 96)" {...regionProps('chest')} />
+          <ellipse cx="115" cy="96" rx="16" ry="19" transform="rotate(10 115 96)" {...regionProps('chest')} />
+
+          {/* ── arms (upper arm + forearm) ─────────────────────────────── */}
+          <ellipse cx="40" cy="102" rx="13" ry="32" {...regionProps('arms')} />
+          <ellipse cx="34" cy="164" rx="10" ry="28" {...regionProps('arms')} />
+          <ellipse cx="160" cy="102" rx="13" ry="32" {...regionProps('arms')} />
+          <ellipse cx="166" cy="164" rx="10" ry="28" {...regionProps('arms')} />
+          <ellipse cx="31" cy="198" rx="7" ry="10" fill="currentColor" className={BONE} />
+          <ellipse cx="169" cy="198" rx="7" ry="10" fill="currentColor" className={BONE} />
+
+          {/* ── core (six-pack grid) ───────────────────────────────────── */}
+          <rect x="85" y="122" width="13" height="13" rx="4" {...regionProps('core')} />
+          <rect x="102" y="122" width="13" height="13" rx="4" {...regionProps('core')} />
+          <rect x="85" y="138" width="13" height="13" rx="4" {...regionProps('core')} />
+          <rect x="102" y="138" width="13" height="13" rx="4" {...regionProps('core')} />
+          <rect x="85" y="154" width="13" height="13" rx="4" {...regionProps('core')} />
+          <rect x="102" y="154" width="13" height="13" rx="4" {...regionProps('core')} />
+
+          {/* ── legs (thigh + calf) ─────────────────────────────────────── */}
+          <ellipse cx="82" cy="215" rx="18" ry="35" {...regionProps('legs')} />
+          <ellipse cx="80" cy="290" rx="12" ry="30" {...regionProps('legs')} />
+          <ellipse cx="118" cy="215" rx="18" ry="35" {...regionProps('legs')} />
+          <ellipse cx="120" cy="290" rx="12" ry="30" {...regionProps('legs')} />
+          <circle cx="81" cy="250" r="6" fill="currentColor" className={BONE} />
+          <circle cx="119" cy="250" r="6" fill="currentColor" className={BONE} />
+          <ellipse cx="78" cy="322" rx="9" ry="6" fill="currentColor" className={BONE} />
+          <ellipse cx="122" cy="322" rx="9" ry="6" fill="currentColor" className={BONE} />
+
+          {/* ── veins (decorative) ─────────────────────────────────────── */}
+          <path d="M 92 40 Q 90 44 93 48" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
+          <path d="M 108 40 Q 110 44 107 48" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
+          <path d="M 82 15 Q 80 19 83 24" stroke="currentColor" className={VEIN} strokeWidth="0.75" fill="none" />
+          <path d="M 118 15 Q 120 19 117 24" stroke="currentColor" className={VEIN} strokeWidth="0.75" fill="none" />
+          <path d="M 30 137 Q 34 152 29 172 Q 26 182 30 187" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
+          <path d="M 38 140 Q 41 157 36 177" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
+          <path d="M 170 137 Q 166 152 171 172 Q 174 182 170 187" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
+          <path d="M 162 140 Q 159 157 164 177" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
+        </svg>
+
+        <div className="flex-1 w-full space-y-1.5">
+          {sorted.map(g => {
+            const v = groupVolumes[g] || 0;
+            const pct = totalVol > 0 ? Math.round((v / totalVol) * 100) : 0;
+            const isSelected = selectedGroup === g;
+            return (
+              <button
+                key={g}
+                onClick={() => toggleSelect(g)}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition ${
+                  isSelected ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'active:bg-gray-50 dark:active:bg-white/5'
+                }`}
+              >
+                <div
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: '#10b981', opacity: v > 0 ? 0.22 + (v / maxVol) * 0.78 : 0.15 }}
+                />
+                <div className={`text-sm flex-1 ${isSelected ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-gray-700 dark:text-[#d8e7de]/80'}`}>
+                  {GROUP_LABELS[g]}
+                </div>
+                <div className="text-sm font-bold text-gray-900 dark:text-[#d8e7de] tabular-nums whitespace-nowrap">
+                  {v > 0 ? `${formatVolume(v)} lbs` : '—'}
+                </div>
+                <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 w-9 text-right tabular-nums">
+                  {v > 0 ? `${pct}%` : ''}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
