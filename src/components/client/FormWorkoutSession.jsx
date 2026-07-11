@@ -174,25 +174,42 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
     if (isMarkingComplete) {
       const supersetGroupId = exercise?.supersetGroupId;
-      const partnerIdx = supersetGroupId
-        ? exercises.findIndex((ex, i) => i !== exIdx && ex.supersetGroupId === supersetGroupId)
-        : -1;
-      if (partnerIdx !== -1) {
-        const partnerSets = sessionData[partnerIdx]?.sets || [];
-        const partnerSetDone = partnerSets[setIdx]?.completed;
-        if (!partnerSetDone) {
-          const dir = partnerIdx > exIdx ? 'slide-forward' : 'slide-back';
-          setTimeout(() => navigateTo(partnerIdx, dir), 400);
+      const groupIndices = supersetGroupId
+        ? exercises
+            .map((ex, i) => ({ ex, i }))
+            .filter(({ ex }) => ex.supersetGroupId === supersetGroupId)
+            .map(({ i }) => i)
+            .sort((a, b) => a - b)
+        : [];
+
+      if (groupIndices.length > 1) {
+        const posInGroup = groupIndices.indexOf(exIdx);
+        // Find the next group member (round-robin) who hasn't done this set yet.
+        let nextIdx = -1;
+        for (let step = 1; step < groupIndices.length; step++) {
+          const candidate = groupIndices[(posInGroup + step) % groupIndices.length];
+          const candidateSets = sessionData[candidate]?.sets || [];
+          if (!candidateSets[setIdx]?.completed) {
+            nextIdx = candidate;
+            break;
+          }
+        }
+
+        if (nextIdx !== -1) {
+          const dir = nextIdx > exIdx ? 'slide-forward' : 'slide-back';
+          setTimeout(() => navigateTo(nextIdx, dir), 400);
         } else {
           const willAllThisDone = currentSets.every((s, i) => i === setIdx ? true : s.completed);
-          const allPartnerDone = partnerSets.every(s => s.completed);
-          if (willAllThisDone && allPartnerDone) {
-            const afterBoth = Math.max(exIdx, partnerIdx) + 1;
-            if (afterBoth < exercises.length) {
-              setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest before next exercise', type: 'exercise', nextExIdx: afterBoth, direction: 'slide-forward' }), 600);
+          const restDone = groupIndices
+            .filter(i => i !== exIdx)
+            .every(i => (sessionData[i]?.sets || []).every(s => s.completed));
+          if (willAllThisDone && restDone) {
+            const afterGroup = Math.max(...groupIndices) + 1;
+            if (afterGroup < exercises.length) {
+              setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest before next exercise', type: 'exercise', nextExIdx: afterGroup, direction: 'slide-forward' }), 600);
             }
           } else {
-            const firstExIdx = Math.min(exIdx, partnerIdx);
+            const firstExIdx = groupIndices[0];
             const dir = firstExIdx < exIdx ? 'slide-back' : 'slide-forward';
             setTimeout(() => setRestTimer({ seconds: restDefaultSecs, label: 'Rest between rounds', type: 'exercise', nextExIdx: firstExIdx, direction: dir }), 400);
           }

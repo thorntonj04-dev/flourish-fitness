@@ -268,27 +268,36 @@ export default function WorkoutBuilder() {
     setCurrentWorkout({ ...currentWorkout, exercises: newExercises });
   };
 
-  const pairAsSuperset = (idxA, idxB) => {
-    const groupId = `ss_${Date.now()}`;
+  const addToSuperset = (idxA, idxB) => {
+    const groupId = currentWorkout.exercises[idxA]?.supersetGroupId || `ss_${Date.now()}`;
     let updated = currentWorkout.exercises.map((ex, i) =>
       i === idxA || i === idxB ? { ...ex, supersetGroupId: groupId } : ex
     );
-    // Pull the second exercise in the pair to sit right after the first
-    const firstIdx = Math.min(idxA, idxB);
-    const secondIdx = Math.max(idxA, idxB);
-    if (secondIdx !== firstIdx + 1) {
-      const [secondEx] = updated.splice(secondIdx, 1);
-      updated.splice(firstIdx + 1, 0, secondEx);
-    }
+
+    // Keep every member of the group (2, 3, or more) contiguous in the list.
+    const groupIndices = updated
+      .map((ex, i) => i)
+      .filter(i => updated[i].supersetGroupId === groupId)
+      .sort((a, b) => a - b);
+    const insertAt = groupIndices[0];
+    const groupExercises = groupIndices.map(i => updated[i]);
+    updated = updated.filter((_, i) => !groupIndices.includes(i));
+    updated.splice(insertAt, 0, ...groupExercises);
+
     setCurrentWorkout({ ...currentWorkout, exercises: updated });
   };
 
-  const unpairSuperset = (idx) => {
+  const removeFromSuperset = (idx) => {
     const groupId = currentWorkout.exercises[idx]?.supersetGroupId;
     if (!groupId) return;
-    const updated = currentWorkout.exercises.map(ex =>
-      ex.supersetGroupId === groupId ? { ...ex, supersetGroupId: undefined } : ex
+    let updated = currentWorkout.exercises.map((ex, i) =>
+      i === idx ? { ...ex, supersetGroupId: undefined } : ex
     );
+    // A group of one isn't a superset anymore - ungroup the last remaining member too.
+    const remaining = updated.filter(ex => ex.supersetGroupId === groupId);
+    if (remaining.length === 1) {
+      updated = updated.map(ex => ex.supersetGroupId === groupId ? { ...ex, supersetGroupId: undefined } : ex);
+    }
     setCurrentWorkout({ ...currentWorkout, exercises: updated });
   };
 
@@ -912,23 +921,39 @@ export default function WorkoutBuilder() {
                         <label className="block text-sm font-semibold text-gray-600 dark:text-[#d8e7de]/80 mb-2">Superset</label>
                         {exercise.supersetGroupId ? (
                           (() => {
-                            const partnerIdx = currentWorkout.exercises.findIndex((ex, i) => i !== idx && ex.supersetGroupId === exercise.supersetGroupId);
-                            const partner = partnerIdx !== -1 ? currentWorkout.exercises[partnerIdx] : null;
+                            const partners = currentWorkout.exercises.filter((ex, i) => i !== idx && ex.supersetGroupId === exercise.supersetGroupId);
+                            const available = currentWorkout.exercises
+                              .map((ex, i) => ({ ex, i }))
+                              .filter(({ ex, i }) => i !== idx && !ex.supersetGroupId);
                             return (
                               <div>
                                 <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-xl">
                                   <div>
                                     <div className="text-xs font-bold text-purple-500 uppercase tracking-wide mb-0.5">Paired with</div>
-                                    <div className="text-sm font-semibold text-purple-900 dark:text-purple-200">{partner?.name || 'Unknown'}</div>
+                                    <div className="text-sm font-semibold text-purple-900 dark:text-purple-200">
+                                      {partners.map(p => p.name).join(', ') || 'Unknown'}
+                                    </div>
                                   </div>
                                   <button
-                                    onClick={() => unpairSuperset(idx)}
+                                    onClick={() => removeFromSuperset(idx)}
                                     className="text-xs text-red-500 font-bold px-3 py-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg min-h-[36px]"
                                   >
-                                    Unlink
+                                    Remove
                                   </button>
                                 </div>
-                                <p className="text-xs text-purple-500 dark:text-purple-400 mt-1.5">Both exercises must have the same number of sets.</p>
+                                <p className="text-xs text-purple-500 dark:text-purple-400 mt-1.5">All exercises in a superset must have the same number of sets.</p>
+                                {available.length > 0 && (
+                                  <select
+                                    value=""
+                                    onChange={(e) => { const pIdx = parseInt(e.target.value); if (!isNaN(pIdx)) addToSuperset(idx, pIdx); }}
+                                    className="w-full mt-2 px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-sm dark:bg-[#0a0a0a] dark:text-[#d8e7de] bg-white"
+                                  >
+                                    <option value="">+ Add another exercise to this superset...</option>
+                                    {available.map(({ ex, i }) => (
+                                      <option key={i} value={i}>{ex.name}</option>
+                                    ))}
+                                  </select>
+                                )}
                               </div>
                             );
                           })()
@@ -943,7 +968,7 @@ export default function WorkoutBuilder() {
                             return (
                               <select
                                 value=""
-                                onChange={(e) => { const pIdx = parseInt(e.target.value); if (!isNaN(pIdx)) pairAsSuperset(idx, pIdx); }}
+                                onChange={(e) => { const pIdx = parseInt(e.target.value); if (!isNaN(pIdx)) addToSuperset(idx, pIdx); }}
                                 className="w-full px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-sm dark:bg-[#0a0a0a] dark:text-[#d8e7de] bg-white"
                               >
                                 <option value="">↔ Pair with another exercise...</option>
