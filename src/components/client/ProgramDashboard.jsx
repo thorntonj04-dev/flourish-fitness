@@ -7,6 +7,14 @@ import WorkoutPickerModal from '../admin/WorkoutPickerModal';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+// Local calendar date, not UTC — toISOString() shifts evening timestamps into the
+// next day for any timezone behind UTC, which broke same-day matching (a session
+// started at 8pm would key to tomorrow's date).
+function localDateStr(dateLike) {
+  const d = new Date(dateLike);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getThisWeek() {
   const today = new Date();
   const dow = today.getDay();
@@ -19,7 +27,7 @@ function getThisWeek() {
     return {
       name,
       date,
-      dateStr: date.toISOString().split('T')[0],
+      dateStr: localDateStr(date),
       isToday: date.toDateString() === today.toDateString(),
       isPast: date < today && date.toDateString() !== today.toDateString(),
     };
@@ -38,7 +46,7 @@ function getNextWeek() {
     return {
       name,
       date,
-      dateStr: date.toISOString().split('T')[0],
+      dateStr: localDateStr(date),
       isToday: false,
       isPast: false,
     };
@@ -135,7 +143,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
           const daysElapsed = Math.floor((Date.now() - start.getTime()) / 86400000);
           const rawWeek = Math.max(1, Math.floor(daysElapsed / 7) + 1);
           if (rawWeek > (currentPhaseData.durationWeeks || 1) && currentPhaseIdx + 1 < phases.length) {
-            const today = new Date().toISOString().split('T')[0];
+            const today = localDateStr(new Date());
             await update(dbRef(db, `programAssignments/${user.uid}`), {
               currentPhase: currentPhaseIdx + 1,
               startDate: today,
@@ -203,12 +211,12 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
       const isCompleted = workoutId
         ? workoutHistory.some(h =>
             h.workoutId === workoutId &&
-            new Date(h.startTime).toISOString().split('T')[0] === day.dateStr
+            localDateStr(h.startTime) === day.dateStr
           )
         : false;
       const isInProgress = !isCompleted && workoutId && activeSession
         ? activeSession.workoutId === workoutId &&
-          new Date(activeSession.startTime).toISOString().split('T')[0] === day.dateStr
+          localDateStr(activeSession.startTime) === day.dateStr
         : false;
       return {
         ...day,
@@ -763,12 +771,12 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
     const isCompleted = workoutId
       ? workoutHistory.some(h =>
           h.workoutId === workoutId &&
-          new Date(h.startTime).toISOString().split('T')[0] === day.dateStr
+          localDateStr(h.startTime) === day.dateStr
         )
       : false;
     const isInProgress = !isCompleted && workoutId && activeSession
       ? activeSession.workoutId === workoutId &&
-        new Date(activeSession.startTime).toISOString().split('T')[0] === day.dateStr
+        localDateStr(activeSession.startTime) === day.dateStr
       : false;
     return {
       ...day,
