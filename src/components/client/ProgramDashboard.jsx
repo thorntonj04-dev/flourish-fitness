@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ref as dbRef, get, update } from 'firebase/database';
 import { db } from '../../firebase';
-import { Play, CheckCircle, Layers, CalendarDays, ChevronRight, SlidersHorizontal, Dumbbell, Eye, X, Plus } from 'lucide-react';
+import { Play, CheckCircle, Layers, CalendarDays, ChevronRight, SlidersHorizontal, Dumbbell, Eye, X, Plus, RotateCcw } from 'lucide-react';
 import ScheduleAdjustModal from './ScheduleAdjustModal';
 import WorkoutPickerModal from '../admin/WorkoutPickerModal';
 
@@ -62,6 +62,32 @@ function findActiveSession(historyEntries) {
   return candidates[0] || null;
 }
 
+async function startOverSession(userId, sessionId, workoutId, onStartWorkout) {
+  try {
+    await update(dbRef(db, `workout-history/${userId}`), { [sessionId]: null });
+  } catch (err) {
+    console.error('Error discarding in-progress session:', err);
+  }
+  onStartWorkout(workoutId);
+}
+
+function StartOverConfirmModal({ workoutName, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
+      <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-[#d8e7de] mb-2 tracking-tight">Start over?</h3>
+        <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mb-5">
+          Your in-progress {workoutName ? `"${workoutName}"` : 'workout'} will be discarded and you'll start fresh.
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onConfirm} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold min-h-[48px]">Yes, Start Over</button>
+          <button onClick={onCancel} className="flex-1 py-3 border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 rounded-xl font-bold min-h-[48px]">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function computeWeekNumber(startDate, durationWeeks) {
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
@@ -86,10 +112,19 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
   const [previewWorkout, setPreviewWorkout] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [pickerDay, setPickerDay] = useState(null);
+  const [startOverDay, setStartOverDay] = useState(null);
 
   useEffect(() => {
     loadData();
   }, [user]);
+
+  const handleStartOver = async () => {
+    const day = startOverDay;
+    setStartOverDay(null);
+    if (!day?.inProgressSessionId) return;
+    setActiveSession(null);
+    await startOverSession(user.uid, day.inProgressSessionId, day.workoutId, onStartWorkout);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -369,6 +404,15 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
           <ChevronRight className="w-6 h-6 opacity-70 flex-shrink-0" />
         </button>
       )}
+      {todayDay?.isInProgress && !readOnly && (
+        <button
+          onClick={() => setStartOverDay(todayDay)}
+          className="w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-gray-400 dark:text-[#d8e7de]/40 py-1"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Start Over Instead
+        </button>
+      )}
 
       {/* Week schedule */}
       <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
@@ -414,6 +458,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
               key={day.name}
               day={day}
               onStart={!showNextWeek && !readOnly ? () => onStartWorkout(day.workoutId, day.isInProgress ? day.inProgressSessionId : null) : undefined}
+              onStartOver={!showNextWeek && !readOnly && day.isInProgress ? () => setStartOverDay(day) : undefined}
               onPreview={day.workoutId ? () => handlePreview(day.workoutId) : undefined}
               onAddAdhoc={!readOnly ? () => setPickerDay(day) : undefined}
               onRemoveAdhoc={!readOnly ? () => handleRemoveAdhoc(day) : undefined}
@@ -460,13 +505,22 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
           onClose={() => setPickerDay(null)}
         />
       )}
+
+      {/* Start over confirmation */}
+      {startOverDay && (
+        <StartOverConfirmModal
+          workoutName={startOverDay.workoutName}
+          onConfirm={handleStartOver}
+          onCancel={() => setStartOverDay(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Day row ──────────────────────────────────────────────────────────────────
 
-function DayRow({ day, onStart, onPreview, onAddAdhoc, onRemoveAdhoc, readOnly = false }) {
+function DayRow({ day, onStart, onStartOver, onPreview, onAddAdhoc, onRemoveAdhoc, readOnly = false }) {
   const dayAbbr = day.name.slice(0, 3).toUpperCase();
 
   const EyeBtn = () => onPreview ? (
@@ -504,15 +558,28 @@ function DayRow({ day, onStart, onPreview, onAddAdhoc, onRemoveAdhoc, readOnly =
           <EyeBtn />
           {readOnly ? (
             <span className="text-xs text-violet-400 font-semibold">Preview</span>
-          ) : onStart ? (
-            <button
-              onClick={onStart}
-              className="px-4 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-sm flex items-center gap-1.5 min-h-[44px]"
-            >
-              <Play className="w-4 h-4" />
-              Continue
-            </button>
-          ) : null}
+          ) : (
+            <>
+              {onStartOver && (
+                <button
+                  onClick={onStartOver}
+                  title="Discard and start over"
+                  className="p-2.5 rounded-xl text-gray-400 dark:text-[#d8e7de]/40 active:bg-gray-100 dark:active:bg-white/10 min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
+              {onStart && (
+                <button
+                  onClick={onStart}
+                  className="px-4 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-sm flex items-center gap-1.5 min-h-[44px]"
+                >
+                  <Play className="w-4 h-4" />
+                  Continue
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
     );
@@ -747,6 +814,14 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
   const [previewWorkout, setPreviewWorkout] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [pickerDay, setPickerDay] = useState(null);
+  const [startOverDay, setStartOverDay] = useState(null);
+
+  const handleStartOver = async () => {
+    const day = startOverDay;
+    setStartOverDay(null);
+    if (!day?.inProgressSessionId) return;
+    await startOverSession(userId, day.inProgressSessionId, day.workoutId, onStartWorkout);
+  };
 
   const handlePreview = async (workoutId) => {
     setPreviewLoading(true);
@@ -855,6 +930,15 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
           <ChevronRight className="w-6 h-6 opacity-70 flex-shrink-0" />
         </button>
       )}
+      {todayDay?.isInProgress && !readOnly && (
+        <button
+          onClick={() => setStartOverDay(todayDay)}
+          className="w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-gray-400 dark:text-[#d8e7de]/40 py-1"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Start Over Instead
+        </button>
+      )}
 
       {/* Week schedule */}
       <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
@@ -867,6 +951,7 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
               key={day.name}
               day={day}
               onStart={!readOnly ? () => onStartWorkout(day.workoutId, day.isInProgress ? day.inProgressSessionId : null) : undefined}
+              onStartOver={!readOnly && day.isInProgress ? () => setStartOverDay(day) : undefined}
               onPreview={day.workoutId ? () => handlePreview(day.workoutId) : undefined}
               onAddAdhoc={!readOnly ? () => setPickerDay(day) : undefined}
               onRemoveAdhoc={!readOnly ? () => handleRemoveAdhoc(day) : undefined}
@@ -897,6 +982,15 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
           currentWorkoutId={null}
           onSelect={(workout) => handleAssignAdhoc(pickerDay, workout)}
           onClose={() => setPickerDay(null)}
+        />
+      )}
+
+      {/* Start over confirmation */}
+      {startOverDay && (
+        <StartOverConfirmModal
+          workoutName={startOverDay.workoutName}
+          onConfirm={handleStartOver}
+          onCancel={() => setStartOverDay(null)}
         />
       )}
     </div>
