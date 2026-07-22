@@ -55,6 +55,7 @@ export default function App() {
   // NEW: State for workout session
   const [activeWorkout, setActiveWorkout] = useState(null);
   const [isInWorkout, setIsInWorkout] = useState(false);
+  const [resumeSessionId, setResumeSessionId] = useState(null);
 
   // Tab slide direction tracking
   const [slideDir, setSlideDir] = useState('forward');
@@ -153,6 +154,7 @@ export default function App() {
     setShowLanding(true);
     setIsInWorkout(false);
     setActiveWorkout(null);
+    setResumeSessionId(null);
   };
 
   const handleLoginClick = () => {
@@ -166,13 +168,14 @@ export default function App() {
   };
 
   // NEW: Start workout handler
-  const handleStartWorkout = async (workoutId) => {
+  const handleStartWorkout = async (workoutId, sessionIdToResume = null) => {
     try {
       const workoutRef = dbRef(db, `workouts/${workoutId}`);
       const snapshot = await get(workoutRef);
-      
+
       if (snapshot.exists()) {
         setActiveWorkout({ id: workoutId, ...snapshot.val() });
+        setResumeSessionId(sessionIdToResume);
         setIsInWorkout(true);
       } else {
         alert('Workout not found');
@@ -187,6 +190,7 @@ export default function App() {
   const handleExitWorkout = () => {
     setIsInWorkout(false);
     setActiveWorkout(null);
+    setResumeSessionId(null);
     setCurrentView('this-week');
   };
 
@@ -198,6 +202,7 @@ export default function App() {
     setCurrentView(nextView);
     setIsInWorkout(false);
     setActiveWorkout(null);
+    setResumeSessionId(null);
   };
 
   // ============================================
@@ -260,10 +265,11 @@ export default function App() {
   // ============================================
   if (isInWorkout && activeWorkout) {
     return (
-      <FormWorkoutSession 
+      <FormWorkoutSession
         workout={activeWorkout}
         userId={user.uid}
         onExit={handleExitWorkout}
+        resumeSessionId={resumeSessionId}
       />
     );
   }

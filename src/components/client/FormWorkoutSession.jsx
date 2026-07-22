@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, X, Trophy, Clock, Plus, Minus, Play, Settings, Timer } from 'lucide-react';
+import { Check, X, Trophy, Clock, Plus, Minus, Play, Settings, Timer, Pause } from 'lucide-react';
 import { ref as dbRef, get, set, push, update } from 'firebase/database';
 import { db } from '../../firebase';
 import WorkoutComplete from './WorkoutComplete';
 import RestTimerOverlay from './RestTimerOverlay';
 
-export default function FormWorkoutSession({ workout, userId, onExit, previewMode = false }) {
+export default function FormWorkoutSession({ workout, userId, onExit, previewMode = false, resumeSessionId = null }) {
   const [exercises, setExercises] = useState([]);
   const [currentExIdx, setCurrentExIdx] = useState(0);
   const [slideClass, setSlideClass] = useState('');
@@ -13,7 +13,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   const [sessionData, setSessionData] = useState({});
   const [lastWorkoutData, setLastWorkoutData] = useState({});
   const [sessionId, setSessionId] = useState(null);
-  const [startTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [exitConfirm, setExitConfirm] = useState(false);
@@ -34,9 +34,17 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
   useEffect(() => {
     if (!sessionId || Object.keys(sessionData).length === 0) return;
-    const t = setTimeout(() => saveProgress(), 10000);
-    return () => clearTimeout(t);
-  }, [sessionData, sessionId]);
+    const flush = () => saveProgress();
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    const t = setTimeout(flush, 3000);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, [sessionData, currentExIdx, sessionId]);
 
   const parseRepTarget = (reps) => {
     if (typeof reps === 'string' && reps.includes('-')) return parseInt(reps.split('-')[0]) || 10;
@@ -67,6 +75,24 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
   };
 
   const initializeWorkout = async () => {
+    if (!previewMode && resumeSessionId) {
+      try {
+        const snap = await get(dbRef(db, `workout-history/${userId}/${resumeSessionId}`));
+        if (snap.exists() && !snap.val().completed) {
+          const saved = snap.val();
+          setExercises(saved.exercisesSnapshot || workout.exercises || []);
+          setSessionData(saved.exercises || {});
+          setCurrentExIdx(saved.currentExIdx || 0);
+          setStartTime(Date.now() - (saved.elapsedTime || 0) * 1000);
+          setSessionId(resumeSessionId);
+          return;
+        }
+      } catch (err) {
+        console.error('Error resuming workout session:', err);
+      }
+      // Falls through to start a fresh session if the saved one is missing/already completed.
+    }
+
     let exerciseList = [];
     if (workout.exercises && workout.exercises.length > 0) {
       exerciseList = workout.exercises;
@@ -107,6 +133,9 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       workoutName: workout.name,
       startTime: Date.now(),
       completed: false,
+      currentExIdx: 0,
+      elapsedTime: 0,
+      exercisesSnapshot: exerciseList,
       exercises: initialData,
     });
   };
@@ -131,6 +160,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         });
       });
       setLastWorkoutData(bests);
+      if (resumeSessionId) return; // don't overwrite weights the client already entered before pausing
       setSessionData(prev => {
         const next = { ...prev };
         Object.keys(next).forEach(idxStr => {
@@ -150,10 +180,16 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     }
   };
 
-  const saveProgress = async () => {
+  const saveProgress = async (exercisesOverride) => {
     if (!sessionId || previewMode) return;
     try {
-      await update(dbRef(db, `workout-history/${userId}/${sessionId}`), { exercises: sessionData, lastUpdated: Date.now() });
+      await update(dbRef(db, `workout-history/${userId}/${sessionId}`), {
+        exercises: exercisesOverride || sessionData,
+        currentExIdx,
+        elapsedTime,
+        exercisesSnapshot: exercises,
+        lastUpdated: Date.now(),
+      });
     } catch (err) {
       console.error('Error saving progress:', err);
     }
@@ -237,6 +273,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         return { ...s, completed: nowComplete, timestamp: nowComplete ? Date.now() : null };
       });
       next[exIdx] = { ...next[exIdx], sets };
+      if (isMarkingComplete) saveProgress(next);
       return next;
     });
   };
@@ -348,6 +385,11 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     return Math.round((done / totalSets) * 100);
   })();
 
+  const handlePause = async () => {
+    await saveProgress();
+    onExit();
+  };
+
   const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   const getSectionStyle = (section) => {
@@ -457,12 +499,23 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       <div className="bg-white/90 dark:bg-[#1E3328]/95 backdrop-blur-xl border-b border-gray-200/60 dark:border-[#C6A45F]/20 shadow-sm z-40 flex-shrink-0">
         <div className="max-w-2xl mx-auto px-4 pt-3 pb-4">
           <div className="flex justify-between items-center mb-3">
-            <button
-              onClick={() => previewMode ? onExit() : setExitConfirm(true)}
-              className="p-2.5 text-gray-500 dark:text-[#d8e7de]/60 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl active:bg-gray-100 dark:active:bg-white/10"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-0.5">
+              {!previewMode && (
+                <button
+                  onClick={handlePause}
+                  title="Pause workout"
+                  className="p-2.5 text-gray-500 dark:text-[#d8e7de]/60 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl active:bg-gray-100 dark:active:bg-white/10"
+                >
+                  <Pause className="w-5 h-5" />
+                </button>
+              )}
+              <button
+                onClick={() => previewMode ? onExit() : setExitConfirm(true)}
+                className="p-2.5 text-gray-500 dark:text-[#d8e7de]/60 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl active:bg-gray-100 dark:active:bg-white/10"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
             <div className="text-center flex-1 mx-2">
               <h1 className="text-sm font-bold text-gray-900 dark:text-[#d8e7de] truncate tracking-tight">{workout.name}</h1>
               <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">{currentExIdx + 1} of {exercises.length}</p>

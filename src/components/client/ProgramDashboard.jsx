@@ -45,6 +45,15 @@ function getNextWeek() {
   });
 }
 
+const IN_PROGRESS_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function findActiveSession(historyEntries) {
+  const candidates = historyEntries
+    .filter(h => h.completed === false && (h.lastUpdated || h.startTime) > Date.now() - IN_PROGRESS_WINDOW_MS)
+    .sort((a, b) => (b.lastUpdated || b.startTime) - (a.lastUpdated || a.startTime));
+  return candidates[0] || null;
+}
+
 function computeWeekNumber(startDate, durationWeeks) {
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
@@ -59,6 +68,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
   const [directSchedule, setDirectSchedule] = useState(null);
   const [directAdhoc, setDirectAdhoc] = useState({});
   const [workoutHistory, setWorkoutHistory] = useState([]);
+  const [activeSession, setActiveSession] = useState(null);
   const [weeklySchedule, setWeeklySchedule] = useState({});
   const [adhocSchedule, setAdhocSchedule] = useState({});
   const [workoutsLibrary, setWorkoutsLibrary] = useState([]);
@@ -95,7 +105,9 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
           setDirectSchedule(rest);
           setDirectAdhoc(adhoc || {});
           if (historySnap.exists()) {
-            setWorkoutHistory(Object.values(historySnap.val()).filter(h => h.completed));
+            const entries = Object.entries(historySnap.val()).map(([id, h]) => ({ ...h, sessionId: id }));
+            setWorkoutHistory(entries.filter(h => h.completed));
+            setActiveSession(findActiveSession(entries));
           }
         }
         setLoading(false);
@@ -140,8 +152,9 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
       if (programSnap.exists()) setProgram(programSnap.val());
 
       if (historySnap.exists()) {
-        const all = Object.values(historySnap.val()).filter(h => h.completed);
-        setWorkoutHistory(all);
+        const entries = Object.entries(historySnap.val()).map(([id, h]) => ({ ...h, sessionId: id }));
+        setWorkoutHistory(entries.filter(h => h.completed));
+        setActiveSession(findActiveSession(entries));
       }
     } catch (err) {
       console.error('Error loading program data:', err);
@@ -193,6 +206,10 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
             new Date(h.startTime).toISOString().split('T')[0] === day.dateStr
           )
         : false;
+      const isInProgress = !isCompleted && workoutId && activeSession
+        ? activeSession.workoutId === workoutId &&
+          new Date(activeSession.startTime).toISOString().split('T')[0] === day.dateStr
+        : false;
       return {
         ...day,
         dayId,
@@ -202,6 +219,8 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
         isRest: !phaseDay && !adhoc,
         isAdhoc: !!adhoc,
         isCompleted,
+        isInProgress,
+        inProgressSessionId: isInProgress ? activeSession.sessionId : null,
       };
     });
 
@@ -261,6 +280,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
           setDirectAdhoc={setDirectAdhoc}
           workoutsLibrary={workoutsLibrary}
           workoutHistory={workoutHistory}
+          activeSession={activeSession}
           onStartWorkout={onStartWorkout}
           readOnly={readOnly}
         />
@@ -326,7 +346,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
       {/* Today's quick-start */}
       {todayDay && !todayDay.isRest && !todayDay.isCompleted && !readOnly && (
         <button
-          onClick={() => onStartWorkout(todayDay.workoutId)}
+          onClick={() => onStartWorkout(todayDay.workoutId, todayDay.isInProgress ? todayDay.inProgressSessionId : null)}
           className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-4 text-white flex items-center justify-between shadow-md active:opacity-90 min-h-[72px]"
         >
           <div className="flex items-center gap-3">
@@ -334,7 +354,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
               <Play className="w-6 h-6" />
             </div>
             <div className="text-left">
-              <div className="font-bold text-base">Start Today's Workout</div>
+              <div className="font-bold text-base">{todayDay.isInProgress ? 'Continue Workout' : "Start Today's Workout"}</div>
               <div className="text-sm text-emerald-100">{todayDay.dayLabel} · {todayDay.workoutName}</div>
             </div>
           </div>
@@ -385,7 +405,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
             <DayRow
               key={day.name}
               day={day}
-              onStart={!showNextWeek && !readOnly ? () => onStartWorkout(day.workoutId) : undefined}
+              onStart={!showNextWeek && !readOnly ? () => onStartWorkout(day.workoutId, day.isInProgress ? day.inProgressSessionId : null) : undefined}
               onPreview={day.workoutId ? () => handlePreview(day.workoutId) : undefined}
               onAddAdhoc={!readOnly ? () => setPickerDay(day) : undefined}
               onRemoveAdhoc={!readOnly ? () => handleRemoveAdhoc(day) : undefined}
@@ -459,6 +479,36 @@ function DayRow({ day, onStart, onPreview, onAddAdhoc, onRemoveAdhoc, readOnly =
       <X className="w-4 h-4" />
     </button>
   ) : null;
+
+  // Paused mid-workout — offer to pick back up where they left off
+  if (day.isInProgress && !day.isRest) {
+    return (
+      <div className="px-4 py-3.5 flex items-center gap-3 bg-amber-50 dark:bg-amber-900/10">
+        <div className="w-10 text-center flex-shrink-0">
+          <div className="text-xs font-bold text-amber-600 dark:text-amber-400">{dayAbbr}</div>
+          <div className="text-lg font-bold text-amber-600 dark:text-amber-400">{day.date.getDate()}</div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-amber-700 dark:text-amber-300 truncate">{day.workoutName}</div>
+          <div className="text-xs text-amber-500 dark:text-amber-500/80">{day.dayLabel} · In progress</div>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <EyeBtn />
+          {readOnly ? (
+            <span className="text-xs text-violet-400 font-semibold">Preview</span>
+          ) : onStart ? (
+            <button
+              onClick={onStart}
+              className="px-4 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-sm flex items-center gap-1.5 min-h-[44px]"
+            >
+              <Play className="w-4 h-4" />
+              Continue
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   // Today + workout available
   if (day.isToday && !day.isRest) {
@@ -685,7 +735,7 @@ function WorkoutPreviewModal({ workout, loading, onClose, onStart }) {
 
 // ─── Direct schedule view (no program) ────────────────────────────────────────
 
-function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdhoc, workoutsLibrary, workoutHistory, onStartWorkout, readOnly }) {
+function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdhoc, workoutsLibrary, workoutHistory, activeSession, onStartWorkout, readOnly }) {
   const [previewWorkout, setPreviewWorkout] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [pickerDay, setPickerDay] = useState(null);
@@ -716,6 +766,10 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
           new Date(h.startTime).toISOString().split('T')[0] === day.dateStr
         )
       : false;
+    const isInProgress = !isCompleted && workoutId && activeSession
+      ? activeSession.workoutId === workoutId &&
+        new Date(activeSession.startTime).toISOString().split('T')[0] === day.dateStr
+      : false;
     return {
       ...day,
       workoutId,
@@ -724,6 +778,8 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
       isRest: !entry && !adhoc,
       isAdhoc: !!adhoc,
       isCompleted,
+      isInProgress,
+      inProgressSessionId: isInProgress ? activeSession.sessionId : null,
     };
   });
 
@@ -776,7 +832,7 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
       {/* Today's quick-start */}
       {todayDay && !todayDay.isRest && !todayDay.isCompleted && !readOnly && (
         <button
-          onClick={() => onStartWorkout(todayDay.workoutId)}
+          onClick={() => onStartWorkout(todayDay.workoutId, todayDay.isInProgress ? todayDay.inProgressSessionId : null)}
           className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-4 text-white flex items-center justify-between shadow-md active:opacity-90 min-h-[72px]"
         >
           <div className="flex items-center gap-3">
@@ -784,7 +840,7 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
               <Play className="w-6 h-6" />
             </div>
             <div className="text-left">
-              <div className="font-bold text-base">Start Today's Workout</div>
+              <div className="font-bold text-base">{todayDay.isInProgress ? 'Continue Workout' : "Start Today's Workout"}</div>
               <div className="text-sm text-emerald-100">{todayDay.workoutName}</div>
             </div>
           </div>
@@ -802,7 +858,7 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
             <DayRow
               key={day.name}
               day={day}
-              onStart={!readOnly ? () => onStartWorkout(day.workoutId) : undefined}
+              onStart={!readOnly ? () => onStartWorkout(day.workoutId, day.isInProgress ? day.inProgressSessionId : null) : undefined}
               onPreview={day.workoutId ? () => handlePreview(day.workoutId) : undefined}
               onAddAdhoc={!readOnly ? () => setPickerDay(day) : undefined}
               onRemoveAdhoc={!readOnly ? () => handleRemoveAdhoc(day) : undefined}
