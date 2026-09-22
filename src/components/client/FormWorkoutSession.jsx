@@ -349,13 +349,19 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
     const finalData = buildFinalSessionData();
     setSessionData(finalData);
     if (!previewMode) {
-      const endTime = Date.now();
-      if (sessionId) {
-        await update(dbRef(db, `workout-history/${userId}/${sessionId}`), {
-          completed: true, endTime, duration: Math.round((endTime - startTime) / 1000), exercises: finalData,
-        });
+      try {
+        const endTime = Date.now();
+        if (sessionId) {
+          await update(dbRef(db, `workout-history/${userId}/${sessionId}`), {
+            completed: true, endTime, duration: Math.round((endTime - startTime) / 1000), exercises: finalData,
+          });
+        }
+        await updateUserStats();
+      } catch (err) {
+        console.error('Error completing workout:', err);
+        alert('Failed to save your completed workout. Please check your connection and try again.');
+        return;
       }
-      await updateUserStats();
     }
     setIsCompleted(true);
   };
