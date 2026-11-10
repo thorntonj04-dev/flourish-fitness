@@ -6,6 +6,7 @@ import { db, storage, auth } from '../../firebase';
 import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check, Send, Sparkles } from 'lucide-react';
 import { EXERCISE_LIBRARY } from '../../data/exerciseLibrary';
 import { exerciseVolume, sessionVolume } from '../../utils/volume';
+import { loadWorkoutSchedule, currentStreak } from '../../utils/streak';
 
 const BODY_GROUPS = ['chest', 'back', 'shoulders', 'arms', 'core', 'legs'];
 const GROUP_LABELS = { chest: 'Chest', back: 'Back', shoulders: 'Shoulders', arms: 'Arms', core: 'Core', legs: 'Legs' };
@@ -72,12 +73,13 @@ const APP_FEATURES = [
   { icon: '📊', title: 'Workout History', desc: 'Every completed session is saved. Review past workouts, total volume, and see exactly how far you have come.' },
   { icon: '🏆', title: 'Personal Records', desc: 'Your heaviest lift per exercise is automatically tracked and displayed on a podium — gold, silver, and bronze.' },
   { icon: '⚖️', title: 'Body Weight Log', desc: 'Log your weight anytime and watch your trend over time with a visual chart.' },
-  { icon: '🔥', title: 'Streak & Levels', desc: 'Build consecutive-day streaks and level up from Rookie all the way to Legend as your workout count grows.' },
+  { icon: '🔥', title: 'Streak & Levels', desc: 'Build a streak by never missing a scheduled workout (rest days never count against you) and level up from Rookie all the way to Legend as your workout count grows.' },
   { icon: '📱', title: 'Home Screen App', desc: 'Add Flourish Fitness to your iPhone home screen for a full-screen experience — no browser chrome, just the app.' },
 ];
 
 export default function ClientProfile({ user, onProfileUpdate }) {
   const [stats, setStats] = useState(null);
+  const [schedule, setSchedule] = useState(null);
   const [history, setHistory] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,12 +121,14 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [userSnap, statsSnap, historySnap, metricsSnap] = await Promise.all([
+      const [userSnap, statsSnap, historySnap, metricsSnap, workoutSchedule] = await Promise.all([
         get(dbRef(db, `users/${user.uid}`)),
         get(dbRef(db, `user-stats/${user.uid}`)),
         get(dbRef(db, `workout-history/${user.uid}`)),
         get(dbRef(db, `body-metrics/${user.uid}`)),
+        loadWorkoutSchedule(user.uid),
       ]);
+      setSchedule(workoutSchedule);
       if (userSnap.exists()) {
         const userData = userSnap.val();
         if (userData.name) setLoadedName(userData.name);
@@ -454,7 +458,8 @@ export default function ClientProfile({ user, onProfileUpdate }) {
     })(),
   ].filter(Boolean);
   const animWorkouts = useCountUp(totalWorkouts);
-  const animStreak   = useCountUp(stats?.currentStreak || 0, 600);
+  const streak = currentStreak(stats, schedule);
+  const animStreak   = useCountUp(streak, 600);
   const animVolume   = useCountUp(totalVolume, 900);
   const volEquiv = getVolumeEquivalent(totalVolume);
   const calendar = build14DayCalendar();
@@ -470,12 +475,12 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   })();
 
   const streakMessage = () => {
-    const s = stats?.currentStreak || 0;
+    const s = streak;
     if (s >= 30) return "You're absolutely unstoppable. 🌟";
-    if (s >= 14) return "Two weeks strong. Don't stop now. 🔥";
-    if (s >= 7) return "A full week in a row. That's discipline.";
+    if (s >= 14) return "Fourteen straight. Don't stop now. 🔥";
+    if (s >= 7) return "Seven in a row without missing one. That's discipline.";
     if (s >= 3) return "You're building real momentum.";
-    if (s === 1) return "Every legend started with day one.";
+    if (s === 1) return "Every legend started with workout one.";
     return "Your next workout starts your streak.";
   };
 
@@ -728,7 +733,7 @@ export default function ClientProfile({ user, onProfileUpdate }) {
           gradient="from-orange-400 to-orange-600"
           top={<Flame className="w-4 h-4 text-white/80" />}
           value={animStreak}
-          label="Day Streak"
+          label="Streak"
           sub={stats?.longestStreak ? `Best ${stats.longestStreak}` : null}
         />
         <StatCard
@@ -741,14 +746,14 @@ export default function ClientProfile({ user, onProfileUpdate }) {
       </div>
 
       {/* ── Streak motivational banner ────────────────────── */}
-      {(stats?.currentStreak || 0) > 0 && (
+      {streak > 0 && (
         <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/15 rounded-2xl p-4 border border-orange-200/60 dark:border-orange-700/30 flex items-center gap-3">
           <div className="text-3xl leading-none">
-            {(stats.currentStreak || 0) >= 7 ? '🔥' : '⚡'}
+            {streak >= 7 ? '🔥' : '⚡'}
           </div>
           <div className="flex-1">
             <div className="font-bold text-orange-800 dark:text-orange-200 leading-tight">
-              {stats.currentStreak} day{stats.currentStreak !== 1 ? 's' : ''} in a row
+              {streak} workout{streak !== 1 ? 's' : ''} in a row
             </div>
             <div className="text-sm text-orange-600/80 dark:text-orange-300/70 mt-0.5">{streakMessage()}</div>
           </div>
