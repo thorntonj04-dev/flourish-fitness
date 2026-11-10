@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, TrendingUp, Flame, Star, X, Copy, Check } from 'lucide-react';
 import { ref as dbRef, get, update } from 'firebase/database';
 import { db } from '../../firebase';
+import { exerciseVolume } from '../../utils/volume';
 import Confetti from 'react-confetti';
 
 export default function WorkoutComplete({ workout, onClose, userId, sessionId, sessionData = {}, exercises = [], duration = 0 }) {
@@ -155,10 +156,9 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
       if (ex.useDuration) {
         const mins = ex.durationMinutes > 0 ? `${ex.durationMinutes}m ` : '';
         const durStr = `${mins}${ex.durationSeconds}s`.trim();
-        completedSets.forEach(s => { totalVolume += (s.weight || 0) * (ex.durationSeconds + (ex.durationMinutes || 0) * 60); });
         return { name: ex.name, sets: completedSets.map(s => s.weight > 0 ? `${s.weight}×${durStr}` : durStr), timed: true };
       }
-      completedSets.forEach(s => { totalVolume += (s.weight || 0) * (s.reps || 0); });
+      totalVolume += exerciseVolume(data);
       return { name: ex.name, sets: completedSets.map(s => `${s.weight}×${s.reps}`) };
     };
 
@@ -206,10 +206,9 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
         const mins = ex.durationMinutes > 0 ? `${ex.durationMinutes}m ` : '';
         const durStr = `${mins}${ex.durationSeconds}s`.trim();
         setsStr = completedSets.map(s => s.weight > 0 ? `${s.weight}×${durStr}` : durStr).join(' | ');
-        completedSets.forEach(s => { totalVolume += (s.weight || 0) * (ex.durationSeconds + (ex.durationMinutes || 0) * 60); });
       } else {
         setsStr = completedSets.map(s => `${s.weight}×${s.reps}`).join(' | ');
-        completedSets.forEach(s => { totalVolume += (s.weight || 0) * (s.reps || 0); });
+        totalVolume += exerciseVolume(data);
       }
       lines.push(`  ${ex.name}: ${setsStr}`);
     };

@@ -5,6 +5,7 @@ import { updateProfile } from 'firebase/auth';
 import { db, storage, auth } from '../../firebase';
 import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check, Send, Sparkles } from 'lucide-react';
 import { EXERCISE_LIBRARY } from '../../data/exerciseLibrary';
+import { exerciseVolume, sessionVolume } from '../../utils/volume';
 
 const BODY_GROUPS = ['chest', 'back', 'shoulders', 'arms', 'core', 'legs'];
 const GROUP_LABELS = { chest: 'Chest', back: 'Back', shoulders: 'Shoulders', arms: 'Arms', core: 'Core', legs: 'Legs' };
@@ -247,11 +248,7 @@ export default function ClientProfile({ user, onProfileUpdate }) {
     let total = 0;
     history.forEach(session => {
       if (!session.exercises) return;
-      Object.values(session.exercises).forEach(ex => {
-        (ex.sets || []).filter(s => s.completed).forEach(s => {
-          total += (s.weight || 0) * (s.reps || 0);
-        });
-      });
+      total += sessionVolume(session.exercises);
     });
     return total;
   };
@@ -264,9 +261,7 @@ export default function ClientProfile({ user, onProfileUpdate }) {
       Object.values(session.exercises).forEach(ex => {
         const group = resolveGroup(ex);
         if (!BODY_GROUPS.includes(group)) return;
-        (ex.sets || []).filter(s => s.completed).forEach(s => {
-          totals[group] += (s.weight || 0) * (s.reps || 0);
-        });
+        totals[group] += exerciseVolume(ex);
       });
     });
     return totals;
@@ -357,10 +352,7 @@ export default function ClientProfile({ user, onProfileUpdate }) {
     history.forEach(session => {
       if (!session.exercises || !session.startTime) return;
       const age = now - session.startTime;
-      let vol = 0;
-      Object.values(session.exercises).forEach(ex => {
-        (ex.sets || []).filter(s => s.completed).forEach(s => { vol += (s.weight || 0) * (s.reps || 0); });
-      });
+      const vol = sessionVolume(session.exercises);
       if (age >= 0 && age < 30 * day) recent += vol;
       else if (age >= 30 * day && age < 60 * day) prior += vol;
     });
