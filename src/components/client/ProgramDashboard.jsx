@@ -468,6 +468,15 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
         </div>
       </div>
 
+      {!readOnly && (
+        <QuickStartCard
+          workouts={uniqueWorkouts([...phaseDaysArray, ...weekDays])}
+          workoutHistory={workoutHistory}
+          activeSession={activeSession}
+          onStartWorkout={onStartWorkout}
+        />
+      )}
+
       {/* Schedule adjust modal */}
       {showAdjust && phase && (
         <ScheduleAdjustModal
@@ -961,6 +970,15 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
         </div>
       </div>
 
+      {!readOnly && (
+        <QuickStartCard
+          workouts={uniqueWorkouts([...Object.values(directSchedule), ...weekDays])}
+          workoutHistory={workoutHistory}
+          activeSession={activeSession}
+          onStartWorkout={onStartWorkout}
+        />
+      )}
+
       {/* Workout preview modal */}
       {previewWorkout && (
         <WorkoutPreviewModal
@@ -995,4 +1013,62 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
       )}
     </div>
   );
+}
+
+// ─── Quick Start: any of this client's weekly workouts, on any day ────────────
+function QuickStartCard({ workouts, workoutHistory, activeSession, onStartWorkout }) {
+  if (workouts.length === 0) return null;
+  const weekDates = new Set(getThisWeek().map(d => d.dateStr));
+  const doneThisWeek = new Set(
+    workoutHistory.filter(h => weekDates.has(localDateStr(h.startTime))).map(h => h.workoutId)
+  );
+
+  return (
+    <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden shadow-sm shadow-black/5 dark:shadow-black/20">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-[#C6A45F]/15">
+        <span className="text-sm font-bold text-gray-700 dark:text-[#d8e7de]/80">Quick Start</span>
+        <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">Pick any of your workouts and start it now</p>
+      </div>
+      <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
+        {workouts.map(w => {
+          const inProgress = activeSession?.workoutId === w.workoutId;
+          const done = doneThisWeek.has(w.workoutId);
+          return (
+            <button
+              key={w.workoutId}
+              onClick={() => onStartWorkout(w.workoutId, inProgress ? activeSession.sessionId : null)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-emerald-50 dark:active:bg-emerald-900/20 min-h-[60px]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                <Play className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                {w.label && (
+                  <div className="text-xs font-semibold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide">{w.label}</div>
+                )}
+                <div className="font-semibold text-gray-900 dark:text-[#d8e7de] truncate">{w.workoutName}</div>
+              </div>
+              {inProgress ? (
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex-shrink-0">Continue</span>
+              ) : done ? (
+                <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" aria-label="Done this week" />
+              ) : null}
+              <ChevronRight className="w-5 h-5 text-gray-300 dark:text-[#d8e7de]/30 flex-shrink-0" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// One entry per distinct workout, keeping the first label/name seen.
+function uniqueWorkouts(entries) {
+  const seen = new Map();
+  entries.forEach(e => {
+    if (e?.workoutId && !seen.has(e.workoutId)) {
+      seen.set(e.workoutId, { workoutId: e.workoutId, workoutName: e.workoutName || 'Workout', label: e.label || null });
+    }
+  });
+  return [...seen.values()];
 }
