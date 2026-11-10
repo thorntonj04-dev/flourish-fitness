@@ -4,6 +4,7 @@ import { ref as dbRef, get, set, push, remove, update } from 'firebase/database'
 import { db, auth } from '../../firebase';
 import ExerciseLibrary from '../workout/ExerciseLibrary';
 import FormWorkoutSession from '../client/FormWorkoutSession';
+import { guessPerSide, isPerSide } from '../../utils/volume';
 import { EXERCISE_LIBRARY } from '../../data/exerciseLibrary';
 
 const DEFAULT_WORKOUT_TEMPLATES = [
@@ -137,7 +138,6 @@ export default function WorkoutBuilder() {
   }, [quickAddSearch, quickAddMuscle]);
 
   const handleAddFromLibrary = (name, group) => {
-    const isOneArm = /\b(one|single)[\s-]arm\b/i.test(name);
     const newExercise = {
       name,
       muscleGroup: group,
@@ -150,7 +150,7 @@ export default function WorkoutBuilder() {
       useDuration: false,
       durationMinutes: 0,
       durationSeconds: 30,
-      oneArmPerSet: isOneArm,
+      perSide: guessPerSide(name),
       tempId: Date.now() + Math.random(),
     };
     setCurrentWorkout(prev => ({ ...prev, exercises: [...prev.exercises, newExercise] }));
@@ -637,8 +637,8 @@ export default function WorkoutBuilder() {
                           {exercise.supersetGroupId && (
                             <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">SS</span>
                           )}
-                          {exercise.oneArmPerSet && (
-                            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">1-ARM</span>
+                          {isPerSide(exercise) && (
+                            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">×2</span>
                           )}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5">
@@ -852,17 +852,17 @@ export default function WorkoutBuilder() {
                           <label className="flex items-center gap-2.5 py-1 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={!!exercise.oneArmPerSet}
-                              onChange={(e) => handleUpdateExercise(idx, 'oneArmPerSet', e.target.checked)}
+                              checked={isPerSide(exercise)}
+                              onChange={(e) => handleUpdateExercise(idx, 'perSide', e.target.checked)}
                               className="w-5 h-5 rounded accent-emerald-500 flex-shrink-0"
                             />
-                            <span className="text-sm font-semibold text-gray-600 dark:text-[#d8e7de]/80">One arm per set</span>
+                            <span className="text-sm font-semibold text-gray-600 dark:text-[#d8e7de]/80">Weight is per dumbbell / per side</span>
                           </label>
-                          {exercise.oneArmPerSet && (
-                            <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 -mt-2">
-                              Each set is logged once but counted for both arms — history and volume will record it twice.
-                            </p>
-                          )}
+                          <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 -mt-2">
+                            {isPerSide(exercise)
+                              ? 'Log the weight of one dumbbell and reps for one side. Total lbs counts it ×2.'
+                              : 'Two dumbbells, or one-arm/one-leg work done on both sides? Check this so total lbs counts ×2.'}
+                          </p>
                         </>
                       )}
 

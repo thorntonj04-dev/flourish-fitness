@@ -4,6 +4,7 @@ import { ref as dbRef, get, set, push, update } from 'firebase/database';
 import { db } from '../../firebase';
 import WorkoutComplete from './WorkoutComplete';
 import RestTimerOverlay from './RestTimerOverlay';
+import { isPerSide } from '../../utils/volume';
 
 export default function FormWorkoutSession({ workout, userId, onExit, previewMode = false, resumeSessionId = null }) {
   const [exercises, setExercises] = useState([]);
@@ -111,6 +112,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
         exerciseName: ex.name,
         muscleGroup: ex.muscleGroup || null,
         useDuration: ex.useDuration || false,
+        perSide: isPerSide(ex),
         durationMinutes: ex.durationMinutes || 0,
         durationSeconds: ex.durationSeconds || 30,
         sets: Array(ex.sets || 1).fill(null).map((_, i) => ({
@@ -322,38 +324,13 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
 
 
 
-  // Exercises marked "one arm per set" are performed on both arms per set, but only
-  // entered once — duplicate each set into two records (one per arm) at save time so
-  // every downstream volume/history calculation is correct without needing its own
-  // multiplier logic.
-  const buildFinalSessionData = () => {
-    const final = {};
-    exercises.forEach((ex, idx) => {
-      const data = sessionData[idx];
-      if (!data) return;
-      if (!ex.oneArmPerSet) {
-        final[idx] = data;
-        return;
-      }
-      const doubledSets = [];
-      data.sets.forEach(s => {
-        doubledSets.push({ ...s, setNumber: doubledSets.length + 1 });
-        doubledSets.push({ ...s, setNumber: doubledSets.length + 1 });
-      });
-      final[idx] = { ...data, sets: doubledSets };
-    });
-    return final;
-  };
-
   const handleCompleteWorkout = async () => {
-    const finalData = buildFinalSessionData();
-    setSessionData(finalData);
     if (!previewMode) {
       try {
         const endTime = Date.now();
         if (sessionId) {
           await update(dbRef(db, `workout-history/${userId}/${sessionId}`), {
-            completed: true, endTime, duration: Math.round((endTime - startTime) / 1000), exercises: finalData,
+            completed: true, endTime, duration: Math.round((endTime - startTime) / 1000), exercises: sessionData,
           });
         }
         await updateUserStats();
@@ -692,7 +669,7 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
                 <div className="flex items-center gap-2 px-1 pb-1">
                   <span className="w-8 flex-shrink-0" />
                   <span className="w-24 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">
-                    lbs
+                    {isPerSide(exData) ? 'lbs each' : 'lbs'}
                   </span>
                   <span className="w-5 flex-shrink-0" />
                   <span className="w-20 text-center text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wider flex-shrink-0">

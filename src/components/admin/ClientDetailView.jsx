@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ref as dbRef, get } from 'firebase/database';
 import { db } from '../../firebase';
+import { sessionVolume } from '../../utils/volume';
 import {
   ChevronLeft, Trophy, TrendingUp, TrendingDown, Minus, Dumbbell,
   Flame, Calendar, MessageSquare, Scale,
@@ -65,12 +66,7 @@ export default function ClientDetailView({ client, onBack }) {
     let total = 0;
     history.forEach(session => {
       if (!session.exercises) return;
-      const exList = Array.isArray(session.exercises) ? session.exercises : Object.values(session.exercises);
-      exList.forEach(ex => {
-        (ex.sets || []).filter(s => s.completed).forEach(s => {
-          total += (s.weight || 0) * (s.reps || 0);
-        });
-      });
+      total += sessionVolume(session.exercises);
     });
     return total;
   };

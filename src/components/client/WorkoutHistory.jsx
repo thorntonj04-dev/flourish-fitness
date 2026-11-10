@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Dumbbell, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Star, Zap } from 'lucide-react';
 import { ref as dbRef, get } from 'firebase/database';
 import { db } from '../../firebase';
+import { exerciseVolume, sessionVolume } from '../../utils/volume';
 
 export default function WorkoutHistory({ user }) {
   const [sessions, setSessions] = useState([]);
@@ -47,9 +48,7 @@ export default function WorkoutHistory({ user }) {
   };
 
   const getSessionVolume = (session) => {
-    const exList = getExerciseList(session.exercises);
-    return exList.reduce((sum, ex) =>
-      sum + (ex.sets || []).filter(s => s.completed).reduce((s2, s) => s2 + (s.weight || 0) * (s.reps || 0), 0), 0);
+    return sessionVolume(session.exercises);
   };
 
   // Build set of session IDs where a new PR was set (beats a previous session)
@@ -234,7 +233,7 @@ export default function WorkoutHistory({ user }) {
                   const topExercises = exerciseList
                     .map(ex => ({
                       name: ex.exerciseName,
-                      vol: (ex.sets || []).filter(s => s.completed).reduce((s, set) => s + (set.weight || 0) * (set.reps || 0), 0),
+                      vol: exerciseVolume(ex),
                       maxWeight: Math.max(0, ...(ex.sets || []).filter(s => s.completed && s.weight).map(s => s.weight)),
                     }))
                     .filter(ex => ex.maxWeight > 0)
