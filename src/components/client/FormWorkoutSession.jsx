@@ -5,6 +5,7 @@ import { db } from '../../firebase';
 import WorkoutComplete from './WorkoutComplete';
 import RestTimerOverlay from './RestTimerOverlay';
 import { isPerSide } from '../../utils/volume';
+import { loadWorkoutSchedule, missedScheduledDay } from '../../utils/streak';
 
 export default function FormWorkoutSession({ workout, userId, onExit, previewMode = false, resumeSessionId = null }) {
   const [exercises, setExercises] = useState([]);
@@ -350,8 +351,10 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
       const today = new Date().toDateString();
       let stats = snap.exists() ? snap.val() : { currentStreak: 0, longestStreak: 0, totalWorkouts: 0, lastWorkoutDate: null };
       if (new Date(stats.lastWorkoutDate).toDateString() === today) return;
-      const yesterday = new Date(Date.now() - 86400000).toDateString();
-      stats.currentStreak = new Date(stats.lastWorkoutDate).toDateString() === yesterday ? stats.currentStreak + 1 : 1;
+      const schedule = await loadWorkoutSchedule(userId);
+      stats.currentStreak = stats.lastWorkoutDate && !missedScheduledDay(stats.lastWorkoutDate, schedule)
+        ? (stats.currentStreak || 0) + 1
+        : 1;
       stats.longestStreak = Math.max(stats.longestStreak, stats.currentStreak);
       stats.totalWorkouts += 1;
       stats.lastWorkoutDate = Date.now();

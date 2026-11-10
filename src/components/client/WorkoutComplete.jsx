@@ -88,16 +88,16 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
     if (statsData.currentStreak === 7) {
       newAchievements.push({
         icon: '🔥',
-        title: 'Week Streak',
-        description: '7 days in a row!'
+        title: '7-Workout Streak',
+        description: '7 scheduled workouts without a miss!'
       });
     }
     
     if (statsData.currentStreak === 30) {
       newAchievements.push({
         icon: '⚡',
-        title: 'Month Streak',
-        description: '30 days strong!'
+        title: '30-Workout Streak',
+        description: '30 workouts strong!'
       });
     }
     
@@ -105,7 +105,7 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
       newAchievements.push({
         icon: '🌟',
         title: 'Quarter Warrior',
-        description: '90 day streak!'
+        description: '90-workout streak!'
       });
     }
 
@@ -281,7 +281,7 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
             <div className="text-3xl font-bold text-gray-900 dark:text-[#d8e7de] mb-1">
               {stats?.currentStreak || 1}
             </div>
-            <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60">Day Streak</div>
+            <div className="text-sm text-gray-500 dark:text-[#d8e7de]/60">Streak</div>
           </div>
 
           {/* Total Workouts */}
@@ -452,7 +452,7 @@ export default function WorkoutComplete({ workout, onClose, userId, sessionId, s
           </p>
           <p className="text-emerald-100">
             {stats?.currentStreak >= 7
-              ? `${stats.currentStreak} days and counting!`
+              ? `${stats.currentStreak} workouts in a row and counting!`
               : "See you at the next workout!"}
           </p>
         </div>

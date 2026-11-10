@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ref as dbRef, get } from 'firebase/database';
 import { db } from '../../firebase';
 import { sessionVolume } from '../../utils/volume';
+import { loadWorkoutSchedule, currentStreak } from '../../utils/streak';
 import {
   ChevronLeft, Trophy, TrendingUp, TrendingDown, Minus, Dumbbell,
   Flame, Calendar, MessageSquare, Scale,
@@ -12,6 +13,7 @@ export default function ClientDetailView({ client, onBack }) {
   const [tab, setTab] = useState('program');
   const [history, setHistory] = useState([]);
   const [stats, setStats] = useState(null);
+  const [schedule, setSchedule] = useState(null);
   const [metrics, setMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,11 +22,13 @@ export default function ClientDetailView({ client, onBack }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [statsSnap, historySnap, metricsSnap] = await Promise.all([
+      const [statsSnap, historySnap, metricsSnap, workoutSchedule] = await Promise.all([
         get(dbRef(db, `user-stats/${client.id}`)),
         get(dbRef(db, `workout-history/${client.id}`)),
         get(dbRef(db, `body-metrics/${client.id}`)),
+        loadWorkoutSchedule(client.id),
       ]);
+      setSchedule(workoutSchedule);
       if (statsSnap.exists()) setStats(statsSnap.val());
       if (historySnap.exists()) {
         const sessions = Object.values(historySnap.val())
@@ -170,7 +174,7 @@ export default function ClientDetailView({ client, onBack }) {
                 {/* Stat chips */}
                 <div className="grid grid-cols-3 gap-3">
                   <StatChip icon={<Dumbbell className="w-5 h-5 text-emerald-500" />} value={stats?.totalWorkouts || 0} label="Workouts" />
-                  <StatChip icon={<Flame className="w-5 h-5 text-orange-500" />} value={stats?.currentStreak || 0} label="Streak" />
+                  <StatChip icon={<Flame className="w-5 h-5 text-orange-500" />} value={currentStreak(stats, schedule)} label="Streak" />
                   <StatChip icon={<TrendingUp className="w-5 h-5 text-blue-500" />} value={formatVolume(getTotalVolume())} label="Total lbs" />
                 </div>
 
@@ -189,7 +193,7 @@ export default function ClientDetailView({ client, onBack }) {
                     {stats?.longestStreak > 0 && (
                       <div className="text-right">
                         <div className="text-sm font-semibold text-gray-800 dark:text-[#d8e7de]">Best Streak</div>
-                        <div className="text-xs text-gray-400">{stats.longestStreak} days</div>
+                        <div className="text-xs text-gray-400">{stats.longestStreak} workouts</div>
                       </div>
                     )}
                   </div>
