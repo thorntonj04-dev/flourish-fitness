@@ -3,6 +3,7 @@ import { Plus, Save, Trash2, Video, GripVertical, Copy, ChevronDown, ChevronUp, 
 import { ref as dbRef, get, set, push, remove, update } from 'firebase/database';
 import { db, auth } from '../../firebase';
 import ExerciseLibrary from '../workout/ExerciseLibrary';
+import { getExerciseVideo } from '../../data/exerciseVideos';
 import FormWorkoutSession from '../client/FormWorkoutSession';
 import { guessPerSide, isPerSide } from '../../utils/volume';
 import { EXERCISE_LIBRARY } from '../../data/exerciseLibrary';
@@ -874,7 +875,7 @@ export default function WorkoutBuilder() {
                             type="url"
                             value={exercise.videoUrl || ''}
                             onChange={(e) => handleUpdateExercise(idx, 'videoUrl', e.target.value)}
-                            placeholder="https://youtube.com/..."
+                            placeholder={getExerciseVideo({ name: exercise.name }) ? 'Using default demo — paste a link to override' : 'https://youtube.com/...'}
                             className="flex-1 px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
                           />
                           {exercise.videoUrl && (
@@ -895,6 +896,17 @@ export default function WorkoutBuilder() {
                           >
                             <Video className="w-4 h-4" />
                             Preview video
+                          </a>
+                        )}
+                        {!exercise.videoUrl && getExerciseVideo({ name: exercise.name }) && (
+                          <a
+                            href={getExerciseVideo({ name: exercise.name }).url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 mt-2 px-3 py-2 bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-[#d8e7de]/70 rounded-lg text-sm font-medium"
+                          >
+                            <Video className="w-4 h-4" />
+                            Preview default demo
                           </a>
                         )}
                       </div>

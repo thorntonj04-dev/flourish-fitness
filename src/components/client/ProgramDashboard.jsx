@@ -4,6 +4,8 @@ import { db } from '../../firebase';
 import { Play, CheckCircle, Layers, CalendarDays, ChevronRight, SlidersHorizontal, Dumbbell, Eye, X, Plus, RotateCcw } from 'lucide-react';
 import ScheduleAdjustModal from './ScheduleAdjustModal';
 import WorkoutPickerModal from '../admin/WorkoutPickerModal';
+import ExerciseVideoModal from '../shared/ExerciseVideoModal';
+import { getExerciseVideo } from '../../data/exerciseVideos';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -730,6 +732,7 @@ function DayRow({ day, onStart, onStartOver, onPreview, onAddAdhoc, onRemoveAdho
 // ─── Workout preview modal ─────────────────────────────────────────────────────
 
 function WorkoutPreviewModal({ workout, loading, onClose, onStart }) {
+  const [videoEx, setVideoEx] = useState(null);
   const exercises = workout.exercises || [];
 
   const getSectionStyle = (section) => {
@@ -801,11 +804,24 @@ function WorkoutPreviewModal({ workout, loading, onClose, onStart }) {
                       <div className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic leading-snug">{ex.notes}</div>
                     ) : null}
                   </div>
+                  {getExerciseVideo(ex) && (
+                    <button
+                      onClick={() => setVideoEx(ex)}
+                      aria-label={`Watch how to do ${ex.name}`}
+                      className="p-2.5 rounded-xl bg-gray-900 dark:bg-black/40 text-white min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0 active:opacity-80"
+                    >
+                      <Play className="w-4 h-4 fill-white" />
+                    </button>
+                  )}
                 </div>
               );
             })
           )}
         </div>
+
+        {videoEx && (
+          <ExerciseVideoModal name={videoEx.name} video={getExerciseVideo(videoEx)} onClose={() => setVideoEx(null)} />
+        )}
 
         {/* Start button */}
         {onStart && !loading && (
