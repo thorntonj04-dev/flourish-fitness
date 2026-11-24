@@ -85,10 +85,6 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   const [loading, setLoading] = useState(true);
   const [newWeight, setNewWeight] = useState('');
   const [savingMetric, setSavingMetric] = useState(false);
-  const [showInstallBanner, setShowInstallBanner] = useState(
-    () => localStorage.getItem('pwa-banner-dismissed') !== 'true'
-  );
-  const [installExpanded, setInstallExpanded] = useState(false);
 
   // Info panel
   const [showInfoPanel, setShowInfoPanel] = useState(false);
@@ -115,11 +111,6 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const fileInputRef = useRef(null);
-
-  const dismissInstallBanner = () => {
-    localStorage.setItem('pwa-banner-dismissed', 'true');
-    setShowInstallBanner(false);
-  };
 
   useEffect(() => { loadData(); loadArchives(); }, [user]);
 
@@ -575,57 +566,6 @@ export default function ClientProfile({ user, onProfileUpdate }) {
 
   return (
     <div className="space-y-4 pb-6 max-w-full overflow-x-hidden content-enter">
-
-      {/* ── iOS Install banner ────────────────────────────── */}
-      {showInstallBanner && (
-        <div className="bg-gradient-to-r from-gray-900 to-[#1a2e1a] rounded-2xl overflow-hidden text-white shadow-xl shadow-black/20 dark:shadow-black/40 border border-[#C6A45F]/30">
-          <button
-            onClick={() => setInstallExpanded(p => !p)}
-            className="w-full p-4 text-left active:opacity-80"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 text-xl">
-                📲
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm">Add to your Home Screen</div>
-                <div className="text-[#C6A45F]/80 text-xs mt-0.5">
-                  {installExpanded ? 'Tap anywhere to collapse' : 'Get the full app experience — tap to see how'}
-                </div>
-              </div>
-              <button
-                onClick={e => { e.stopPropagation(); dismissInstallBanner(); }}
-                className="p-1.5 bg-white/15 rounded-lg flex-shrink-0 active:bg-white/25"
-                aria-label="Dismiss"
-              >
-                <X className="w-4 h-4 text-white" />
-              </button>
-            </div>
-          </button>
-
-          {installExpanded && (
-            <div className="px-4 pb-5 space-y-3">
-              <div className="h-px bg-white/20" />
-              <p className="text-sm text-[#C6A45F] font-medium">Follow these steps in Safari on your iPhone:</p>
-              <div className="space-y-2.5">
-                {[
-                  { step: '1', text: 'Tap the Share button at the bottom of your browser', icon: '⬆️' },
-                  { step: '2', text: 'Scroll down and tap "Add to Home Screen"', icon: '➕' },
-                  { step: '3', text: 'Tap "Add" in the top-right corner', icon: '✓' },
-                ].map(({ step, text, icon }) => (
-                  <div key={step} className="flex items-start gap-3 bg-white/10 rounded-xl p-3">
-                    <div className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0">
-                      {step}
-                    </div>
-                    <div className="flex-1 text-sm text-gray-300 leading-snug">{icon} {text}</div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-[#C6A45F]/60 text-center">The app will open full-screen with no browser chrome — just like a native app.</p>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── Hero card ─────────────────────────────────────── */}
       <div className="hero-gradient rounded-2xl p-4 text-white relative overflow-hidden shadow-xl shadow-emerald-900/30">
@@ -1208,33 +1148,13 @@ function MuscleHeatmap({ groupVolumes, formatVolume }) {
   const maxVol = Math.max(1, ...BODY_GROUPS.map(g => groupVolumes[g] || 0));
   const totalVol = BODY_GROUPS.reduce((sum, g) => sum + (groupVolumes[g] || 0), 0);
 
-  const baseOpacity = (g) => {
-    const v = groupVolumes[g] || 0;
-    if (v <= 0) return 0.12;
-    return 0.22 + (v / maxVol) * 0.78;
-  };
-
   const toggleSelect = (g) => setSelectedGroup(prev => (prev === g ? null : g));
-
-  // Shared visual + interaction props for every shape belonging to one data group.
-  const regionProps = (g) => {
-    const isSelected = selectedGroup === g;
-    const isDimmed = selectedGroup && selectedGroup !== g;
-    return {
-      fill: '#10b981',
-      fillOpacity: isSelected ? 1 : isDimmed ? 0.06 : baseOpacity(g),
-      stroke: isSelected ? '#C6A45F' : 'none',
-      strokeWidth: isSelected ? 2.5 : 0,
-      onClick: () => toggleSelect(g),
-      style: { cursor: 'pointer', transition: 'fill-opacity 0.25s ease, stroke-width 0.25s ease' },
-    };
+  const intensity = (g) => {
+    const v = groupVolumes[g] || 0;
+    return v <= 0 ? 0 : 0.25 + (v / maxVol) * 0.75;
   };
 
   const sorted = [...BODY_GROUPS].sort((a, b) => (groupVolumes[b] || 0) - (groupVolumes[a] || 0));
-  const BONE = 'text-[#d9d0b0] dark:text-[#5c5947]';
-  const BONE_LINE = 'text-[#b8ac85] dark:text-[#847d5e]';
-  const VEIN = 'text-blue-400/40 dark:text-blue-300/35';
-
   const selectedVol = selectedGroup ? groupVolumes[selectedGroup] || 0 : 0;
   const selectedPct = selectedGroup && totalVol > 0 ? Math.round((selectedVol / totalVol) * 100) : 0;
 
@@ -1260,62 +1180,7 @@ function MuscleHeatmap({ groupVolumes, formatVolume }) {
       </div>
 
       <div className="flex flex-col sm:flex-row items-center gap-5">
-        <svg viewBox="0 0 200 340" className="w-36 sm:w-40 h-auto flex-shrink-0" aria-label="Interactive anatomical muscle volume diagram">
-          {/* ── skeleton layer (decorative) ───────────────────────────── */}
-          <ellipse cx="100" cy="20" rx="14" ry="16" fill="currentColor" className={BONE} />
-          <path d="M 89 10 Q 100 6 111 10" stroke="currentColor" className={BONE_LINE} strokeWidth="1" fill="none" />
-          <path d="M 87 17 Q 100 21 113 17" stroke="currentColor" className={BONE_LINE} strokeWidth="1" fill="none" />
-          <rect x="93" y="35" width="14" height="10" rx="2" fill="currentColor" className={BONE} />
-          <path d="M 100 45 L 100 165" stroke="currentColor" className={BONE_LINE} strokeWidth="2" strokeDasharray="3,3" fill="none" />
-          <path d="M 78 172 L 122 172 L 116 186 L 84 186 Z" fill="currentColor" className={BONE} />
-
-          {/* ── traps / back (visible from the front, above the chest) ─── */}
-          <path d="M 100 40 L 58 60 L 100 74 L 142 60 Z" {...regionProps('back')} />
-
-          {/* ── shoulders ──────────────────────────────────────────────── */}
-          <ellipse cx="54" cy="66" rx="15" ry="13" {...regionProps('shoulders')} />
-          <ellipse cx="146" cy="66" rx="15" ry="13" {...regionProps('shoulders')} />
-
-          {/* ── chest ──────────────────────────────────────────────────── */}
-          <ellipse cx="85" cy="96" rx="16" ry="19" transform="rotate(-10 85 96)" {...regionProps('chest')} />
-          <ellipse cx="115" cy="96" rx="16" ry="19" transform="rotate(10 115 96)" {...regionProps('chest')} />
-
-          {/* ── arms (upper arm + forearm) ─────────────────────────────── */}
-          <ellipse cx="40" cy="102" rx="13" ry="32" {...regionProps('arms')} />
-          <ellipse cx="34" cy="164" rx="10" ry="28" {...regionProps('arms')} />
-          <ellipse cx="160" cy="102" rx="13" ry="32" {...regionProps('arms')} />
-          <ellipse cx="166" cy="164" rx="10" ry="28" {...regionProps('arms')} />
-          <ellipse cx="31" cy="198" rx="7" ry="10" fill="currentColor" className={BONE} />
-          <ellipse cx="169" cy="198" rx="7" ry="10" fill="currentColor" className={BONE} />
-
-          {/* ── core (six-pack grid) ───────────────────────────────────── */}
-          <rect x="85" y="122" width="13" height="13" rx="4" {...regionProps('core')} />
-          <rect x="102" y="122" width="13" height="13" rx="4" {...regionProps('core')} />
-          <rect x="85" y="138" width="13" height="13" rx="4" {...regionProps('core')} />
-          <rect x="102" y="138" width="13" height="13" rx="4" {...regionProps('core')} />
-          <rect x="85" y="154" width="13" height="13" rx="4" {...regionProps('core')} />
-          <rect x="102" y="154" width="13" height="13" rx="4" {...regionProps('core')} />
-
-          {/* ── legs (thigh + calf) ─────────────────────────────────────── */}
-          <ellipse cx="82" cy="215" rx="18" ry="35" {...regionProps('legs')} />
-          <ellipse cx="80" cy="290" rx="12" ry="30" {...regionProps('legs')} />
-          <ellipse cx="118" cy="215" rx="18" ry="35" {...regionProps('legs')} />
-          <ellipse cx="120" cy="290" rx="12" ry="30" {...regionProps('legs')} />
-          <circle cx="81" cy="250" r="6" fill="currentColor" className={BONE} />
-          <circle cx="119" cy="250" r="6" fill="currentColor" className={BONE} />
-          <ellipse cx="78" cy="322" rx="9" ry="6" fill="currentColor" className={BONE} />
-          <ellipse cx="122" cy="322" rx="9" ry="6" fill="currentColor" className={BONE} />
-
-          {/* ── veins (decorative) ─────────────────────────────────────── */}
-          <path d="M 92 40 Q 90 44 93 48" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
-          <path d="M 108 40 Q 110 44 107 48" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
-          <path d="M 82 15 Q 80 19 83 24" stroke="currentColor" className={VEIN} strokeWidth="0.75" fill="none" />
-          <path d="M 118 15 Q 120 19 117 24" stroke="currentColor" className={VEIN} strokeWidth="0.75" fill="none" />
-          <path d="M 30 137 Q 34 152 29 172 Q 26 182 30 187" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
-          <path d="M 38 140 Q 41 157 36 177" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
-          <path d="M 170 137 Q 166 152 171 172 Q 174 182 170 187" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
-          <path d="M 162 140 Q 159 157 164 177" stroke="currentColor" className={VEIN} strokeWidth="1" fill="none" />
-        </svg>
+        <AnatomyFigure intensity={intensity} selectedGroup={selectedGroup} onSelect={toggleSelect} />
 
         <div className="flex-1 w-full space-y-1.5">
           {sorted.map(g => {
@@ -1332,7 +1197,7 @@ function MuscleHeatmap({ groupVolumes, formatVolume }) {
               >
                 <div
                   className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: '#10b981', opacity: v > 0 ? 0.22 + (v / maxVol) * 0.78 : 0.15 }}
+                  style={{ backgroundColor: muscleFill(intensity(g)) }}
                 />
                 <div className={`text-sm flex-1 ${isSelected ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-gray-700 dark:text-[#d8e7de]/80'}`}>
                   {GROUP_LABELS[g]}
@@ -1391,5 +1256,150 @@ function WeightChart({ metrics }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Anatomical (écorché) muscle figure ──────────────────────────────────────
+// Front + back views in the style of a medical muscle chart. Each figure is drawn as
+// its left half (x 0–60) and mirrored, so both sides stay symmetric. Muscles belonging
+// to a tracked group are tinted by training volume; the rest are drawn as neutral muscle.
+
+const MUSCLE_PALE = [222, 190, 182];   // untrained muscle
+const MUSCLE_DEEP = [176, 30, 30];     // most-trained muscle
+const FASCIA = '#ece0c8';              // tendon / bone / fascia
+const FASCIA_LINE = '#b9a47c';
+const OUTLINE = '#6b211b';
+const DEEP_MUSCLE = '#9c4038';         // deeper muscle layer showing between surface muscles
+
+// Body silhouette (left half) drawn first, so gaps between surface muscles read as deep muscle.
+const BODY_UNDERLAYER = 'M60 28 L50 28 L46 46 L36 47 C26 49 21 57 21 66 C21 82 23 98 25 112 C20 124 17 138 17 152 L17 160 L33 161 C36 146 38 130 38 116 L39 98 L39 120 C40 128 40 134 41 140 C37 152 36 172 37 200 C38 212 40 222 42 236 C40 250 40 268 43 286 L51 286 C51 270 54 260 57 248 C58 238 57 230 57 224 C58 200 59.2 176 59.2 152 L60 152 Z';
+
+function muscleFill(t) {
+  const c = MUSCLE_PALE.map((p, i) => Math.round(p + (MUSCLE_DEEP[i] - p) * t));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
+// Left-half paths. g = data group (null = decorative muscle), f = fiber direction.
+const FRONT_MUSCLES = [
+  { g: null, f: 'v', d: 'M50 30 L60 30 L60 52 L44 50 Z' },                                                   // neck (deep)
+  { g: null, f: 'd', d: 'M50 31 C52 39 55 46 58 52 L60 52 L60 47 C56 42 53 37 52.5 31 Z' },               // sternocleidomastoid
+  { g: 'back', f: 'd', d: 'M52 37 C48 43 42 46 34 49 L40 52 C46 50 52 49 58 50 Z' },                         // trapezius
+  { g: 'core', f: 'd', d: 'M40 84 C44 82 50 84 52 88 L52 132 C48 136 44 138 42 140 C39 126 38 104 40 84 Z' }, // external oblique
+  { g: 'core', f: 'd', d: 'M38 72 L44 76 L40 78 L45 82 L41 84 L46 88 L42 90 L46 94 L40 93 C38 86 37 79 38 72 Z' }, // serratus anterior
+  { g: 'core', f: 'h', d: 'M53 84 L59.2 84 L59.2 146 L55 146 C53 136 53 110 53 84 Z' },                      // rectus abdominis
+  { g: 'chest', f: 'd', d: 'M59.2 53 C52 52 45 52 39 54 C36 58 34 63 33 67 L38 69 C42 74 50 81 59.2 82 Z' },  // pectoralis major
+  { g: 'shoulders', f: 'v', d: 'M37 49 C30 49 24 54 22 62 C21 70 23 78 27 86 L31 84 C32 76 34 68 39 60 C40 56 40 52 37 49 Z' }, // deltoid
+  { g: 'arms', f: 'v', d: 'M27 86 C24 94 24 104 27 112 L31 112 C30 102 30 92 31 84 Z' },                     // triceps (lateral)
+  { g: 'arms', f: 'v', d: 'M33 67 C30 74 29 86 30 100 C31 106 33 110 35 112 L38 110 C39 100 39 84 38 70 Z' }, // biceps
+  { g: 'arms', f: 'v', d: 'M26 118 C21 126 18 138 18 150 L22 160 L26 158 C25 146 27 132 31 118 Z' },         // brachioradialis
+  { g: 'arms', f: 'v', d: 'M31 118 C29 132 27 146 26 158 L32 160 C34 146 37 130 37 118 Z' },                 // forearm flexors
+  { g: 'legs', f: 'v', d: 'M42 140 C39 146 38 154 38 162 L43 160 C44 152 45 146 46 144 Z' },                 // tensor fasciae latae
+  { g: 'legs', f: 'v', d: 'M38 160 C36 180 37 204 41 222 L45 224 C44 204 43 182 44 162 Z' },                 // vastus lateralis
+  { g: 'legs', f: 'v', d: 'M52 150 L59.2 152 L59.2 168 C58 180 57 192 56 204 C54 186 52 168 51 152 Z' },     // adductors
+  { g: 'legs', f: 'v', d: 'M46 146 C43 166 43 196 46 220 L52 220 C54 196 54 170 51 150 Z' },                 // rectus femoris
+  { g: 'legs', f: 'v', d: 'M52 196 C55 204 56 214 54 224 L48 226 C50 216 51 206 52 196 Z' },                 // vastus medialis
+  { g: 'legs', f: 'd', d: 'M44 144 C48 160 54 186 57 214 L55 218 C52 190 46 164 42 146 Z' },                 // sartorius
+  { g: 'legs', f: 'v', d: 'M43 238 C40 250 41 266 44 284 L46 284 C45 268 44 252 45 238 Z' },                 // peroneus
+  { g: 'legs', f: 'v', d: 'M45 238 C44 252 45 268 47 284 L50 284 C50 268 50 252 50 238 Z' },                 // tibialis anterior
+  { g: 'legs', f: 'v', d: 'M50 238 C55 246 57 256 55 270 L52 280 C51 266 51 252 50 238 Z' },                 // gastrocnemius (medial)
+];
+const FRONT_FASCIA = [
+  'M60 4 C49 4 46 12 46 22 C46 30 48 35 52 38 C55 40 58 41 60 41 Z',                                        // head
+  'M42 138 L59.2 146 L59.2 152 L46 150 Z',                                                                   // inguinal
+  'M27 112 L38 110 L37 118 L26 118 Z',                                                                       // elbow
+  'M18 158 L32 160 L33 168 C33 176 30 184 24 186 C19 184 16 176 17 168 Z',                                   // hand
+  'M42 222 L56 222 L55 238 L43 238 Z',                                                                       // knee
+  'M43 284 L51 284 L52 292 C52 296 48 298 42 298 C38 298 38 294 40 290 Z',                                   // foot
+];
+const FRONT_LINES = [
+  'M58 51 C50 50 44 50 37 52',             // clavicle
+  'M53.5 98 L59.2 98', 'M53.3 112 L59.2 112', 'M53.4 126 L59.2 126', // abdominal tendinous intersections
+  'M46 228 C47 224 52 224 53 228 C53 233 51 236 49.5 236 C48 236 46 233 46 228 Z', // patella
+];
+
+const BACK_MUSCLES = [
+  { g: 'core', f: 'd', d: 'M40 112 C39 120 39 128 41 136 L46 134 C44 126 42 120 42 112 Z' },                 // oblique (rear)
+  { g: 'back', f: 'd', d: 'M36 78 C38 88 40 100 42 112 C46 122 52 128 58 132 L59.2 132 L59.2 108 C57 98 55 86 54 72 L50 78 L46 84 Z' }, // latissimus dorsi
+  { g: 'back', f: 'v', d: 'M55 100 L59.2 100 L59.2 142 L54 142 C53 128 54 114 55 100 Z' },                   // erector spinae
+  { g: 'back', f: 'd', d: 'M42 58 C46 56 52 60 54 70 L50 78 C46 76 42 74 38 72 C38 66 40 61 42 58 Z' },     // infraspinatus
+  { g: 'back', f: 'd', d: 'M38 72 L50 78 L46 84 L36 78 Z' },                                                 // teres major
+  { g: 'back', f: 'd', d: 'M59.2 26 C56 30 54 36 52 40 C46 44 40 47 34 50 C42 54 50 60 54 72 C56 84 58 96 59.2 108 Z' }, // trapezius
+  { g: 'shoulders', f: 'v', d: 'M34 50 C27 52 22 58 22 66 C22 74 24 80 27 86 L31 84 C33 74 36 64 42 58 C40 54 37 51 34 50 Z' }, // rear deltoid
+  { g: 'arms', f: 'v', d: 'M31 84 C27 86 26 92 26 100 C26 106 28 110 30 114 L37 112 C38 104 38 94 36 84 Z' }, // triceps
+  { g: 'arms', f: 'v', d: 'M27 120 C22 130 20 142 20 156 L26 160 C27 146 30 132 32 120 Z' },                 // forearm extensors
+  { g: 'arms', f: 'v', d: 'M32 120 C31 134 30 148 30 160 L34 160 C36 146 38 132 37 120 Z' },                 // forearm (ulnar)
+  { g: 'legs', f: 'd', d: 'M42 132 C40 136 39 140 40 146 L50 144 C50 140 48 136 46 133 Z' },                 // gluteus medius
+  { g: 'legs', f: 'd', d: 'M40 146 C38 154 40 164 46 170 C52 173 57 172 59.2 170 L59.2 140 C56 140 52 142 48 144 Z' }, // gluteus maximus
+  { g: 'legs', f: 'v', d: 'M41 166 C40 186 41 206 44 226 L50 226 C49 206 48 186 48 170 Z' },                 // biceps femoris
+  { g: 'legs', f: 'v', d: 'M48 170 C50 188 51 208 52 226 L57 224 C58 206 58 188 57 170 Z' },                 // semitendinosus
+  { g: 'legs', f: 'v', d: 'M44 234 C40 244 40 258 45 272 L50 270 C49 256 49 244 50 234 Z' },                 // gastrocnemius (lateral)
+  { g: 'legs', f: 'v', d: 'M50 234 C56 242 58 256 55 270 L50 272 C51 258 51 246 50 234 Z' },                 // gastrocnemius (medial)
+];
+const BACK_FASCIA = [
+  'M60 4 C49 4 46 12 46 22 C46 30 48 35 52 38 C55 40 58 41 60 41 Z',                                        // head
+  'M50 128 L59.2 120 L59.2 146 L52 142 Z',                                                                   // thoracolumbar fascia
+  'M28 114 L37 112 L37 120 L27 120 Z',                                                                       // elbow
+  'M20 158 L34 160 L34 168 C34 176 31 184 25 186 C20 184 17 176 18 168 Z',                                   // hand
+  'M43 224 L57 224 L56 236 L44 236 Z',                                                                       // knee
+  'M46 270 L54 270 L52 286 L48 286 Z',                                                                       // achilles
+  'M44 286 L54 286 L54 294 C52 298 46 298 44 294 Z',                                                         // heel
+];
+const BACK_LINES = [
+  'M31 88 C33 96 33 104 32 112',           // triceps long/lateral head split
+  'M47 72 C49 66 51 63 52 62',             // spine of scapula
+];
+
+function AnatomyFigure({ intensity, selectedGroup, onSelect }) {
+  const renderHalf = (muscles, fascia, lines) => (
+    <>
+      <path d={BODY_UNDERLAYER} fill={DEEP_MUSCLE} stroke={OUTLINE} strokeOpacity="0.5" strokeWidth="0.4" />
+      {fascia.map((d, i) => <path key={`f${i}`} d={d} fill={FASCIA} stroke={FASCIA_LINE} strokeWidth="0.5" />)}
+      {muscles.map((m, i) => {
+        const tracked = !!m.g;
+        const isSelected = tracked && selectedGroup === m.g;
+        const isDimmed = tracked && selectedGroup && selectedGroup !== m.g;
+        return (
+          <g key={`m${i}`} onClick={tracked ? () => onSelect(m.g) : undefined} style={tracked ? { cursor: 'pointer' } : undefined}>
+            <path
+              d={m.d}
+              fill={muscleFill(tracked ? intensity(m.g) : 0)}
+              fillOpacity={isDimmed ? 0.35 : 1}
+              stroke={isSelected ? '#C6A45F' : OUTLINE}
+              strokeWidth={isSelected ? 1.4 : 0.45}
+              strokeOpacity={isSelected ? 1 : 0.7}
+              strokeLinejoin="round"
+              style={{ transition: 'fill 0.25s ease, fill-opacity 0.25s ease' }}
+            />
+            <path d={m.d} fill={`url(#fib-${m.f})`} pointerEvents="none" />
+          </g>
+        );
+      })}
+      {lines.map((d, i) => <path key={`l${i}`} d={d} fill="none" stroke={OUTLINE} strokeOpacity="0.55" strokeWidth="0.5" pointerEvents="none" />)}
+    </>
+  );
+
+  const figure = (muscles, fascia, lines, x, label) => (
+    <g transform={`translate(${x} 0)`}>
+      {renderHalf(muscles, fascia, lines)}
+      <g transform="translate(120 0) scale(-1 1)">{renderHalf(muscles, fascia, lines)}</g>
+      <text x="60" y="312" textAnchor="middle" fontSize="9" fontWeight="600" fill="currentColor" className="text-gray-400 dark:text-[#d8e7de]/40">{label}</text>
+    </g>
+  );
+
+  return (
+    <svg viewBox="0 0 250 318" className="w-56 sm:w-60 h-auto flex-shrink-0" role="img" aria-label="Anatomical muscle chart, front and back, shaded by training volume">
+      <defs>
+        {[['v', 0], ['d', 35], ['h', 90]].map(([k, angle]) => (
+          <pattern key={k} id={`fib-${k}`} width="1.8" height="1.8" patternUnits="userSpaceOnUse" patternTransform={`rotate(${angle})`}>
+            <line x1="0" y1="0" x2="0" y2="1.8" stroke={OUTLINE} strokeOpacity="0.16" strokeWidth="0.45" />
+          </pattern>
+        ))}
+      </defs>
+      {figure(FRONT_MUSCLES, FRONT_FASCIA, FRONT_LINES, 0, 'FRONT')}
+      {figure(BACK_MUSCLES, BACK_FASCIA, BACK_LINES, 130, 'BACK')}
+      {/* midlines: linea alba (front) and spine (back) */}
+      <path d="M60 84 L60 146" stroke={OUTLINE} strokeOpacity="0.5" strokeWidth="0.6" />
+      <path d="M190 30 L190 146" stroke={FASCIA_LINE} strokeWidth="1" strokeDasharray="1.5 1.2" />
+    </svg>
   );
 }

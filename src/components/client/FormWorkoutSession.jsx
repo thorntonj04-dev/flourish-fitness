@@ -6,10 +6,13 @@ import WorkoutComplete from './WorkoutComplete';
 import RestTimerOverlay from './RestTimerOverlay';
 import { isPerSide } from '../../utils/volume';
 import { loadWorkoutSchedule, missedScheduledDay } from '../../utils/streak';
+import { getExerciseVideo } from '../../data/exerciseVideos';
+import ExerciseVideoModal from '../shared/ExerciseVideoModal';
 
 export default function FormWorkoutSession({ workout, userId, onExit, previewMode = false, resumeSessionId = null }) {
   const [exercises, setExercises] = useState([]);
   const [currentExIdx, setCurrentExIdx] = useState(0);
+  const [videoOpen, setVideoOpen] = useState(false);
   const [slideClass, setSlideClass] = useState('');
   const navTimerRef = useRef(null);
   const [sessionData, setSessionData] = useState({});
@@ -639,22 +642,20 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
             {/* ── Card body ─────────────────────────────────────────────────── */}
             <div className="border-t border-gray-100 dark:border-[#C6A45F]/10">
 
-              {exercise.videoUrl && (
+              {getExerciseVideo(exercise) && (
                 <div className="px-4 pt-4">
-                  <a
-                    href={exercise.videoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 bg-gray-900 dark:bg-black/40 text-white rounded-xl active:opacity-80"
+                  <button
+                    onClick={() => setVideoOpen(true)}
+                    className="w-full text-left flex items-center gap-3 p-3 bg-gray-900 dark:bg-black/40 text-white rounded-xl active:opacity-80"
                   >
                     <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Play className="w-4 h-4 fill-white" />
                     </div>
                     <div>
-                      <div className="font-bold text-sm">Watch Form Video</div>
-                      <div className="text-xs text-gray-400">Technique reference</div>
+                      <div className="font-bold text-sm">Watch How</div>
+                      <div className="text-xs text-gray-400">Short form demo</div>
                     </div>
-                  </a>
+                  </button>
                 </div>
               )}
 
@@ -747,6 +748,10 @@ export default function FormWorkoutSession({ workout, userId, onExit, previewMod
           </div>
         )}
       </div>
+
+      {videoOpen && exercise && (
+        <ExerciseVideoModal name={exercise.name} video={getExerciseVideo(exercise)} onClose={() => setVideoOpen(false)} />
+      )}
 
       {removeExerciseConfirm !== null && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6">
