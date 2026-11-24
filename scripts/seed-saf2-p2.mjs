@@ -1,5 +1,5 @@
-// One-time loader for StrongAF 2.0 — Phase 2. The same import is available in the app:
-// Workout Builder → "Import StrongAF 2.0 Phase 2" (admin only, uses your browser sign-in).
+// One-time loader for StrongAF 2.0 — Phase 2 (already imported via the app on 2026-11-24;
+// kept as a record and to re-create the workouts if ever needed).
 //
 // Usage (from the repo root, as an ADMIN account):
 //   node scripts/seed-saf2-p2.mjs

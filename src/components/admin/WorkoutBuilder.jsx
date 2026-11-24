@@ -4,7 +4,6 @@ import { ref as dbRef, get, set, push, remove, update } from 'firebase/database'
 import { db, auth } from '../../firebase';
 import ExerciseLibrary from '../workout/ExerciseLibrary';
 import { getExerciseVideo } from '../../data/exerciseVideos';
-import { importSaf2Phase2, WORKOUTS as SAF2_P2_WORKOUTS } from '../../data/saf2Phase2';
 import FormWorkoutSession from '../client/FormWorkoutSession';
 import { guessPerSide, isPerSide } from '../../utils/volume';
 import { EXERCISE_LIBRARY } from '../../data/exerciseLibrary';
@@ -157,24 +156,6 @@ export default function WorkoutBuilder() {
     };
     setCurrentWorkout(prev => ({ ...prev, exercises: [...prev.exercises, newExercise] }));
     setQuickAddSearch('');
-  };
-
-  // One-time import of StrongAF 2.0 Phase 2 (shown until all 4 workouts exist).
-  const [importingSaf2, setImportingSaf2] = useState(false);
-  const [saf2Result, setSaf2Result] = useState(null);
-  const handleImportSaf2 = async () => {
-    setImportingSaf2(true);
-    setSaf2Result(null);
-    try {
-      const { programName, log } = await importSaf2Phase2(db);
-      setSaf2Result({ ok: true, text: `Added to ${programName} → Phase 2: ${log.join(' · ')}` });
-      await loadWorkouts();
-    } catch (err) {
-      console.error('StrongAF 2.0 Phase 2 import failed:', err);
-      setSaf2Result({ ok: false, text: err.message });
-    } finally {
-      setImportingSaf2(false);
-    }
   };
 
   const loadWorkouts = async () => {
@@ -1204,32 +1185,6 @@ export default function WorkoutBuilder() {
           <div className="text-sm text-gray-500 dark:text-[#d8e7de]/50">Build a training day from your exercise library</div>
         </div>
       </button>
-
-      {/* One-time StrongAF 2.0 Phase 2 import */}
-      {(!SAF2_P2_WORKOUTS.every(w => workouts.some(x => x.id === w.key)) || saf2Result) && (
-        <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-emerald-300 dark:border-emerald-700/50 p-4 space-y-3">
-          <div>
-            <div className="font-bold text-gray-900 dark:text-[#d8e7de]">StrongAF 2.0 — Phase 2</div>
-            <div className="text-sm text-gray-500 dark:text-[#d8e7de]/50">
-              Adds the 4 "SAF 2.0 P2" workouts and fills Days A–D of the program's Phase 2.
-            </div>
-          </div>
-          {saf2Result && (
-            <div className={`text-sm rounded-xl p-3 ${saf2Result.ok ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300' : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'}`}>
-              {saf2Result.ok ? '✓ ' : '✗ '}{saf2Result.text}
-            </div>
-          )}
-          {!saf2Result?.ok && (
-            <button
-              onClick={handleImportSaf2}
-              disabled={importingSaf2}
-              className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl min-h-[48px] disabled:opacity-60"
-            >
-              {importingSaf2 ? 'Importing…' : 'Import StrongAF 2.0 Phase 2'}
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Workout cards */}
       {workouts.length === 0 ? (
