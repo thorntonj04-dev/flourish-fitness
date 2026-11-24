@@ -15,6 +15,13 @@ function localDateStr(dateLike) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Parse 'YYYY-MM-DD' as a LOCAL date. new Date('YYYY-MM-DD') parses as UTC midnight,
+// which is the previous evening in US timezones and shifts the program start back a day.
+function parseLocalDate(str) {
+  const [y, m, d] = String(str).split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function getThisWeek() {
   const today = new Date();
   const dow = today.getDay();
@@ -89,8 +96,7 @@ function StartOverConfirmModal({ workoutName, onConfirm, onCancel }) {
 }
 
 function computeWeekNumber(startDate, durationWeeks) {
-  const start = new Date(startDate);
-  start.setHours(0, 0, 0, 0);
+  const start = parseLocalDate(startDate);
   const daysElapsed = Math.floor((Date.now() - start.getTime()) / 86400000);
   if (daysElapsed < 0) return 0; // program hasn't started yet
   return Math.min(Math.max(1, Math.floor(daysElapsed / 7) + 1), durationWeeks);
@@ -173,8 +179,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
         const currentPhaseIdx = assign.currentPhase ?? 0;
         const currentPhaseData = phases[currentPhaseIdx];
         if (currentPhaseData && assign.startDate) {
-          const start = new Date(assign.startDate);
-          start.setHours(0, 0, 0, 0);
+          const start = parseLocalDate(assign.startDate);
           const daysElapsed = Math.floor((Date.now() - start.getTime()) / 86400000);
           const rawWeek = Math.max(1, Math.floor(daysElapsed / 7) + 1);
           if (rawWeek > (currentPhaseData.durationWeeks || 1) && currentPhaseIdx + 1 < phases.length) {
@@ -238,7 +243,9 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
 
   const buildWeekDays = (weekBase) =>
     weekBase.map(day => {
-      const dayId = weeklySchedule[day.name] || null;
+      // Program days only apply from the start date onward; ad-hoc workouts can still be added before.
+      const beforeStart = assignment?.startDate && day.dateStr < assignment.startDate;
+      const dayId = beforeStart ? null : (weeklySchedule[day.name] || null);
       const phaseDay = dayId ? phaseDaysArray.find(d => d.id === dayId) : null;
       const adhoc = !phaseDay ? adhocSchedule[day.dateStr] : null;
       const workoutId = phaseDay?.workoutId ?? adhoc?.workoutId ?? null;
@@ -356,7 +363,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Layers className="w-4 h-4 opacity-80" />
-              <span className="text-sm font-semibold opacity-80 truncate">{assignment.programName}</span>
+              <span className="text-sm font-semibold opacity-80 break-words min-w-0">{assignment.programName}</span>
             </div>
             <h2 className="text-xl font-bold">{phase?.name ?? 'Current Phase'}</h2>
             <p className="text-emerald-100 text-sm mt-0.5">
@@ -560,7 +567,7 @@ function DayRow({ day, onStart, onStartOver, onPreview, onAddAdhoc, onRemoveAdho
           <div className="text-lg font-bold text-amber-600 dark:text-amber-400">{day.date.getDate()}</div>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-amber-700 dark:text-amber-300 truncate">{day.workoutName}</div>
+          <div className="font-bold text-amber-700 dark:text-amber-300 break-words">{day.workoutName}</div>
           <div className="text-xs text-amber-500 dark:text-amber-500/80">{day.dayLabel} · In progress</div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -604,7 +611,7 @@ function DayRow({ day, onStart, onStartOver, onPreview, onAddAdhoc, onRemoveAdho
             <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{day.date.getDate()}</div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-emerald-700 dark:text-emerald-400 truncate">{day.workoutName}</div>
+            <div className="font-semibold text-emerald-700 dark:text-emerald-400 break-words">{day.workoutName}</div>
             <div className="text-xs text-emerald-500 dark:text-emerald-500/80">{day.dayLabel}</div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -624,7 +631,7 @@ function DayRow({ day, onStart, onStartOver, onPreview, onAddAdhoc, onRemoveAdho
           <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{day.date.getDate()}</div>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-emerald-700 dark:text-emerald-300 truncate">{day.workoutName}</div>
+          <div className="font-bold text-emerald-700 dark:text-emerald-300 break-words">{day.workoutName}</div>
           <div className="text-xs text-emerald-500 dark:text-emerald-500/80">{day.dayLabel} · Today</div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -679,7 +686,7 @@ function DayRow({ day, onStart, onStartOver, onPreview, onAddAdhoc, onRemoveAdho
           <div className="text-lg font-bold text-gray-400 dark:text-[#d8e7de]/40">{day.date.getDate()}</div>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-gray-500 dark:text-[#d8e7de]/50 truncate line-through">{day.workoutName}</div>
+          <div className="font-semibold text-gray-500 dark:text-[#d8e7de]/50 break-words line-through">{day.workoutName}</div>
           <div className="text-xs text-gray-400 dark:text-[#d8e7de]/30">{day.dayLabel}</div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -699,7 +706,7 @@ function DayRow({ day, onStart, onStartOver, onPreview, onAddAdhoc, onRemoveAdho
         <div className={`text-lg font-bold ${isFuture ? 'text-gray-700 dark:text-[#d8e7de]/80' : 'text-gray-300 dark:text-[#d8e7de]/30'}`}>{day.date.getDate()}</div>
       </div>
       <div className="flex-1 min-w-0">
-        <div className={`font-semibold truncate ${isFuture ? 'text-gray-800 dark:text-[#d8e7de]' : 'text-gray-400 dark:text-[#d8e7de]/40'}`}>
+        <div className={`font-semibold break-words ${isFuture ? 'text-gray-800 dark:text-[#d8e7de]' : 'text-gray-400 dark:text-[#d8e7de]/40'}`}>
           {day.workoutName}
         </div>
         <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40">{day.dayLabel}</div>
@@ -802,7 +809,7 @@ function WorkoutPreviewModal({ workout, loading, onClose, onStart }) {
 
         {/* Start button */}
         {onStart && !loading && (
-          <div className="px-4 pb-6 pt-3 border-t border-gray-100 dark:border-[#C6A45F]/15 flex-shrink-0">
+          <div className="px-4 pb-28 md:pb-6 pt-3 border-t border-gray-100 dark:border-[#C6A45F]/15 flex-shrink-0">
             <button
               onClick={onStart}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 min-h-[56px] shadow-lg shadow-emerald-500/20"
@@ -1046,7 +1053,7 @@ function QuickStartCard({ workouts, workoutHistory, activeSession, onStartWorkou
                 {w.label && (
                   <div className="text-xs font-semibold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide">{w.label}</div>
                 )}
-                <div className="font-semibold text-gray-900 dark:text-[#d8e7de] truncate">{w.workoutName}</div>
+                <div className="font-semibold text-gray-900 dark:text-[#d8e7de] break-words">{w.workoutName}</div>
               </div>
               {inProgress ? (
                 <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex-shrink-0">Continue</span>

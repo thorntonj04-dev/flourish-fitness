@@ -71,7 +71,7 @@ export default function ScheduleAdjustModal({ userId, currentSchedule, available
         </div>
 
         {/* Save */}
-        <div className="p-4 pt-3 border-t border-gray-100 dark:border-[#C6A45F]/15 flex-shrink-0">
+        <div className="p-4 pt-3 pb-28 md:pb-4 border-t border-gray-100 dark:border-[#C6A45F]/15 flex-shrink-0">
           <button
             onClick={handleSave}
             disabled={saving}

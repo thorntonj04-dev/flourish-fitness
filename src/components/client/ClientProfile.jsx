@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ref as dbRef, get, set, push } from 'firebase/database';
+import { ref as dbRef, get, set, push, update } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
 import { db, storage, auth } from '../../firebase';
-import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check, Send, Sparkles } from 'lucide-react';
+import { Flame, Dumbbell, Trophy, TrendingUp, TrendingDown, Scale, Plus, X, Info, Edit2, Camera, Check, Send, Sparkles, Archive } from 'lucide-react';
 import { EXERCISE_LIBRARY } from '../../data/exerciseLibrary';
 import { exerciseVolume, sessionVolume } from '../../utils/volume';
 import { loadWorkoutSchedule, currentStreak } from '../../utils/streak';
@@ -99,6 +99,11 @@ export default function ClientProfile({ user, onProfileUpdate }) {
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
 
+  // Start fresh (archive history)
+  const [archives, setArchives] = useState([]);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+
   // Editable name
   const [loadedName, setLoadedName] = useState('');
   const [editingName, setEditingName] = useState(false);
@@ -116,7 +121,64 @@ export default function ClientProfile({ user, onProfileUpdate }) {
     setShowInstallBanner(false);
   };
 
-  useEffect(() => { loadData(); }, [user]);
+  useEffect(() => { loadData(); loadArchives(); }, [user]);
+
+  // Loaded separately so a missing/undeployed DB rule can't break the rest of the profile.
+  const loadArchives = async () => {
+    try {
+      const snap = await get(dbRef(db, `workout-archives/${user.uid}`));
+      const list = snap.exists()
+        ? Object.entries(snap.val())
+            .map(([id, a]) => ({ id, archivedAt: a.archivedAt, sessionCount: a.sessionCount || 0 }))
+            .sort((a, b) => b.archivedAt - a.archivedAt)
+        : [];
+      setArchives(list);
+    } catch (err) {
+      console.error('Error loading archives:', err);
+    }
+  };
+
+  // Moves workout history + stats into workout-archives/{uid}/{archiveId} in one atomic
+  // write, so progress, PRs, streak and "last time" weights all start from zero.
+  // A workout started in the last 24h that isn't finished is left in place so it can be resumed.
+  const handleStartFresh = async () => {
+    setArchiving(true);
+    try {
+      const [historySnap, statsSnap] = await Promise.all([
+        get(dbRef(db, `workout-history/${user.uid}`)),
+        get(dbRef(db, `user-stats/${user.uid}`)),
+      ]);
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      const toArchive = {};
+      Object.entries(historySnap.val() || {}).forEach(([id, s]) => {
+        if (s.completed || !s.startTime || s.startTime < cutoff) toArchive[id] = s;
+      });
+      const sessionCount = Object.values(toArchive).filter(s => s.completed).length;
+
+      const archiveId = push(dbRef(db, `workout-archives/${user.uid}`)).key;
+      const updates = {
+        [`workout-archives/${user.uid}/${archiveId}`]: {
+          archivedAt: Date.now(),
+          sessionCount,
+          history: toArchive,
+          stats: statsSnap.val() || null,
+        },
+        [`user-stats/${user.uid}`]: null,
+      };
+      Object.keys(toArchive).forEach(id => { updates[`workout-history/${user.uid}/${id}`] = null; });
+      await update(dbRef(db), updates);
+
+      setConfirmArchive(false);
+      setStats(null);
+      setHistory([]);
+      await Promise.all([loadData(), loadArchives()]);
+    } catch (err) {
+      console.error('Error archiving history:', err);
+      alert('Could not archive your history. Please try again.');
+    } finally {
+      setArchiving(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -955,6 +1017,67 @@ export default function ClientProfile({ user, onProfileUpdate }) {
           </p>
         </div>
       )}
+
+      {/* ── Start fresh ───────────────────────────────────── */}
+      <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center flex-shrink-0">
+            <Archive className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-gray-900 dark:text-[#d8e7de]">Start Fresh</h3>
+            <p className="text-xs text-gray-500 dark:text-[#d8e7de]/50">Archive your sessions and strength progress</p>
+          </div>
+        </div>
+
+        {confirmArchive ? (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600 dark:text-[#d8e7de]/70">
+              Your {history.length} completed workout{history.length !== 1 ? 's' : ''}, personal records, streak and
+              stats will be archived and your progress will start from zero. Your archived history is kept, not deleted.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmArchive(false)}
+                disabled={archiving}
+                className="flex-1 py-3 bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-[#d8e7de]/80 font-semibold rounded-xl min-h-[44px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleStartFresh}
+                disabled={archiving}
+                className="flex-1 py-3 bg-amber-500 text-white font-bold rounded-xl active:bg-amber-600 disabled:opacity-50 min-h-[44px]"
+              >
+                {archiving ? 'Archiving…' : 'Yes, Start Fresh'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmArchive(true)}
+            disabled={history.length === 0 && !stats}
+            className="w-full py-3 border-2 border-amber-300 dark:border-amber-600/40 text-amber-700 dark:text-amber-400 font-bold rounded-xl flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-40"
+          >
+            <Archive className="w-4 h-4" />
+            Archive History &amp; Start Fresh
+          </button>
+        )}
+
+        {archives.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#C6A45F]/15">
+            <div className="text-xs font-semibold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide mb-2">Past archives</div>
+            <div className="space-y-1">
+              {archives.map(a => (
+                <div key={a.id} className="flex justify-between text-sm text-gray-600 dark:text-[#d8e7de]/60">
+                  <span>{new Date(a.archivedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  <span>{a.sessionCount} workout{a.sessionCount !== 1 ? 's' : ''}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ── Feedback ──────────────────────────────────────── */}
       <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 p-5">
