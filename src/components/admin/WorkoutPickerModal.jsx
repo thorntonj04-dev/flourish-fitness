@@ -47,7 +47,7 @@ export default function WorkoutPickerModal({ workouts, currentWorkoutId, onSelec
         </div>
 
         {/* Workout list */}
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 pb-28 md:pb-0">
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-gray-400 dark:text-[#d8e7de]/40">
               <Dumbbell className="w-10 h-10 mx-auto mb-2 opacity-30" />

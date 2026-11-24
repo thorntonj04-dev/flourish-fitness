@@ -109,7 +109,7 @@ export default function AssignWorkoutScheduleModal({ client, existingSchedule, o
         </div>
 
         {/* Save */}
-        <div className="p-4 border-t border-gray-200 dark:border-[#C6A45F]/25 flex-shrink-0">
+        <div className="p-4 pb-28 md:pb-4 border-t border-gray-200 dark:border-[#C6A45F]/25 flex-shrink-0">
           <button
             onClick={handleSave}
             disabled={saving || loading}

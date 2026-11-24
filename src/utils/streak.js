@@ -12,13 +12,16 @@ const localDateStr = (dateLike) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-// -> { weekdays: Set<'Monday'...>, adhocDates: Set<'YYYY-MM-DD'> }
+// -> { weekdays: Set<'Monday'...>, adhocDates: Set<'YYYY-MM-DD'>, startDate: 'YYYY-MM-DD' | null }
+// Weekly days only count on/after startDate (the program's start).
 export async function loadWorkoutSchedule(userId) {
   const weekdays = new Set();
   const adhocDates = new Set();
+  let startDate = null;
   const assignSnap = await get(dbRef(db, `programAssignments/${userId}`));
   if (assignSnap.exists()) {
     const { weeklySchedule = {}, adhocSchedule = {} } = assignSnap.val();
+    startDate = assignSnap.val().startDate || null;
     Object.entries(weeklySchedule).forEach(([day, phaseDayId]) => { if (phaseDayId) weekdays.add(day); });
     Object.entries(adhocSchedule).forEach(([date, e]) => { if (e?.workoutId) adhocDates.add(date); });
   } else {
@@ -29,7 +32,7 @@ export async function loadWorkoutSchedule(userId) {
       Object.entries(adhoc).forEach(([date, e]) => { if (e?.workoutId) adhocDates.add(date); });
     }
   }
-  return { weekdays, adhocDates };
+  return { weekdays, adhocDates, startDate };
 }
 
 // True if any scheduled workout day falls strictly between the last workout and today.
@@ -40,7 +43,9 @@ export function missedScheduledDay(lastWorkoutDate, schedule, now = Date.now()) 
   day.setDate(day.getDate() + 1);
   const todayStr = localDateStr(now);
   for (let i = 0; i < 366 && localDateStr(day) < todayStr; i++) {
-    if (schedule.weekdays.has(DAY_NAMES[day.getDay()]) || schedule.adhocDates.has(localDateStr(day))) return true;
+    const dateStr = localDateStr(day);
+    const programActive = !schedule.startDate || dateStr >= schedule.startDate;
+    if ((programActive && schedule.weekdays.has(DAY_NAMES[day.getDay()])) || schedule.adhocDates.has(dateStr)) return true;
     day.setDate(day.getDate() + 1);
   }
   return false;

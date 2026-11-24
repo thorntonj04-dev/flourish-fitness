@@ -290,7 +290,7 @@ export default function ProgramBuilder() {
         )}
 
         {/* Fixed save bar */}
-        <div className="fixed bottom-16 left-0 right-0 p-4 bg-white dark:bg-[#1E3328] border-t border-gray-200 dark:border-[#C6A45F]/25 md:relative md:bottom-auto md:border-0 md:bg-transparent md:dark:bg-transparent md:p-0">
+        <div className="fixed bottom-24 left-0 right-0 p-4 bg-white dark:bg-[#1E3328] border-t border-gray-200 dark:border-[#C6A45F]/25 md:relative md:bottom-auto md:border-0 md:bg-transparent md:dark:bg-transparent md:p-0">
           <button
             onClick={handleSaveProgram}
             disabled={saving}

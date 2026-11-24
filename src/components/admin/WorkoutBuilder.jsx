@@ -1196,9 +1196,9 @@ export default function WorkoutBuilder() {
                     <Dumbbell className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-gray-900 dark:text-[#d8e7de]">{workout.name}</div>
+                    <div className="font-bold text-gray-900 dark:text-[#d8e7de] break-words">{workout.name}</div>
                     {workout.description && (
-                      <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5 truncate">{workout.description}</p>
+                      <p className="text-sm text-gray-500 dark:text-[#d8e7de]/60 mt-0.5 break-words whitespace-pre-line">{workout.description}</p>
                     )}
                     <div className="flex gap-2 mt-2 flex-wrap">
                       {warmupCount > 0 && (
