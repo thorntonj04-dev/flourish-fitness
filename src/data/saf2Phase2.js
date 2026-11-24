@@ -1,5 +1,5 @@
 // StrongAF 2.0 — Phase 2 workouts, built from the client's app screenshots.
-// Used by the admin "Import" button in the Workout Builder and by scripts/seed-saf2-p2.mjs.
+// Imported 2026-11-24. Kept as a record; scripts/seed-saf2-p2.mjs can re-run the import.
 import { ref as dbRef, set, get, update } from 'firebase/database';
 
 export const PROGRAM_ID = '-P1_RjYRNhNLrzf8oDTd';     // StrongAF 2.0
