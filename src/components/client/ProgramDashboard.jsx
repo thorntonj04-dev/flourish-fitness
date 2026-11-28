@@ -471,6 +471,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
           workoutHistory={workoutHistory}
           activeSession={activeSession}
           onStartWorkout={onStartWorkout}
+          onStartFresh={(w) => setStartOverDay({ workoutId: w.workoutId, workoutName: w.workoutName, inProgressSessionId: activeSession?.sessionId })}
         />
       )}
 
@@ -987,6 +988,7 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
           workoutHistory={workoutHistory}
           activeSession={activeSession}
           onStartWorkout={onStartWorkout}
+          onStartFresh={(w) => setStartOverDay({ workoutId: w.workoutId, workoutName: w.workoutName, inProgressSessionId: activeSession?.sessionId })}
         />
       )}
 
@@ -1027,7 +1029,7 @@ function DirectScheduleView({ userId, directSchedule, directAdhoc, setDirectAdho
 }
 
 // ─── Quick Start: any of this client's weekly workouts, on any day ────────────
-function QuickStartCard({ workouts, workoutHistory, activeSession, onStartWorkout }) {
+function QuickStartCard({ workouts, workoutHistory, activeSession, onStartWorkout, onStartFresh }) {
   if (workouts.length === 0) return null;
   const weekDates = new Set(getThisWeek().map(d => d.dateStr));
   const doneThisWeek = new Set(
@@ -1044,10 +1046,43 @@ function QuickStartCard({ workouts, workoutHistory, activeSession, onStartWorkou
         {workouts.map(w => {
           const inProgress = activeSession?.workoutId === w.workoutId;
           const done = doneThisWeek.has(w.workoutId);
+          if (inProgress) {
+            // Paused workout: continue where they left off, or discard it and start fresh.
+            return (
+              <div key={w.workoutId} className="px-4 py-3">
+                <div className="flex items-center gap-3 mb-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                    <Play className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {w.label && (
+                      <div className="text-xs font-semibold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-wide">{w.label}</div>
+                    )}
+                    <div className="font-semibold text-gray-900 dark:text-[#d8e7de] break-words">{w.workoutName}</div>
+                    <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">In progress</div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onStartWorkout(w.workoutId, activeSession.sessionId)}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-bold flex items-center justify-center gap-1.5 min-h-[44px]"
+                  >
+                    <Play className="w-4 h-4" /> Continue
+                  </button>
+                  <button
+                    onClick={() => onStartFresh(w)}
+                    className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-[#C6A45F]/25 text-gray-700 dark:text-[#d8e7de]/80 text-sm font-bold flex items-center justify-center gap-1.5 min-h-[44px]"
+                  >
+                    <RotateCcw className="w-4 h-4" /> Start Fresh
+                  </button>
+                </div>
+              </div>
+            );
+          }
           return (
             <button
               key={w.workoutId}
-              onClick={() => onStartWorkout(w.workoutId, inProgress ? activeSession.sessionId : null)}
+              onClick={() => onStartWorkout(w.workoutId, null)}
               className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-emerald-50 dark:active:bg-emerald-900/20 min-h-[60px]"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
@@ -1059,11 +1094,7 @@ function QuickStartCard({ workouts, workoutHistory, activeSession, onStartWorkou
                 )}
                 <div className="font-semibold text-gray-900 dark:text-[#d8e7de] break-words">{w.workoutName}</div>
               </div>
-              {inProgress ? (
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex-shrink-0">Continue</span>
-              ) : done ? (
-                <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" aria-label="Done this week" />
-              ) : null}
+              {done && <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" aria-label="Done this week" />}
               <ChevronRight className="w-5 h-5 text-gray-300 dark:text-[#d8e7de]/30 flex-shrink-0" />
             </button>
           );

@@ -1,259 +1,360 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, Layers, Users, Heart, ChevronDown, Play, CalendarDays, Trophy, SlidersHorizontal, TrendingUp, Clock, Sparkles, Check } from 'lucide-react';
-import { ref as dbRef, get } from 'firebase/database';
+import {
+  Dumbbell, Layers, Users, ChevronRight, CalendarDays, Mail, MessageSquare,
+  UserX, Clock, CheckCircle, Flag, Sparkles,
+} from 'lucide-react';
+import { ref as dbRef, get, query, orderByKey, limitToLast } from 'firebase/database';
 import { db } from '../../firebase';
+import { toPhaseArray, computePhaseStarts, addDays } from '../../utils/phase';
+
+const INACTIVE_DAYS = 7;
+const UPCOMING_DAYS = 14;
+const RECENT_LIMIT = 6;
+
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function daysAgo(timestamp) {
+  return Math.floor((Date.now() - new Date(timestamp).getTime()) / 86400000);
+}
+
+function relativeDay(timestamp) {
+  const t = new Date(timestamp);
+  const today = localDateStr();
+  const day = localDateStr(t);
+  if (day === today) return `Today, ${t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  if (day === addDays(today, -1)) return 'Yesterday';
+  return t.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function upcomingLabel(dateStr) {
+  const today = localDateStr();
+  if (dateStr === today) return 'Today';
+  if (dateStr === addDays(today, 1)) return 'Tomorrow';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
 
 export default function AdminDashboard({ user, onNavigate }) {
-  const [expanded, setExpanded] = useState(null);
-  const [clientStats, setClientStats] = useState(null);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const loadStats = async () => {
+    const load = async () => {
       try {
-        const [usersSnap, statsSnap] = await Promise.all([
+        const [usersSnap, statsSnap, assignSnap, schedSnap, programsSnap, inquiriesSnap, feedbackSnap] = await Promise.all([
           get(dbRef(db, 'users')),
           get(dbRef(db, 'user-stats')),
+          get(dbRef(db, 'programAssignments')),
+          get(dbRef(db, 'clientSchedules')),
+          get(dbRef(db, 'programs')),
+          get(dbRef(db, 'inquiries')).catch(() => null),
+          get(dbRef(db, 'app-feedback')).catch(() => null),
         ]);
-        const clients = usersSnap.exists()
-          ? Object.entries(usersSnap.val()).filter(([, u]) => u.role === 'client')
-          : [];
-        const allStats = statsSnap.exists() ? statsSnap.val() : {};
-        const sevenDaysAgo = Date.now() - 7 * 86400000;
-        const trainedRecently = clients.filter(([uid]) => {
-          const lwd = allStats[uid]?.lastWorkoutDate;
-          return lwd && new Date(lwd).getTime() > sevenDaysAgo;
-        }).length;
-        setClientStats({ total: clients.length, trainedRecently, needAttention: clients.length - trainedRecently });
+
+        const users = usersSnap.val() || {};
+        const stats = statsSnap.val() || {};
+        const assignments = assignSnap.val() || {};
+        const schedules = schedSnap.val() || {};
+        const programs = programsSnap.val() || {};
+        const clients = Object.entries(users)
+          .filter(([, u]) => u.role === 'client')
+          .map(([id, u]) => ({ id, name: u.name || u.email?.split('@')[0] || 'Client' }));
+        const nameOf = Object.fromEntries(clients.map(c => [c.id, c.name]));
+
+        // Last 5 sessions per client (push keys sort chronologically), merged into one feed.
+        const historySnaps = await Promise.all(clients.map(c =>
+          get(query(dbRef(db, `workout-history/${c.id}`), orderByKey(), limitToLast(5))).catch(() => null)
+        ));
+        const recent = historySnaps.flatMap((snap, i) =>
+          Object.values(snap?.val() || {})
+            .filter(h => h.completed)
+            .map(h => ({
+              clientId: clients[i].id,
+              clientName: clients[i].name,
+              workoutName: h.workoutName || 'Workout',
+              when: h.endTime || h.startTime,
+              duration: h.duration,
+            }))
+        ).sort((a, b) => b.when - a.when).slice(0, RECENT_LIMIT);
+
+        // Last workout per client: the newer of user-stats and the history we just fetched.
+        const lastWorkout = {};
+        clients.forEach(c => {
+          const fromStats = stats[c.id]?.lastWorkoutDate ? new Date(stats[c.id].lastWorkoutDate).getTime() : 0;
+          const fromHistory = Math.max(0, ...recent.filter(r => r.clientId === c.id).map(r => r.when));
+          lastWorkout[c.id] = Math.max(fromStats, fromHistory) || null;
+        });
+
+        const hasPlan = (id) =>
+          !!assignments[id] ||
+          Object.entries(schedules[id] || {}).some(([k, v]) => k !== 'adhoc' && v);
+
+        const noPlan = clients.filter(c => !hasPlan(c.id));
+        const inactive = clients
+          .filter(c => hasPlan(c.id) && (!lastWorkout[c.id] || daysAgo(lastWorkout[c.id]) >= INACTIVE_DAYS))
+          .sort((a, b) => (lastWorkout[a.id] || 0) - (lastWorkout[b.id] || 0));
+        const trainedThisWeek = clients.filter(c => lastWorkout[c.id] && daysAgo(lastWorkout[c.id]) < INACTIVE_DAYS).length;
+
+        // Program starts and phase changes in the next two weeks.
+        const today = localDateStr();
+        const horizon = addDays(today, UPCOMING_DAYS);
+        const upcoming = [];
+        Object.entries(assignments).forEach(([clientId, a]) => {
+          if (!nameOf[clientId] || !a?.startDate) return;
+          const program = programs[a.programId];
+          const phases = toPhaseArray(program?.phases);
+          const fromIdx = a.currentPhase ?? 0;
+          if (phases.length === 0) {
+            if (a.startDate >= today && a.startDate <= horizon) {
+              upcoming.push({ clientName: nameOf[clientId], date: a.startDate, title: `Starts ${a.programName || 'program'}` });
+            }
+            return;
+          }
+          const starts = computePhaseStarts(phases, fromIdx, a.startDate, a.phaseStartDates);
+          starts.forEach((date, idx) => {
+            if (!date || date < today || date > horizon) return;
+            upcoming.push({
+              clientName: nameOf[clientId],
+              date,
+              title: idx === fromIdx
+                ? `Starts ${a.programName || program?.name || 'program'}`
+                : `${phases[idx]?.name || `Phase ${idx + 1}`} begins`,
+            });
+          });
+        });
+        upcoming.sort((a, b) => a.date.localeCompare(b.date));
+
+        const newInquiries = Object.values(inquiriesSnap?.val() || {}).filter(i => i.status === 'new').length;
+        const newFeedback = Object.values(feedbackSnap?.val() || {}).filter(f => !f.status || f.status === 'new').length;
+
+        setData({
+          name: users[user?.uid]?.name || 'Lindsey',
+          totalClients: clients.length,
+          trainedThisWeek,
+          noPlan,
+          inactive,
+          lastWorkout,
+          upcoming,
+          recent,
+          newInquiries,
+          newFeedback,
+        });
       } catch (err) {
-        console.error('Error loading admin stats:', err);
+        console.error('Error loading admin home:', err);
+        setError(true);
       }
     };
-    loadStats();
-  }, []);
+    load();
+  }, [user?.uid]);
 
-  const toggle = (key) => setExpanded(p => p === key ? null : key);
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const attentionCount = data
+    ? data.noPlan.length + data.inactive.length + (data.newInquiries ? 1 : 0) + (data.newFeedback ? 1 : 0)
+    : 0;
 
   return (
     <div className="space-y-4 pb-24">
 
-      {/* ── Compact header ─────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="hero-gradient rounded-2xl px-5 py-4 text-white relative overflow-hidden">
         <div className="absolute -top-6 -right-6 w-28 h-28 bg-white/5 rounded-full" />
-        <div className="relative flex items-center justify-between">
-          <div>
-            <p className="text-emerald-100 text-xs font-medium mb-0.5">Welcome back</p>
-            <h2 className="text-xl font-bold">Your Training Hub 💪</h2>
-          </div>
-          <Heart className="w-6 h-6 text-pink-200/70" />
+        <div className="relative">
+          <p className="text-emerald-100 text-xs font-medium mb-0.5">{today}</p>
+          <h2 className="text-xl font-bold">{greeting()}{data ? `, ${data.name}` : ''}</h2>
         </div>
       </div>
 
-      {/* ── Stats row ──────────────────────────────────────────────────── */}
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-2.5">
-        <StatChip value={clientStats?.total ?? '—'} label="Clients" color="blue" />
-        <StatChip value={clientStats?.trainedRecently ?? '—'} label="Active" color="emerald" />
+        <StatChip value={data?.totalClients ?? '—'} label="Clients" color="blue" onClick={() => onNavigate('clients')} />
+        <StatChip value={data?.trainedThisWeek ?? '—'} label="Trained in last 7 days" color="emerald" onClick={() => onNavigate('clients')} />
         <StatChip
-          value={clientStats?.needAttention ?? '—'}
-          label="Attention"
-          color={clientStats?.needAttention > 0 ? 'amber' : 'emerald'}
+          value={data ? attentionCount : '—'}
+          label="Need attention"
+          color={attentionCount > 0 ? 'amber' : 'emerald'}
+          onClick={() => document.getElementById('attention')?.scrollIntoView({ behavior: 'smooth' })}
         />
       </div>
 
-      {/* ── Quick-launch grid ──────────────────────────────────────────── */}
-      <div>
-        <p className="text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-widest px-1 mb-2">Jump To</p>
-        <div className="grid grid-cols-3 gap-2.5">
-          <QuickLaunch
-            gradient="from-yellow-400 to-orange-500"
-            icon={<Dumbbell className="w-5 h-5" />}
-            label="Workouts"
-            onClick={() => onNavigate('workout-days')}
-          />
-          <QuickLaunch
-            gradient="from-emerald-500 to-teal-500"
-            icon={<Layers className="w-5 h-5" />}
-            label="Programs"
-            onClick={() => onNavigate('programs')}
-          />
-          <QuickLaunch
-            gradient="from-blue-500 to-indigo-500"
-            icon={<Users className="w-5 h-5" />}
-            label="Clients"
+      {error && (
+        <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-sm text-amber-700 dark:text-amber-400">
+          Couldn't load everything for your home page. Try reopening the app in a moment.
+        </div>
+      )}
+
+      {/* Needs attention */}
+      <Section id="attention" title="Needs Your Attention">
+        {!data ? <Skeleton rows={2} /> : attentionCount === 0 ? (
+          <EmptyRow icon={<CheckCircle className="w-4 h-4 text-emerald-500" />} text="You're all caught up." />
+        ) : (
+          <>
+            {data.newInquiries > 0 && (
+              <Row
+                icon={<Mail className="w-4 h-4" />} tone="purple"
+                title={`${data.newInquiries} new ${data.newInquiries === 1 ? 'inquiry' : 'inquiries'}`}
+                subtitle="Someone filled out the contact form"
+                onClick={() => onNavigate('inquiries')}
+              />
+            )}
+            {data.newFeedback > 0 && (
+              <Row
+                icon={<MessageSquare className="w-4 h-4" />} tone="blue"
+                title={`${data.newFeedback} new feedback ${data.newFeedback === 1 ? 'note' : 'notes'}`}
+                subtitle="From your clients"
+                onClick={() => onNavigate('feedback')}
+              />
+            )}
+            {data.noPlan.map(c => (
+              <Row
+                key={`np-${c.id}`}
+                icon={<UserX className="w-4 h-4" />} tone="amber"
+                title={c.name}
+                subtitle="No program or workouts assigned"
+                onClick={() => onNavigate('clients')}
+              />
+            ))}
+            {data.inactive.map(c => (
+              <Row
+                key={`in-${c.id}`}
+                icon={<Clock className="w-4 h-4" />} tone="amber"
+                title={c.name}
+                subtitle={data.lastWorkout[c.id]
+                  ? `Last trained ${daysAgo(data.lastWorkout[c.id])} days ago`
+                  : 'Hasn\'t logged a workout yet'}
+                onClick={() => onNavigate('clients')}
+              />
+            ))}
+          </>
+        )}
+      </Section>
+
+      {/* Coming up */}
+      <Section title="Coming Up" hint={`Next ${UPCOMING_DAYS} days`}>
+        {!data ? <Skeleton rows={1} /> : data.upcoming.length === 0 ? (
+          <EmptyRow icon={<CalendarDays className="w-4 h-4 text-gray-400" />} text="No program starts or phase changes coming up." />
+        ) : data.upcoming.map((u, i) => (
+          <Row
+            key={i}
+            icon={u.title.startsWith('Starts') ? <Flag className="w-4 h-4" /> : <Layers className="w-4 h-4" />}
+            tone="emerald"
+            title={u.clientName}
+            subtitle={u.title}
+            trailing={upcomingLabel(u.date)}
             onClick={() => onNavigate('clients')}
           />
+        ))}
+      </Section>
+
+      {/* Recent workouts */}
+      <Section title="Recent Workouts">
+        {!data ? <Skeleton rows={3} /> : data.recent.length === 0 ? (
+          <EmptyRow icon={<Sparkles className="w-4 h-4 text-gray-400" />} text="Completed client workouts will show up here." />
+        ) : data.recent.map((r, i) => (
+          <Row
+            key={i}
+            icon={<CheckCircle className="w-4 h-4" />}
+            tone="teal"
+            title={r.clientName}
+            subtitle={`${r.workoutName}${r.duration ? ` · ${Math.round(r.duration / 60)} min` : ''}`}
+            trailing={relativeDay(r.when)}
+            onClick={() => onNavigate('clients')}
+          />
+        ))}
+      </Section>
+
+      {/* Shortcuts */}
+      <div>
+        <p className="text-[11px] font-bold text-gray-400 dark:text-[#d8e7de]/40 uppercase tracking-widest px-1 mb-2">Shortcuts</p>
+        <div className="grid grid-cols-3 gap-2.5">
+          <QuickLaunch gradient="from-yellow-400 to-orange-500" icon={<Dumbbell className="w-5 h-5" />} label="Workouts" onClick={() => onNavigate('workout-days')} />
+          <QuickLaunch gradient="from-emerald-500 to-teal-500" icon={<Layers className="w-5 h-5" />} label="Programs" onClick={() => onNavigate('programs')} />
+          <QuickLaunch gradient="from-blue-500 to-indigo-500" icon={<Users className="w-5 h-5" />} label="Clients" onClick={() => onNavigate('clients')} />
         </div>
       </div>
-
-      {/* ── Expandable panels ──────────────────────────────────────────── */}
-
-      <Panel
-        id="howto"
-        expanded={expanded}
-        onToggle={toggle}
-        icon={<Sparkles className="w-4 h-4 text-emerald-500" />}
-        title="How It Works"
-        subtitle="Your full workflow, step by step"
-      >
-        <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">
-          {[
-            { step: 1, label: 'Build Workouts', detail: 'Go to Workout Builder and create each training session — Push Day, Leg Day, Full Body, whatever you need. Add exercises with sets, reps, recommended weight, and coaching notes.', icon: <Dumbbell className="w-4 h-4" />, color: 'bg-yellow-500' },
-            { step: 2, label: 'Build a Program', detail: 'Head to Programs. A program groups your workout days into phases — each with a set duration and weekly frequency. For example: Phase 1 (Foundation) = 4 weeks × 3 days/week.', icon: <Layers className="w-4 h-4" />, color: 'bg-emerald-500' },
-            { step: 3, label: 'Add Your Client', detail: "Go to Clients and tap Add Client. Enter their name and email. Send them the app link and ask them to sign up with that exact email — they'll automatically be set up as a client.", icon: <Users className="w-4 h-4" />, color: 'bg-blue-500' },
-            { step: 4, label: 'Assign the Program', detail: "On their client card, tap Assign Program. Select the program, choose a start date, and set their weekly schedule. They can always rearrange this themselves.", icon: <CalendarDays className="w-4 h-4" />, color: 'bg-purple-500' },
-            { step: 5, label: 'Client Trains', detail: "Your client opens the app and sees their full week. They tap Start and get guided set-by-set with their recommended weights and rest timers. Everything saves automatically.", icon: <Play className="w-4 h-4" />, color: 'bg-pink-500' },
-            { step: 6, label: 'Adjust as They Progress', detail: "Tap the eye icon on any client card to open their full detail view — see their program progress, strength charts, personal records, and complete workout history.", icon: <TrendingUp className="w-4 h-4" />, color: 'bg-orange-500' },
-          ].map(({ step, label, detail, icon, color }) => (
-            <div key={step} className="flex items-start gap-3 p-4">
-              <div className={`w-8 h-8 ${color} rounded-full flex items-center justify-center text-white flex-shrink-0 mt-0.5`}>
-                {icon}
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-gray-800 dark:text-[#d8e7de] text-sm mb-0.5">
-                  <span className="text-gray-400 dark:text-[#d8e7de]/40 font-normal">Step {step} — </span>{label}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-[#d8e7de]/50 leading-relaxed">{detail}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Panel>
-
-      <Panel
-        id="client"
-        expanded={expanded}
-        onToggle={toggle}
-        icon={<Trophy className="w-4 h-4 text-yellow-500" />}
-        title="What Clients Experience"
-        subtitle="Their journey from login to celebration"
-      >
-        <div className="p-4 space-y-3">
-          {[
-            { icon: CalendarDays, title: 'Weekly view on login', desc: "They see exactly which days they train and which are rest days. Today's workout is always highlighted." },
-            { icon: Play, title: 'Guided workout sessions', desc: 'One exercise card at a time. They log weight and reps for each set, with best weights pre-filled.' },
-            { icon: Clock, title: 'Rest timers between sets', desc: 'A countdown appears automatically after each set. They can skip it if they feel ready.' },
-            { icon: Trophy, title: 'Post-workout celebration', desc: 'Confetti, stats, and achievements appear when they finish. They rate difficulty and can leave a session note.' },
-            { icon: SlidersHorizontal, title: 'Flexible schedule', desc: 'They can rearrange which days they train each week without changing their program.' },
-            { icon: TrendingUp, title: 'Body weight tracking', desc: 'They log their weight from their profile. You can see their full trend in the client detail view.' },
-            { icon: Users, title: 'Editable profile & photo', desc: 'They can upload a profile photo and edit their display name — changes reflect everywhere instantly.' },
-          ].map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Icon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <div className="font-semibold text-gray-800 dark:text-[#d8e7de] text-sm">{title}</div>
-                <div className="text-xs text-gray-500 dark:text-[#d8e7de]/50 mt-0.5 leading-relaxed">{desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Panel>
-
-      <Panel
-        id="features"
-        expanded={expanded}
-        onToggle={toggle}
-        icon={<Check className="w-4 h-4 text-emerald-500" />}
-        title="Everything That's Built In"
-        subtitle="Full feature list"
-      >
-        <div className="p-4">
-          <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
-            {[
-              'Workout builder', '500+ exercise autocomplete', 'Muscle group filters', 'Quick set/rep presets',
-              'Superset pairing', 'Equipment picker', 'Multi-phase programs', 'Phase auto-advancement',
-              'Client management', 'Program assignment', 'Weekly schedule view', 'Rest timer (30/60/90s)',
-              'Live workout sessions', 'Section color coding', 'Per-exercise progress', 'Session notes',
-              'Personal-best weights', 'Workout history', 'Strength charts', 'Body weight tracking',
-              'Personal records', 'Streak tracking', 'Client detail view', 'Workout rating',
-              'Schedule adjustment', 'Profile photo upload', 'Inquiry form + panel', 'Dark mode',
-            ].map(item => (
-              <div key={item} className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-[#d8e7de]/70">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full flex-shrink-0" />
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-      </Panel>
-
-      <Panel
-        id="updates"
-        expanded={expanded}
-        onToggle={toggle}
-        icon={<Sparkles className="w-4 h-4 text-purple-500" />}
-        title="Recent Updates"
-        subtitle="Latest additions and improvements"
-        badge="NEW"
-      >
-        <div className="p-4 space-y-5">
-          {[
-            { label: 'Workout Session', color: 'bg-teal-500', items: ['Card-based one-exercise-at-a-time flow', 'Personal-best weights auto-filled for every exercise', 'Section color coding: green work, amber warmup, blue cooldown', 'Depth and glow effects throughout the session UI'] },
-            { label: 'Workout Builder', color: 'bg-orange-500', items: ['Up/down arrows to reorder exercises', 'Supersets auto-group adjacent when paired'] },
-            { label: 'Client Profiles', color: 'bg-emerald-500', items: ['Profile photo upload', 'Editable display name'] },
-            { label: 'Inquiries', color: 'bg-blue-500', items: ['Contact form on landing page', 'Admin inquiries tab to manage leads'] },
-          ].map(({ label, color, items }) => (
-            <div key={label}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-2 h-2 rounded-full ${color} flex-shrink-0`} />
-                <span className="text-xs font-bold text-gray-900 dark:text-[#d8e7de]">{label}</span>
-              </div>
-              <ul className="space-y-1.5 pl-4">
-                {items.map((item, i) => (
-                  <li key={i} className="text-xs text-gray-600 dark:text-[#d8e7de]/65 leading-snug flex gap-2">
-                    <span className="text-gray-300 dark:text-[#d8e7de]/25 flex-shrink-0">—</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </Panel>
-
-      <Panel
-        id="note"
-        expanded={expanded}
-        onToggle={toggle}
-        icon={<Heart className="w-4 h-4 text-pink-400" />}
-        title="A Note from John"
-        subtitle="Built just for you"
-      >
-        <div className="p-5">
-          <p className="text-sm text-gray-600 dark:text-[#d8e7de]/70 leading-relaxed mb-3">
-            This platform was designed and built exclusively for you — a place where your passion for fitness, your care for clients, and your expertise all come together in one beautiful system.
-          </p>
-          <p className="text-sm text-gray-600 dark:text-[#d8e7de]/70 leading-relaxed mb-3">
-            You are not just another trainer, and your clients deserve more than a generic app. This isn't a generic app. It's handcrafted, one of a kind — built to reflect your approach, your standards, and your passion for helping others flourish.
-          </p>
-          <p className="text-sm text-gray-600 dark:text-[#d8e7de]/70 leading-relaxed">
-            Tell me when something doesn't make sense and I'll fix it. This will only get better. 💚
-          </p>
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#C6A45F]/15 flex items-center justify-between">
-            <div>
-              <p className="font-bold text-gray-900 dark:text-[#d8e7de]">I love you!</p>
-              <p className="text-sm text-gray-500 dark:text-[#d8e7de]/50">— John</p>
-            </div>
-            <Heart className="w-7 h-7 text-pink-400/60" />
-          </div>
-        </div>
-      </Panel>
-
     </div>
   );
 }
 
-function StatChip({ value, label, color }) {
+function Section({ id, title, hint, children }) {
+  return (
+    <div id={id} className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden scroll-mt-4">
+      <div className="px-4 pt-4 pb-2 flex items-baseline justify-between">
+        <h3 className="font-bold text-gray-900 dark:text-[#d8e7de] text-sm">{title}</h3>
+        {hint && <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">{hint}</span>}
+      </div>
+      <div className="divide-y divide-gray-100 dark:divide-[#C6A45F]/10">{children}</div>
+    </div>
+  );
+}
+
+const TONES = {
+  amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
+  purple: 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400',
+  blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+  emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+  teal: 'bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400',
+};
+
+function Row({ icon, tone, title, subtitle, trailing, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full px-4 py-3 flex items-center gap-3 text-left active:bg-gray-50 dark:active:bg-[#0a0a0a]/20 min-h-[56px]"
+    >
+      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${TONES[tone]}`}>{icon}</div>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-gray-800 dark:text-[#d8e7de] text-sm truncate">{title}</div>
+        <div className="text-xs text-gray-500 dark:text-[#d8e7de]/50 truncate">{subtitle}</div>
+      </div>
+      {trailing && <span className="text-xs text-gray-400 dark:text-[#d8e7de]/45 flex-shrink-0 text-right">{trailing}</span>}
+      <ChevronRight className="w-4 h-4 text-gray-300 dark:text-[#d8e7de]/25 flex-shrink-0" />
+    </button>
+  );
+}
+
+function EmptyRow({ icon, text }) {
+  return (
+    <div className="px-4 py-4 flex items-center gap-3 text-sm text-gray-500 dark:text-[#d8e7de]/55">
+      {icon}{text}
+    </div>
+  );
+}
+
+function Skeleton({ rows }) {
+  return Array.from({ length: rows }, (_, i) => (
+    <div key={i} className="px-4 py-3 flex items-center gap-3">
+      <div className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-[#0a0a0a]/30 animate-pulse" />
+      <div className="flex-1 space-y-1.5">
+        <div className="h-3 w-1/3 rounded bg-gray-100 dark:bg-[#0a0a0a]/30 animate-pulse" />
+        <div className="h-2.5 w-1/2 rounded bg-gray-100 dark:bg-[#0a0a0a]/30 animate-pulse" />
+      </div>
+    </div>
+  ));
+}
+
+function StatChip({ value, label, color, onClick }) {
   const colors = {
     blue: 'text-blue-600 dark:text-blue-400',
     emerald: 'text-emerald-600 dark:text-emerald-400',
     amber: 'text-amber-600 dark:text-amber-400',
   };
   return (
-    <div className="bg-white dark:bg-[#1E3328] rounded-2xl p-3 text-center border border-gray-200 dark:border-[#C6A45F]/25">
+    <button
+      onClick={onClick}
+      className="bg-white dark:bg-[#1E3328] rounded-2xl p-3 text-center border border-gray-200 dark:border-[#C6A45F]/25 active:bg-gray-50 dark:active:bg-[#0a0a0a]/20"
+    >
       <div className={`text-2xl font-bold ${colors[color] ?? colors.blue}`}>{value}</div>
       <div className="text-xs text-gray-500 dark:text-[#d8e7de]/60 mt-0.5 leading-tight">{label}</div>
-    </div>
+    </button>
   );
 }
 
@@ -268,34 +369,5 @@ function QuickLaunch({ gradient, icon, label, onClick }) {
       </div>
       <span className="text-xs font-bold text-gray-700 dark:text-[#d8e7de]/80">{label}</span>
     </button>
-  );
-}
-
-function Panel({ id, expanded, onToggle, icon, title, subtitle, badge, children }) {
-  const isOpen = expanded === id;
-  return (
-    <div className="bg-white dark:bg-[#1E3328] rounded-2xl border border-gray-200 dark:border-[#C6A45F]/25 overflow-hidden">
-      <button
-        onClick={() => onToggle(id)}
-        className="w-full px-5 py-4 flex items-center justify-between text-left active:bg-gray-50 dark:active:bg-[#0a0a0a]/20 min-h-[60px]"
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex-shrink-0">{icon}</div>
-          <div className="min-w-0">
-            <div className="font-bold text-gray-900 dark:text-[#d8e7de] text-sm flex items-center gap-2">
-              {title}
-              {badge && <span className="text-[9px] font-black bg-purple-500 text-white px-1.5 py-0.5 rounded-full">{badge}</span>}
-            </div>
-            <div className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mt-0.5">{subtitle}</div>
-          </div>
-        </div>
-        <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 ml-3 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {isOpen && (
-        <div className="border-t border-gray-100 dark:border-[#C6A45F]/10">
-          {children}
-        </div>
-      )}
-    </div>
   );
 }
