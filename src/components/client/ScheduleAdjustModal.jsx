@@ -53,7 +53,7 @@ export default function ScheduleAdjustModal({ userId, currentSchedule, available
               <select
                 value={schedule[dayName] || ''}
                 onChange={e => handleChange(dayName, e.target.value)}
-                className={`flex-1 px-3 py-2.5 rounded-xl border text-sm font-medium min-h-[48px] focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de] ${
+                className={`flex-1 min-w-0 w-full truncate px-3 py-2.5 rounded-xl border text-sm font-medium min-h-[48px] focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de] ${
                   schedule[dayName]
                     ? 'border-emerald-400 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
                     : 'border-gray-200 dark:border-[#C6A45F]/20 text-gray-400 dark:text-[#d8e7de]/40'

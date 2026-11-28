@@ -59,7 +59,7 @@ export default function AssignWorkoutScheduleModal({ client, existingSchedule, o
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white dark:bg-[#1E3328] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md flex flex-col max-h-[90svh]">
+      <div className="bg-white dark:bg-[#1E3328] rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md flex flex-col max-h-[90svh] overflow-hidden">
         {/* Header */}
         <div className="p-5 border-b border-gray-200 dark:border-[#C6A45F]/25 flex items-center justify-between flex-shrink-0">
           <div>
@@ -96,7 +96,7 @@ export default function AssignWorkoutScheduleModal({ client, existingSchedule, o
                 <select
                   value={schedule[day]?.workoutId || ''}
                   onChange={e => handleDayChange(day, e.target.value)}
-                  className="flex-1 py-2.5 px-3 border border-gray-200 dark:border-[#C6A45F]/30 rounded-xl text-sm bg-white dark:bg-[#1E3328] text-gray-900 dark:text-[#d8e7de] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[44px]"
+                  className="flex-1 min-w-0 w-full truncate py-2.5 px-3 border border-gray-200 dark:border-[#C6A45F]/30 rounded-xl text-sm bg-white dark:bg-[#1E3328] text-gray-900 dark:text-[#d8e7de] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[44px]"
                 >
                   <option value="">Rest day</option>
                   {workouts.map(w => (

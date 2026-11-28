@@ -171,3 +171,10 @@ html:not(.dark) .border-gray-200 {
 html:not(.dark) .border-gray-300 {
   border-color: #9ca3af; /* → gray-400 */
 }
+
+/* Native dropdown lists don't inherit the select's dark background on every
+   platform, which can leave light option text on a white list. */
+.dark select option {
+  background-color: #1E3328;
+  color: #d8e7de;
+}
