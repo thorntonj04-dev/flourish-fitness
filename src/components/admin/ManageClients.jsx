@@ -6,6 +6,7 @@ import {
   Eye, X, Mail, Users, CalendarDays,
 } from 'lucide-react';
 import AssignProgramModal from './AssignProgramModal';
+import { toPhaseArray, resolveCurrentPhase, weekInPhase } from '../../utils/phase';
 import AssignWorkoutScheduleModal from './AssignWorkoutScheduleModal';
 import ClientDetailView from './ClientDetailView';
 
@@ -119,9 +120,14 @@ export default function ManageClients() {
     if (!assignment) return null;
     const program = programs.find(p => p.id === assignment.programId);
     if (!program) return null;
-    const phase = program.phases?.[assignment.currentPhase];
+    const phases = toPhaseArray(program.phases);
+    const { phaseIndex, startDate } = resolveCurrentPhase(assignment, phases);
+    const phase = phases[phaseIndex];
     if (!phase) return null;
-    return `${phase.name} · Week ${assignment.currentWeek}/${phase.durationWeeks}`;
+    const week = startDate ? weekInPhase(startDate, phase.durationWeeks) : 1;
+    return week === 0
+      ? `${phase.name} · Starts ${new Date(startDate + 'T00:00').toLocaleDateString()}`
+      : `${phase.name} · Week ${week}/${phase.durationWeeks}`;
   };
 
   // ─── Client detail view ────────────────────────────────────────────────────

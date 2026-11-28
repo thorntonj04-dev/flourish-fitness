@@ -6,6 +6,7 @@ import ScheduleAdjustModal from './ScheduleAdjustModal';
 import WorkoutPickerModal from '../admin/WorkoutPickerModal';
 import ExerciseVideoModal from '../shared/ExerciseVideoModal';
 import { getExerciseVideo } from '../../data/exerciseVideos';
+import { toPhaseArray, resolveCurrentPhase } from '../../utils/phase';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -172,27 +173,20 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
         get(dbRef(db, `workout-history/${user.uid}`)),
       ]);
 
-      // Phase auto-advancement (skip when admin is previewing)
-      if (!readOnly && programSnap.exists()) {
-        const prog = programSnap.val();
-        const phases = prog.phases
-          ? (Array.isArray(prog.phases) ? prog.phases : Object.values(prog.phases))
-          : [];
-        const currentPhaseIdx = assign.currentPhase ?? 0;
-        const currentPhaseData = phases[currentPhaseIdx];
-        if (currentPhaseData && assign.startDate) {
-          const start = parseLocalDate(assign.startDate);
-          const daysElapsed = Math.floor((Date.now() - start.getTime()) / 86400000);
-          const rawWeek = Math.max(1, Math.floor(daysElapsed / 7) + 1);
-          if (rawWeek > (currentPhaseData.durationWeeks || 1) && currentPhaseIdx + 1 < phases.length) {
-            const today = localDateStr(new Date());
-            await update(dbRef(db, `programAssignments/${user.uid}`), {
-              currentPhase: currentPhaseIdx + 1,
-              startDate: today,
-              weeklySchedule: {},
-            });
-            assign = { ...assign, currentPhase: currentPhaseIdx + 1, startDate: today, weeklySchedule: {} };
-          }
+      // Work out which phase is active today (honours admin-set phase start dates).
+      // Derived locally, not written back: clients can't write currentPhase/startDate,
+      // and keeping the stored assignment intact lets the admin re-edit its dates.
+      if (programSnap.exists()) {
+        const phases = toPhaseArray(programSnap.val().phases);
+        const { phaseIndex, startDate } = resolveCurrentPhase(assign, phases);
+        if (phaseIndex !== (assign.currentPhase ?? 0)) {
+          // Day ids are slot-based (day-0, day-1, …) in every phase, so keep the
+          // client's weekday slots and drop any the new phase doesn't have.
+          const validIds = new Set(toPhaseArray(phases[phaseIndex]?.days).map(d => d.id));
+          const carried = Object.fromEntries(
+            Object.entries(assign.weeklySchedule || {}).map(([day, id]) => [day, validIds.has(id) ? id : null])
+          );
+          assign = { ...assign, currentPhase: phaseIndex, startDate, weeklySchedule: carried };
         }
       }
 
