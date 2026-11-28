@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, Check, Layers, AlertCircle } from 'lucide-react';
 import { ref as dbRef, get, set } from 'firebase/database';
 import { db, auth } from '../../firebase';
+import { toPhaseArray, computePhaseStarts } from '../../utils/phase';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -27,6 +28,9 @@ export default function AssignProgramModal({ client, programs, existingAssignmen
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [startDate, setStartDate] = useState(existingAssignment?.startDate || getNextMonday());
   const [schedule, setSchedule] = useState({ Monday: null, Tuesday: null, Wednesday: null, Thursday: null, Friday: null, Saturday: null, Sunday: null });
+  // Admin-chosen start dates for phases after the first, keyed by phase index.
+  // Phases not in here start automatically when the previous phase ends.
+  const [phaseOverrides, setPhaseOverrides] = useState({});
   const [saving, setSaving] = useState(false);
 
   // Load program detail when selection changes
@@ -45,6 +49,9 @@ export default function AssignProgramModal({ client, programs, existingAssignmen
       } else {
         setSchedule(defaultSched);
       }
+      // Firebase may hand back phaseStartDates as an array; normalise to { index: date }.
+      const saved = existingAssignment?.programId === selectedProgramId ? existingAssignment?.phaseStartDates : null;
+      setPhaseOverrides(saved ? Object.fromEntries(Object.entries(saved).filter(([, d]) => d)) : {});
     }
   }, [selectedProgramId, programs]);
 
@@ -52,6 +59,18 @@ export default function AssignProgramModal({ client, programs, existingAssignmen
   const phase0Days = rawPhase0Days
     ? (Array.isArray(rawPhase0Days) ? rawPhase0Days : Object.values(rawPhase0Days))
     : [];
+
+  const phases = toPhaseArray(selectedProgram?.phases);
+  const phaseStarts = startDate ? computePhaseStarts(phases, 0, startDate, phaseOverrides) : [];
+  const badPhaseIdx = phaseStarts.findIndex((d, i) => i > 0 && d <= phaseStarts[i - 1]);
+
+  const handlePhaseDateChange = (idx, value) => {
+    setPhaseOverrides(prev => {
+      const next = { ...prev };
+      if (value) next[idx] = value; else delete next[idx];
+      return next;
+    });
+  };
 
   const handleScheduleChange = (dayOfWeek, dayId) => {
     setSchedule(prev => ({ ...prev, [dayOfWeek]: dayId || null }));
@@ -63,6 +82,10 @@ export default function AssignProgramModal({ client, programs, existingAssignmen
   const handleSave = async () => {
     if (!selectedProgramId) { alert('Please select a program.'); return; }
     if (!startDate) { alert('Please choose a start date.'); return; }
+    if (badPhaseIdx > 0) {
+      alert(`${phases[badPhaseIdx].name || `Phase ${badPhaseIdx + 1}`} must start after ${phases[badPhaseIdx - 1].name || `Phase ${badPhaseIdx}`}.`);
+      return;
+    }
 
     setSaving(true);
     try {
@@ -77,6 +100,11 @@ export default function AssignProgramModal({ client, programs, existingAssignmen
         currentWeek: 1,
         weeklySchedule: schedule,
       };
+      // Only explicit choices are saved; other phases follow on automatically.
+      const chosen = Object.fromEntries(
+        Object.entries(phaseOverrides).filter(([i, d]) => d && Number(i) > 0 && Number(i) < phases.length)
+      );
+      if (Object.keys(chosen).length > 0) assignmentData.phaseStartDates = chosen;
       // Preserve any client-set ad-hoc single-day assignments across reassignment.
       if (existingAssignment?.adhocSchedule) {
         assignmentData.adhocSchedule = existingAssignment.adhocSchedule;
@@ -169,6 +197,65 @@ export default function AssignProgramModal({ client, programs, existingAssignmen
               className="w-full px-4 py-3 border border-gray-300 dark:border-[#C6A45F]/40 rounded-xl text-base focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de]"
             />
           </div>
+
+          {/* Later phase start dates */}
+          {selectedProgram && startDate && phases.length > 1 && (
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-[#d8e7de]/60 uppercase tracking-wide mb-2">
+                <Layers className="inline w-3.5 h-3.5 mr-1" />
+                Phase Start Dates
+              </label>
+              <p className="text-xs text-gray-400 dark:text-[#d8e7de]/40 mb-3">
+                By default each phase starts when the previous one ends. Pick a date to start it earlier or later.
+              </p>
+              <div className="space-y-3">
+                {phases.slice(1).map((ph, j) => {
+                  const idx = j + 1;
+                  const isCustom = !!phaseOverrides[idx];
+                  const invalid = idx === badPhaseIdx;
+                  return (
+                    <div key={ph.id || idx}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-semibold text-gray-700 dark:text-[#d8e7de]">
+                          {ph.name || `Phase ${idx + 1}`}
+                        </span>
+                        {isCustom ? (
+                          <button
+                            type="button"
+                            onClick={() => handlePhaseDateChange(idx, '')}
+                            className="text-xs text-emerald-600 dark:text-emerald-400 font-medium px-2 py-1"
+                          >
+                            Reset to automatic
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-[#d8e7de]/40">
+                            Automatic
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="date"
+                        value={phaseStarts[idx] || ''}
+                        onChange={e => handlePhaseDateChange(idx, e.target.value)}
+                        className={`w-full px-4 py-3 border rounded-xl text-base focus:ring-2 focus:ring-emerald-500 dark:bg-[#0a0a0a] dark:text-[#d8e7de] ${
+                          invalid
+                            ? 'border-red-400 dark:border-red-500'
+                            : isCustom
+                              ? 'border-emerald-400 dark:border-emerald-600'
+                              : 'border-gray-300 dark:border-[#C6A45F]/40'
+                        }`}
+                      />
+                      {invalid && (
+                        <p className="text-xs text-red-500 mt-1">
+                          Must be after {phases[idx - 1].name || `Phase ${idx}`} starts.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Weekly schedule */}
           {selectedProgram && phase0Days.length > 0 && (
