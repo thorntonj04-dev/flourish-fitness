@@ -6,7 +6,7 @@ import ScheduleAdjustModal from './ScheduleAdjustModal';
 import WorkoutPickerModal from '../admin/WorkoutPickerModal';
 import ExerciseVideoModal from '../shared/ExerciseVideoModal';
 import { getExerciseVideo } from '../../data/exerciseVideos';
-import { toPhaseArray, resolveCurrentPhase } from '../../utils/phase';
+import { toPhaseArray, phaseOnDate } from '../../utils/phase';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -166,29 +166,12 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
         return;
       }
 
-      let assign = assignSnap.val();
+      const assign = assignSnap.val();
 
       const [programSnap, historySnap] = await Promise.all([
         get(dbRef(db, `programs/${assign.programId}`)),
         get(dbRef(db, `workout-history/${user.uid}`)),
       ]);
-
-      // Work out which phase is active today (honours admin-set phase start dates).
-      // Derived locally, not written back: clients can't write currentPhase/startDate,
-      // and keeping the stored assignment intact lets the admin re-edit its dates.
-      if (programSnap.exists()) {
-        const phases = toPhaseArray(programSnap.val().phases);
-        const { phaseIndex, startDate } = resolveCurrentPhase(assign, phases);
-        if (phaseIndex !== (assign.currentPhase ?? 0)) {
-          // Day ids are slot-based (day-0, day-1, …) in every phase, so keep the
-          // client's weekday slots and drop any the new phase doesn't have.
-          const validIds = new Set(toPhaseArray(phases[phaseIndex]?.days).map(d => d.id));
-          const carried = Object.fromEntries(
-            Object.entries(assign.weeklySchedule || {}).map(([day, id]) => [day, validIds.has(id) ? id : null])
-          );
-          assign = { ...assign, currentPhase: phaseIndex, startDate, weeklySchedule: carried };
-        }
-      }
 
       setAssignment(assign);
       setWeeklySchedule(assign.weeklySchedule || {});
@@ -224,25 +207,33 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
 
   // ─── Computed values ───────────────────────────────────────────────────────
 
-  const phase = program?.phases?.[assignment?.currentPhase ?? 0] ?? null;
+  // Each date gets the phase in effect on that date, so an admin-set phase start
+  // date takes over on exactly that day (including in the next-week view).
+  // The stored assignment is never rewritten; clients can't write currentPhase.
+  const phases = toPhaseArray(program?.phases);
+  const phaseFor = (dateStr) => (assignment ? phaseOnDate(assignment, phases, dateStr) : { phaseIndex: 0 });
+  const daysOfPhase = (idx) => toPhaseArray(phases[idx]?.days);
 
-  const weekNumber = assignment && phase
-    ? computeWeekNumber(assignment.startDate, phase.durationWeeks)
+  const current = phaseFor(localDateStr(new Date()));
+  const phase = phases[current.phaseIndex] ?? null;
+
+  const weekNumber = assignment && phase && current.startDate
+    ? computeWeekNumber(current.startDate, phase.durationWeeks)
     : 1;
 
   const hasStarted = weekNumber > 0;
   const phaseProgress = phase ? Math.round((weekNumber / phase.durationWeeks) * 100) : 0;
 
-  const phaseDaysArray = phase?.days
-    ? (Array.isArray(phase.days) ? phase.days : Object.values(phase.days))
-    : [];
+  const phaseDaysArray = daysOfPhase(current.phaseIndex);
 
   const buildWeekDays = (weekBase) =>
     weekBase.map(day => {
       // Program days only apply from the start date onward; ad-hoc workouts can still be added before.
       const beforeStart = assignment?.startDate && day.dateStr < assignment.startDate;
       const dayId = beforeStart ? null : (weeklySchedule[day.name] || null);
-      const phaseDay = dayId ? phaseDaysArray.find(d => d.id === dayId) : null;
+      // Day ids are slot-based (day-0, day-1, …) in every phase, so the client's
+      // weekday slots carry over and pick up that date's phase workouts.
+      const phaseDay = dayId ? daysOfPhase(phaseFor(day.dateStr).phaseIndex).find(d => d.id === dayId) : null;
       const adhoc = !phaseDay ? adhocSchedule[day.dateStr] : null;
       const workoutId = phaseDay?.workoutId ?? adhoc?.workoutId ?? null;
       const workoutName = phaseDay?.workoutName ?? adhoc?.workoutName ?? null;
@@ -298,6 +289,9 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
   const nextWeekDays = buildWeekDays(getNextWeek());
 
   const displayDays = showNextWeek ? nextWeekDays : weekDays;
+  // Schedule editing offers the days of the phase at the end of the week on screen,
+  // so an upcoming phase with more workout days can be scheduled ahead of time.
+  const scheduleDays = daysOfPhase(phaseFor(displayDays[displayDays.length - 1].dateStr).phaseIndex);
 
   const todayDay = weekDays.find(d => d.isToday);
   const completedCount = weekDays.filter(d => d.isCompleted).length;
@@ -365,7 +359,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
             <p className="text-emerald-100 text-sm mt-0.5">
               {hasStarted
                 ? `Week ${weekNumber} of ${phase?.durationWeeks ?? '?'} · ${workoutDaysCount}× per week`
-                : `Starts ${new Date(assignment.startDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })} · ${workoutDaysCount}× per week`}
+                : `Starts ${new Date(current.startDate ?? assignment.startDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })} · ${workoutDaysCount}× per week`}
             </p>
           </div>
           <div className="text-right flex-shrink-0">
@@ -485,7 +479,7 @@ export default function ProgramDashboard({ user, onStartWorkout, readOnly = fals
         <ScheduleAdjustModal
           userId={user.uid}
           currentSchedule={weeklySchedule}
-          availableDays={phaseDaysArray}
+          availableDays={scheduleDays}
           onClose={() => setShowAdjust(false)}
           onSaved={(newSchedule) => {
             setWeeklySchedule(newSchedule);

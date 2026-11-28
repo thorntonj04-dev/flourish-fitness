@@ -38,19 +38,24 @@ export function computePhaseStarts(phases, fromIndex, fromStart, customStarts = 
   return starts;
 }
 
-// The phase that should be active today, and the date it started. Derived on
-// every read rather than written back, so the stored assignment keeps the
-// original program start date and the admin's phase dates.
-export function resolveCurrentPhase(assignment, phases, today = new Date()) {
+// The phase in effect on a given date ('YYYY-MM-DD'), and the date it started.
+// Admin-set phase dates win regardless of whether the previous phase ran its
+// full length. Derived on every read rather than written back, so the stored
+// assignment keeps the original program start date and the admin's phase dates.
+// Dates before the program starts return the stored phase.
+export function phaseOnDate(assignment, phases, dateStr) {
   const storedIdx = assignment?.currentPhase ?? 0;
   if (!assignment?.startDate || phases.length === 0) {
     return { phaseIndex: storedIdx, startDate: assignment?.startDate };
   }
-  const todayStr = localDateStr(today);
   const starts = computePhaseStarts(phases, storedIdx, assignment.startDate, assignment.phaseStartDates);
   let idx = storedIdx;
-  while (idx + 1 < phases.length && todayStr >= starts[idx + 1]) idx++;
+  while (idx + 1 < phases.length && dateStr >= starts[idx + 1]) idx++;
   return { phaseIndex: idx, startDate: starts[idx] };
+}
+
+export function resolveCurrentPhase(assignment, phases, today = new Date()) {
+  return phaseOnDate(assignment, phases, localDateStr(today));
 }
 
 // 1-based week within the phase, clamped to its duration; 0 if it hasn't started.
